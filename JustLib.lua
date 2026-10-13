@@ -2754,7 +2754,9 @@ function JL:Window(opts)
         gui.IgnoreGuiInset = true
         gui.DisplayOrder = 100000
         gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        gui.Parent = PG
+        local CoreGui = game:GetService("CoreGui")
+        local parented = pcall(function() gui.Parent = CoreGui end)
+        if not parented or not gui.Parent then gui.Parent = PG end
 
         local shade = Instance.new("TextButton")
         shade.Name = "Backdrop"
