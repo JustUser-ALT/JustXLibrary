@@ -2646,8 +2646,16 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     cfgSet(o.Flag, sel); refreshLabel(); if o.Callback then pcall(o.Callback, sel) end
                 else
                     for _,ref in pairs(optRefs) do mark(ref, false) end
-                    selected = {}; selected[optName] = true; mark(optRefs[optName], true)
-                    cfgSet(o.Flag, optName); refreshLabel(); if o.Callback then pcall(o.Callback, optName) end
+                    if selected[optName] then
+                        selected = {}
+                        cfgSet(o.Flag, nil)
+                        refreshLabel()
+                        if o.Callback then pcall(o.Callback, nil) end
+                    else
+                        selected = {}; selected[optName] = true; mark(optRefs[optName], true)
+                        cfgSet(o.Flag, optName); refreshLabel()
+                        if o.Callback then pcall(o.Callback, optName) end
+                    end
                 end
             end)
             end
