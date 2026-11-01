@@ -79,6 +79,23 @@ Section:Dropdown({
     end,
 })
 
+-- Standard single-select dropdown that can be cleared by clicking the selected option again.
+Section:Dropdown({
+    Name = "Clearable Player",
+    Options = getPlayerNames,
+
+    Search = false,
+    MultiSelect = false,
+    Value = false,
+
+    AutoUpdate = true,
+    Interval = 5,
+
+    Callback = function(playerName)
+        print("[Dynamic Dropdown] Clearable:", playerName or "nil (empty)")
+    end,
+})
+
 -- Standard multi-select dropdown.
 Section:Dropdown({
     Name = "Multiple Players",
