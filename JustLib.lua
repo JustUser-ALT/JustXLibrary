@@ -3324,9 +3324,16 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     function Sec:PreviewDropdown(o)
         o = o or {}; local o2 = pvCopy(o); local cb = o.Callback
-        local pv = pvResolve(o); local names = {}
-        if pv then for _,t in ipairs(pv:GetTabs()) do names[#names + 1] = t.Name end end
-        o2.Name = o.Name or "Open Preview tab"; o2.Options = names; o2.Static = true; o2.MultiSelect = nil
+        o2.Name = o.Name or "Open Preview tab"
+        o2.Options = function()
+            local p = pvResolve(o)
+            local names = {}
+            if p then
+                for _,t in ipairs(p:GetTabs()) do names[#names + 1] = t.Name end
+            end
+            return names
+        end
+        o2.Static = true; o2.MultiSelect = nil
         o2.Callback = function(sel)
             local p = pvResolve(o)
             if not p then pvMissing(); return end
