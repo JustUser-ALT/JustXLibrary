@@ -96,6 +96,35 @@ Section:Dropdown({
     end,
 })
 
+-- Player headshots are resolved automatically while Icons = true.
+Section:Dropdown({
+    Name = "Player Avatars",
+    Options = getPlayerNames,
+    Icons = true,
+    Search = true,
+    MultiSelect = true,
+    AutoUpdate = true,
+    Interval = 5,
+    Callback = function(selected)
+        print("[Dropdown Icons] Players:", table.concat(selected, ", "))
+    end,
+})
+
+-- Custom built-in icon and asset image examples.
+Section:Dropdown({
+    Name = "Custom Option Images",
+    Options = {"Sword", "Sample Asset"},
+    Icons = true,
+    OptionIcons = {
+        Sword = "sword",
+        ["Sample Asset"] = "6031094678", -- Replace with any valid image asset ID.
+    },
+    MultiSelect = false,
+    Callback = function(value)
+        print("[Dropdown Icons] Custom image:", value)
+    end,
+})
+
 -- Standard multi-select dropdown.
 Section:Dropdown({
     Name = "Multiple Players",
