@@ -3147,8 +3147,13 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             RestoreDynamicState = function(_,state)
                 if type(state) ~= "table" then return end
                 if sBox and state.Search ~= nil then sBox.Text = state.Search end
-                if state.Mode == "value" and state.ActiveValue and selected[state.ActiveValue] ~= nil then
-                    openPanel(state.ActiveValue)
+                if state.Mode == "value" then
+                    if state.ActiveValue and selected[state.ActiveValue] ~= nil then
+                        openPanel(state.ActiveValue)
+                    else
+                        mode = "list"
+                        relayout()
+                    end
                 elseif state.Mode == "list" then
                     mode = "list"
                     relayout()
