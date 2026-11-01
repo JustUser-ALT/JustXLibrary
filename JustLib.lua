@@ -3363,31 +3363,55 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
     end
     -- ===== Dynamic Dropdown options =====
-    -- Options may be a table or a function that returns the current options.
-    -- Controls expose Refresh() and SetOptions(); RefreshInterval is optional.
-    local function copyDropdownOptions(src)
+    -- Options and Values accept tables or provider functions.
+    -- AutoUpdate polls the providers; Refresh() remains available for manual updates.
+    local function cloneDropdownData(value,seen)
+        if type(value) ~= "table" then return value end
+        seen = seen or {}
+        if seen[value] then return seen[value] end
         local out = {}
-        for k,v in pairs(src or {}) do out[k] = v end
+        seen[value] = out
+        for k,v in pairs(value) do
+            out[cloneDropdownData(k,seen)] = cloneDropdownData(v,seen)
+        end
         return out
     end
-    local function resolveDropdownOptions(src, fallback)
-        if type(src) == "function" then
-            local ok,result = pcall(src)
+    local function sameDropdownData(a,b,seen)
+        if a == b then return true end
+        if type(a) ~= type(b) then return false end
+        if type(a) ~= "table" then return false end
+        seen = seen or {}
+        if seen[a] == b then return true end
+        seen[a] = b
+        for k,v in pairs(a) do
+            if not sameDropdownData(v,b[k],seen) then return false end
+        end
+        for k in pairs(b) do
+            if a[k] == nil then return false end
+        end
+        return true
+    end
+    local function resolveDropdownOptions(source,fallback)
+        if type(source) == "function" then
+            local ok,result = pcall(source)
             if ok and type(result) == "table" then return result end
             return fallback or {}
         end
-        if type(src) == "table" then return src end
+        if type(source) == "table" then return source end
         return {}
     end
     for _,kind in ipairs({"Dropdown","ValueDropdown"}) do
         local controlKind = kind
         local create = Sec[controlKind]
-        Sec[kind] = function(self,o)
+        Sec[controlKind] = function(self,o)
             o = o or {}
+            if controlKind == "Dropdown" and o.Value == true then
+                return self:ValueDropdown(o)
+            end
             local optionsSource = o.Options
             local valuesSource = o.Values
-            local lastOptions = resolveDropdownOptions(optionsSource,{})
-            local lastValues = resolveDropdownOptions(valuesSource,{})
+            local lastOptions = cloneDropdownData(resolveDropdownOptions(optionsSource,{}))
+            local lastValues = cloneDropdownData(resolveDropdownOptions(valuesSource,{}))
             local buildOpts = copyDropdownOptions(o)
             buildOpts.Options = lastOptions
             if controlKind == "ValueDropdown" then buildOpts.Values = lastValues end
@@ -3401,20 +3425,26 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local oldRow = stable.Row
                 if not oldRow or not oldRow.Parent then return false end
                 refreshing = true
+                local nextOptions = cloneDropdownData(resolveDropdownOptions(overrideOptions or optionsSource,lastOptions))
+                local nextValues = cloneDropdownData(resolveDropdownOptions(valuesSource,lastValues))
+                if sameDropdownData(lastOptions,nextOptions) and sameDropdownData(lastValues,nextValues) then
+                    refreshing = false
+                    return true
+                end
                 local previous
                 if stable.Get then
                     local ok,value = pcall(stable.Get)
                     if ok then previous = value end
                 end
-                local nextOptions = overrideOptions or resolveDropdownOptions(optionsSource,lastOptions)
-                local nextValues = resolveDropdownOptions(valuesSource,lastValues)
-                if type(nextOptions) ~= "table" then nextOptions = lastOptions end
-                if type(nextValues) ~= "table" then nextValues = lastValues end
-                lastOptions = nextOptions
-                lastValues = nextValues
+                local uiState
+                if stable.GetDynamicState then
+                    local ok,value = pcall(stable.GetDynamicState,stable)
+                    if ok then uiState = value end
+                end
                 local nextOpts = copyDropdownOptions(o)
                 nextOpts.Options = nextOptions
                 if controlKind == "ValueDropdown" then nextOpts.Values = nextValues end
+                nextOpts._DynamicState = uiState
                 nextOpts.Callback = nil
                 local oldLayout = oldRow.LayoutOrder
                 local oldLocked = stable.IsLocked and stable.IsLocked() or false
@@ -3425,10 +3455,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     return false
                 end
                 if controlKind == "Dropdown" then
-                    local allowed = {}
-                    for _,item in ipairs(nextOptions) do
-                        if not isDividerOpt(item) then allowed[item] = true end
-                    end
                     local selectedList = {}
                     if type(previous) == "table" then
                         for _,item in ipairs(nextOptions) do
@@ -3436,8 +3462,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                                 selectedList[#selectedList + 1] = item
                             end
                         end
-                    elseif previous ~= nil and allowed[previous] then
-                        selectedList[1] = previous
                     end
                     if not o.MultiSelect and #selectedList > 1 then
                         selectedList = {selectedList[1]}
@@ -3463,6 +3487,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 oldRow:Destroy()
                 for k in pairs(stable) do stable[k] = nil end
                 for k,v in pairs(newControl) do stable[k] = v end
+                lastOptions = nextOptions
+                lastValues = nextValues
                 stable.Refresh = refreshFn
                 stable.SetOptions = function(_,list)
                     if type(list) ~= "table" then return false end
@@ -3480,7 +3506,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 overrideOptions = list
                 return refreshFn()
             end
-            local interval = tonumber(o.RefreshInterval)
+            local interval
+            if o.AutoUpdate == true then
+                interval = tonumber(o.Interval) or 5
+            elseif o.RefreshInterval ~= nil then
+                interval = tonumber(o.RefreshInterval)
+            end
             if interval and interval > 0 then
                 task.spawn(function()
                     while stable.Row and stable.Row.Parent do
