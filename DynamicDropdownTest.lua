@@ -1,6 +1,6 @@
 --==================================================
 -- JUSTLIB DYNAMIC DROPDOWN TEST
--- Local executor test: player lists update on join/leave
+-- Local executor test: unified Dropdown API
 --==================================================
 
 local Players = game:GetService("Players")
@@ -43,6 +43,7 @@ local function getPlayerValues()
             {
                 Type = "Toggle",
                 Name = "Track",
+                Master = true,
                 Default = false,
             },
             {
@@ -50,109 +51,106 @@ local function getPlayerValues()
                 Name = "Highlight",
                 Default = false,
             },
+            {
+                Type = "ColorPicker",
+                Name = "Highlight Color",
+                Default = Color3.fromRGB(255, 80, 80),
+            },
         }
     end
 
     return values
 end
 
-local SingleDropdown = Section:Dropdown({
+-- Standard single-select dropdown.
+Section:Dropdown({
     Name = "Single Player",
     Options = getPlayerNames,
-    Search = true,
+
+    Search = false,
+    MultiSelect = false,
+    Value = false,
+
+    AutoUpdate = true,
+    Interval = 5,
+
     Callback = function(playerName)
-        print("[Dynamic Dropdown] Selected player:", playerName)
+        print("[Dynamic Dropdown] Single:", playerName)
     end,
 })
 
-local MultiDropdown = Section:Dropdown({
+-- Standard multi-select dropdown.
+Section:Dropdown({
     Name = "Multiple Players",
     Options = getPlayerNames,
-    MultiSelect = true,
-    MaxSelect = 8,
+
     Search = true,
+    MultiSelect = true,
+    Value = false,
+
+    AutoUpdate = true,
+    Interval = 5,
+
     Callback = function(selected)
-        print("[Dynamic Dropdown] MultiSelect:", table.concat(selected, ", "))
+        print("[Dynamic Dropdown] MultiSelect:")
+        for _,playerName in ipairs(selected) do
+            print("  ", playerName)
+        end
     end,
 })
 
-local ValueDropdown = Section:ValueDropdown({
+-- Value dropdown using the unified Dropdown API.
+Section:Dropdown({
     Name = "Player Settings",
     Options = getPlayerNames,
     Values = getPlayerValues,
+
     Search = true,
+    MultiSelect = false,
+    Value = true,
+
+    AutoUpdate = true,
+    Interval = 5,
+
     Callback = function(selected)
-        print("[Dynamic Dropdown] ValueDropdown changed")
+        print("[Dynamic Dropdown] Value:")
         for playerName,data in pairs(selected) do
             print("  ", playerName, data)
         end
     end,
 })
 
-local ValueMultiDropdown = Section:ValueDropdown({
+-- Value + MultiSelect.
+Section:Dropdown({
     Name = "Multiple Player Settings",
     Options = getPlayerNames,
     Values = getPlayerValues,
-    MultiSelect = true,
-    MaxSelect = 8,
+
     Search = true,
+    MultiSelect = true,
+    Value = true,
+
+    AutoUpdate = true,
+    Interval = 5,
+
     Callback = function(selected)
-        print("[Dynamic Dropdown] ValueDropdown MultiSelect changed")
+        print("[Dynamic Dropdown] Value MultiSelect:")
         for playerName,data in pairs(selected) do
             print("  ", playerName, data)
         end
     end,
 })
 
-local Status = Section:Label({
-    Text = "Players detected: " .. tostring(#Players:GetPlayers()),
-})
-
-local controls = {
-    SingleDropdown,
-    MultiDropdown,
-    ValueDropdown,
-    ValueMultiDropdown,
-}
-
-local function refreshAll()
-    local count = 0
-
-    for _,control in ipairs(controls) do
-        if control and control.Refresh then
-            local ok,result = pcall(function()
-                return control:Refresh()
-            end)
-
-            if ok and result then
-                count = count + 1
-            else
-                warn("[Dynamic Dropdown] Refresh failed:", result)
-            end
-        end
-    end
-
-    Status:Set("Players detected: " .. tostring(#Players:GetPlayers()) .. " | Refreshed: " .. tostring(count) .. "/" .. tostring(#controls))
-end
-
-Section:Button({
-    Name = "Refresh All Lists",
-    Callback = refreshAll,
-})
-
 Players.PlayerAdded:Connect(function(player)
-    task.delay(0.15, function()
-        refreshAll()
-        print("[Dynamic Dropdown] Player joined:", player.Name)
-    end)
+    print("[Dynamic Dropdown Test] Player joined:", player.Name)
+    print("[Dynamic Dropdown Test] The dropdowns will update automatically within 5 seconds.")
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    task.delay(0.15, function()
-        refreshAll()
-        print("[Dynamic Dropdown] Player left:", player.Name)
-    end)
+    print("[Dynamic Dropdown Test] Player leaving:", player.Name)
+    print("[Dynamic Dropdown Test] The dropdowns will update automatically within 5 seconds.")
 end)
 
-refreshAll()
-print("[Dynamic Dropdown] Test loaded. Join or leave the server to test automatic updates.")
+print("[Dynamic Dropdown Test] Loaded.")
+print("[Dynamic Dropdown Test] Join or leave the server and wait up to 5 seconds.")
+print("[Dynamic Dropdown Test] Keep a dropdown open while waiting to test open-state preservation.")
