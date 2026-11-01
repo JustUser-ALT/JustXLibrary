@@ -3373,7 +3373,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         return {}
     end
     for _,kind in ipairs({"Dropdown","ValueDropdown"}) do
-        local create = Sec[kind]
+        local controlKind = kind
+        local create = Sec[controlKind]
         Sec[kind] = function(self,o)
             o = o or {}
             local optionsSource = o.Options
@@ -3382,7 +3383,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local lastValues = resolveDropdownOptions(valuesSource,{})
             local buildOpts = copyDropdownOptions(o)
             buildOpts.Options = lastOptions
-            if kind == "ValueDropdown" then buildOpts.Values = lastValues end
+            if controlKind == "ValueDropdown" then buildOpts.Values = lastValues end
             local stable = create(self,buildOpts)
             if type(stable) ~= "table" then return stable end
             local refreshing = false
@@ -3406,7 +3407,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 lastValues = nextValues
                 local nextOpts = copyDropdownOptions(o)
                 nextOpts.Options = nextOptions
-                if kind == "ValueDropdown" then nextOpts.Values = nextValues end
+                if controlKind == "ValueDropdown" then nextOpts.Values = nextValues end
                 nextOpts.Callback = nil
                 local oldLayout = oldRow.LayoutOrder
                 local oldLocked = stable.IsLocked and stable.IsLocked() or false
@@ -3416,7 +3417,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     refreshing = false
                     return false
                 end
-                if kind == "Dropdown" then
+                if controlKind == "Dropdown" then
                     local allowed = {}
                     for _,item in ipairs(nextOptions) do
                         if not isDividerOpt(item) then allowed[item] = true end
