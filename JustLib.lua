@@ -3411,6 +3411,11 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     -- ===== Dynamic Dropdown options =====
     -- Options and Values accept tables or provider functions.
     -- AutoUpdate polls the providers; Refresh() remains available for manual updates.
+    local function copyDropdownOptions(src)
+        local out = {}
+        for k,v in pairs(src or {}) do out[k] = v end
+        return out
+    end
     local function cloneDropdownData(value,seen)
         if type(value) ~= "table" then return value end
         seen = seen or {}
