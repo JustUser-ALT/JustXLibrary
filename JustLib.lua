@@ -2522,6 +2522,54 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         regFlag(o.Flag, ret, o.NoSave)
         return mergeLock(ret, row, o)
     end
+    local function getDropdownOptionIcon(optionName,o)
+        local custom = o.OptionIcons and o.OptionIcons[optionName]
+        if custom ~= nil then return custom, nil end
+        if o.Icons == true then
+            local players = game:GetService("Players")
+            for _,player in ipairs(players:GetPlayers()) do
+                if player.Name == tostring(optionName) or player.DisplayName == tostring(optionName) then
+                    return nil, player
+                end
+            end
+        end
+        return nil, nil
+    end
+    local function addDropdownOptionIcon(parent,optionName,o,height)
+        local custom,player = getDropdownOptionIcon(optionName,o)
+        if player then
+            local img = Instance.new("ImageLabel")
+            img.Size = UDim2.new(0,20,0,20)
+            img.Position = UDim2.new(0,7,0,math.floor((height - 20) / 2))
+            img.BackgroundColor3 = C.pHdr
+            img.BorderSizePixel = 0
+            img.ScaleType = Enum.ScaleType.Crop
+            img.Parent = parent
+            corner(10,img)
+            img:SetAttribute("JLNoRepaint", true)
+            task.spawn(function()
+                local ok,content = pcall(function()
+                    return game:GetService("Players"):GetUserThumbnailAsync(player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size100x100)
+                end)
+                if ok and img.Parent then img.Image = content end
+            end)
+            return 24
+        elseif custom ~= nil then
+            local ic = mkIcon(parent,custom,20,5)
+            ic.Position = UDim2.new(0,7,0,math.floor((height - 20) / 2))
+            ic.Size = UDim2.new(0,20,0,20)
+            if ic:IsA("TextLabel") then
+                ic.TextColor3 = ac
+            elseif tostring(custom):match("^%d+$") or tostring(custom):match("^rbxassetid://") then
+                ic.ImageColor3 = Color3.new(1,1,1)
+                ic.ScaleType = Enum.ScaleType.Fit
+            else
+                ic.ImageColor3 = ac
+            end
+            return 24
+        end
+        return 0
+    end
     function Sec:Dropdown(o)
         o = o or {}
         local options = o.Options or {}; local multi = o.MultiSelect; local maxSel = o.MaxSelect or (multi and math.max(#options,1) or 1)
@@ -2601,11 +2649,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             if isDividerOpt(optName) then
                 mkOptDivider(container, i, optName, heights[i])
             else
-            local optIcon = o.OptionIcons and o.OptionIcons[optName]
-            local optIconW = optIcon and 20 or 0
             local opt = Instance.new("TextButton"); opt.Size = UDim2.new(1,0,0,heights[i]); opt.BackgroundColor3 = C.btnBg; opt.BorderSizePixel = 0; opt.AutoButtonColor = false
             opt.Text = ""; opt.Font = GB; opt.TextSize = 11; opt.TextColor3 = C.txt; opt.LayoutOrder = i; opt.Parent = container; corner(5,opt)
-            if optIcon then local ic = mkIcon(opt, optIcon, 13, 5); ic.Position = UDim2.new(0,8,0,math.floor((heights[i]-13)/2)); ic.Size = UDim2.new(0,13,0,13); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
+            local optIconW = addDropdownOptionIcon(opt,optName,o,heights[i])
             local optLbl = newTxt({Parent=opt,Text=tostring(optName),Font=GB,Size=11,Wrap=true,Sz=UDim2.new(1,-16-optIconW,1,0),Pos=UDim2.new(0,10+optIconW,0,0)})
             local mk = Instance.new("Frame"); mk.Size = UDim2.new(0,3,0.6,0); mk.Position = UDim2.new(0,2,0.2,0); mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = opt; corner(2,mk)
             optRefs[optName] = {opt = opt, mark = mk, label = optLbl}; mark(optRefs[optName], selected[optName] or false)
@@ -3121,11 +3167,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             if isDividerOpt(nm) then
                 mkOptDivider(container, i, nm, heights[i])
             else
-            local optIcon = o.OptionIcons and o.OptionIcons[nm]
-            local optIconW = optIcon and 20 or 0
             local opt = Instance.new("TextButton"); opt.Size = UDim2.new(1,0,0,heights[i]); opt.BackgroundColor3 = C.btnBg; opt.BorderSizePixel = 0; opt.AutoButtonColor = false
             opt.Text = ""; opt.LayoutOrder = i; opt.Parent = container; corner(5,opt)
-            if optIcon then local ic = mkIcon(opt, optIcon, 13, 5); ic.Position = UDim2.new(0,8,0,math.floor((heights[i] - 13) / 2)); ic.Size = UDim2.new(0,13,0,13); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
+            local optIconW = addDropdownOptionIcon(opt,nm,o,heights[i])
             local optLbl = newTxt({Parent=opt,Text=tostring(nm),Font=GB,Size=11,Wrap=true,Sz=UDim2.new(1,-56 - optIconW,1,0),Pos=UDim2.new(0,10 + optIconW,0,0)})
             local valLbl = newTxt({Parent=opt,Text="",Font=GB,Size=10,Color=ac,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,44,1,0),Pos=UDim2.new(1,-48,0,0)})
             local mk = Instance.new("Frame"); mk.Size = UDim2.new(0,3,0.6,0); mk.Position = UDim2.new(0,2,0.2,0); mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = opt; corner(2,mk)
