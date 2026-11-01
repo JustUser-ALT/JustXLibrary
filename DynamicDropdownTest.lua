@@ -153,6 +153,7 @@ Section:Dropdown({
 
     Search = true,
     MultiSelect = false,
+    Icons = true,
     Value = true,
 
     AutoUpdate = true,
@@ -174,6 +175,7 @@ Section:Dropdown({
 
     Search = true,
     MultiSelect = true,
+    Icons = true,
     Value = true,
 
     AutoUpdate = true,
