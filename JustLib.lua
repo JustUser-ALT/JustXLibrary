@@ -3355,6 +3355,135 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             end
         end
     end
+    -- ===== Dynamic Dropdown options =====
+    -- Options may be a table or a function that returns the current options.
+    -- Controls expose Refresh() and SetOptions(); RefreshInterval is optional.
+    local function copyDropdownOptions(src)
+        local out = {}
+        for k,v in pairs(src or {}) do out[k] = v end
+        return out
+    end
+    local function resolveDropdownOptions(src, fallback)
+        if type(src) == "function" then
+            local ok,result = pcall(src)
+            if ok and type(result) == "table" then return result end
+            return fallback or {}
+        end
+        if type(src) == "table" then return src end
+        return {}
+    end
+    for _,kind in ipairs({"Dropdown","ValueDropdown"}) do
+        local create = Sec[kind]
+        Sec[kind] = function(self,o)
+            o = o or {}
+            local optionsSource = o.Options
+            local valuesSource = o.Values
+            local lastOptions = resolveDropdownOptions(optionsSource,{})
+            local lastValues = resolveDropdownOptions(valuesSource,{})
+            local buildOpts = copyDropdownOptions(o)
+            buildOpts.Options = lastOptions
+            if kind == "ValueDropdown" then buildOpts.Values = lastValues end
+            local stable = create(self,buildOpts)
+            if type(stable) ~= "table" then return stable end
+            local refreshing = false
+            local overrideOptions
+            local refreshFn
+            local function refresh()
+                if refreshing then return false end
+                local oldRow = stable.Row
+                if not oldRow or not oldRow.Parent then return false end
+                refreshing = true
+                local previous
+                if stable.Get then
+                    local ok,value = pcall(stable.Get)
+                    if ok then previous = value end
+                end
+                local nextOptions = overrideOptions or resolveDropdownOptions(optionsSource,lastOptions)
+                local nextValues = resolveDropdownOptions(valuesSource,lastValues)
+                if type(nextOptions) ~= "table" then nextOptions = lastOptions end
+                if type(nextValues) ~= "table" then nextValues = lastValues end
+                lastOptions = nextOptions
+                lastValues = nextValues
+                local nextOpts = copyDropdownOptions(o)
+                nextOpts.Options = nextOptions
+                if kind == "ValueDropdown" then nextOpts.Values = nextValues end
+                nextOpts.Callback = nil
+                local oldLayout = oldRow.LayoutOrder
+                local oldLocked = stable.IsLocked and stable.IsLocked() or false
+                local oldHidden = stable.IsHidden and stable.IsHidden() or false
+                local ok,newControl = pcall(create,self,nextOpts)
+                if not ok or type(newControl) ~= "table" then
+                    refreshing = false
+                    return false
+                end
+                if kind == "Dropdown" then
+                    local allowed = {}
+                    for _,item in ipairs(nextOptions) do
+                        if not isDividerOpt(item) then allowed[item] = true end
+                    end
+                    local selectedList = {}
+                    if type(previous) == "table" then
+                        for _,item in ipairs(nextOptions) do
+                            if not isDividerOpt(item) and previous[item] then
+                                selectedList[#selectedList + 1] = item
+                            end
+                        end
+                    elseif previous ~= nil and allowed[previous] then
+                        selectedList[1] = previous
+                    end
+                    if not o.MultiSelect and #selectedList > 1 then
+                        selectedList = {selectedList[1]}
+                    end
+                    if newControl.Set then
+                        pcall(newControl.Set,newControl,o.MultiSelect and selectedList or selectedList[1])
+                    end
+                    if o.Flag then
+                        cfgSet(o.Flag,o.MultiSelect and selectedList or selectedList[1])
+                    end
+                elseif type(previous) == "table" and newControl.Set then
+                    local filtered = {}
+                    for _,item in ipairs(nextOptions) do
+                        if not isDividerOpt(item) and previous[item] ~= nil then
+                            filtered[item] = previous[item]
+                        end
+                    end
+                    pcall(newControl.Set,newControl,filtered)
+                end
+                if newControl.Row then newControl.Row.LayoutOrder = oldLayout end
+                if oldLocked and newControl.SetLocked then pcall(newControl.SetLocked,newControl,true) end
+                if oldHidden and newControl.SetHidden then pcall(newControl.SetHidden,newControl,true) end
+                oldRow:Destroy()
+                for k in pairs(stable) do stable[k] = nil end
+                for k,v in pairs(newControl) do stable[k] = v end
+                stable.Refresh = refreshFn
+                stable.SetOptions = function(_,list)
+                    if type(list) ~= "table" then return false end
+                    overrideOptions = list
+                    return refreshFn()
+                end
+                if o.Flag then JL._registry[o.Flag] = stable end
+                refreshing = false
+                return true
+            end
+            refreshFn = refresh
+            stable.Refresh = refreshFn
+            stable.SetOptions = function(_,list)
+                if type(list) ~= "table" then return false end
+                overrideOptions = list
+                return refreshFn()
+            end
+            local interval = tonumber(o.RefreshInterval)
+            if interval and interval > 0 then
+                task.spawn(function()
+                    while stable.Row and stable.Row.Parent do
+                        task.wait(math.max(interval,0.1))
+                        if stable.Row and stable.Row.Parent then refreshFn() end
+                    end
+                end)
+            end
+            return stable
+        end
+    end
     return Sec
 end
 local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip)
