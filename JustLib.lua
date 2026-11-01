@@ -2560,9 +2560,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local cStack = Instance.new("UIListLayout"); cStack.SortOrder = Enum.SortOrder.LayoutOrder; cStack.Padding = UDim.new(0,2); cStack.Parent = container; pad(4,4,4,4,container)
         cStack:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() container.CanvasSize = UDim2.new(0,0,0,unscale(cStack.AbsoluteContentSize.Y) + 8) end)
         local optRefs = {}
+        local sBox
         if o.Search then
             local sHold = Instance.new("Frame"); sHold.Size = UDim2.new(1,0,0,24); sHold.BackgroundTransparency = 1; sHold.LayoutOrder = 0; sHold.Parent = container
-            local sBox = Instance.new("TextBox"); sBox.Size = UDim2.new(1,0,1,0); sBox.BackgroundColor3 = C.input; sBox.BorderSizePixel = 0
+            sBox = Instance.new("TextBox"); sBox.Size = UDim2.new(1,0,1,0); sBox.BackgroundColor3 = C.input; sBox.BorderSizePixel = 0
             sBox.PlaceholderText = "Search..."; sBox.PlaceholderColor3 = C.dim; sBox.Font = GB; sBox.TextSize = 11; sBox.TextColor3 = C.txt
             sBox.ClearTextOnFocus = false; sBox.Text = ""; sBox.Parent = sHold; corner(5,sBox); stroke(C.border,1,sBox)
             sBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2672,6 +2673,25 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 for nm,ref in pairs(optRefs) do mark(ref, selected[nm] or false) end
                 refreshBlocked()
                 refreshLabel()
+            end,
+            GetDynamicState = function()
+                return {Open = dropOpen, Search = sBox and sBox.Text or nil, CanvasPosition = container.CanvasPosition}
+            end,
+            RestoreDynamicState = function(_,state)
+                if type(state) ~= "table" then return end
+                if sBox and state.Search ~= nil then sBox.Text = state.Search end
+                if state.Open then
+                    dropOpen = true
+                    container.Visible = true
+                    container.Size = UDim2.new(1,0,0,TOTAL)
+                    row.Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)
+                    darr.Text = "▲"
+                end
+                if state.CanvasPosition then
+                    task.defer(function()
+                        if container.Parent then container.CanvasPosition = state.CanvasPosition end
+                    end)
+                end
             end,
         }
         regFlag(o.Flag, ret, o.NoSave)
@@ -2903,6 +2923,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             relayout()
         end
         local optRefs = {}
+        local sBox
+        local activeValue
         local rules = multi and groupRules(o) or nil
         local function masterOn()
             if not rules then return false end
@@ -2926,7 +2948,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         if o.Search then
             local sHold = Instance.new("Frame"); sHold.Size = UDim2.new(1,0,0,24); sHold.BackgroundTransparency = 1; sHold.LayoutOrder = 0; sHold.Parent = container
-            local sBox = Instance.new("TextBox"); sBox.Size = UDim2.new(1,0,1,0); sBox.BackgroundColor3 = C.input; sBox.BorderSizePixel = 0
+            sBox = Instance.new("TextBox"); sBox.Size = UDim2.new(1,0,1,0); sBox.BackgroundColor3 = C.input; sBox.BorderSizePixel = 0
             sBox.PlaceholderText = "Search..."; sBox.PlaceholderColor3 = C.dim; sBox.Font = GB; sBox.TextSize = 11; sBox.TextColor3 = C.txt
             sBox.ClearTextOnFocus = false; sBox.Text = ""; sBox.Parent = sHold; corner(5,sBox); stroke(C.border,1,sBox)
             sBox:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2940,13 +2962,14 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local function commit() persist(); fire(); refreshOptions(); refreshLabel() end
         local function finish()
             persist(); fire(); refreshOptions()
+            activeValue = nil
             mode = multi and "list" or "closed"
             refreshLabel()
         end
         local function openPanel(nm)
             for _,c in ipairs(panel:GetChildren()) do c:Destroy() end
             local dims = dimsOf[nm]; local nDims = #dims
-            mode = "value"; token = token + 1
+            mode = "value"; activeValue = nm; token = token + 1
             if isMulti[nm] and type(selected[nm]) ~= "table" then selected[nm] = defaultValue(nm) end
             local rowH = 44
             PANEL_H = 10 + nDims * rowH + 40
@@ -3118,6 +3141,24 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             Get = snapshot,
             GetValue = function(_,nm) return selected[nm] end,
             Set = function(_,m) loadMap(decodeMap(m)); normalizeSel(); refreshOptions(); refreshLabel(); persist() end,
+            GetDynamicState = function()
+                return {Mode = mode, ActiveValue = activeValue, Search = sBox and sBox.Text or nil, CanvasPosition = container.CanvasPosition}
+            end,
+            RestoreDynamicState = function(_,state)
+                if type(state) ~= "table" then return end
+                if sBox and state.Search ~= nil then sBox.Text = state.Search end
+                if state.Mode == "value" and state.ActiveValue and selected[state.ActiveValue] ~= nil then
+                    openPanel(state.ActiveValue)
+                elseif state.Mode == "list" then
+                    mode = "list"
+                    relayout()
+                end
+                if state.CanvasPosition then
+                    task.defer(function()
+                        if container.Parent then container.CanvasPosition = state.CanvasPosition end
+                    end)
+                end
+            end,
         }
         regFlag(o.Flag, ret, o.NoSave)
         return mergeLock(ret, row, o)
@@ -3480,6 +3521,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                         end
                     end
                     pcall(newControl.Set,newControl,filtered)
+                end
+                if uiState and newControl.RestoreDynamicState then
+                    pcall(newControl.RestoreDynamicState,newControl,uiState)
                 end
                 if newControl.Row then newControl.Row.LayoutOrder = oldLayout end
                 if oldLocked and newControl.SetLocked then pcall(newControl.SetLocked,newControl,true) end
