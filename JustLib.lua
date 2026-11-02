@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.1"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.2"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -29,7 +29,97 @@ local ACCENTS = {
 local _ai = 0
 local function nxAc() _ai = _ai + 1; return ACCENTS[((_ai - 1) % #ACCENTS) + 1] end
 local _conns = {}
-local function keep(c) _conns[#_conns + 1] = c; return c end
+local _resources = {}
+local _threads = {}
+local _disposed = false
+local function cleanupResource(resource, cleanup)
+    pcall(function()
+        if cleanup then cleanup(resource); return end
+        local kind = typeof(resource)
+        if kind == "RBXScriptConnection" then resource:Disconnect()
+        elseif kind == "Instance" then resource:Destroy()
+        elseif kind == "thread" then task.cancel(resource)
+        elseif type(resource) == "function" then resource()
+        elseif type(resource) == "table" then
+            if resource.Destroy then resource:Destroy()
+            elseif resource.Disconnect then resource:Disconnect()
+            elseif resource.Cancel then resource:Cancel() end
+        end
+    end)
+end
+local function trackedRunner(record, callback)
+    return function(...)
+        if _disposed then _threads[record] = nil; return end
+        local result = table.pack(pcall(callback, ...))
+        _threads[record] = nil
+        if not result[1] then error(result[2], 0) end
+        return table.unpack(result, 2, result.n)
+    end
+end
+local function trackedSpawn(callback, ...)
+    if _disposed then return nil end
+    local record = {}; _threads[record] = true
+    record.thread = task.spawn(trackedRunner(record, callback), ...)
+    return record.thread
+end
+local function trackedDelay(seconds, callback, ...)
+    if _disposed then return nil end
+    local record = {}; _threads[record] = true
+    record.thread = task.delay(seconds, trackedRunner(record, callback), ...)
+    return record.thread
+end
+local function trackedDefer(callback, ...)
+    if _disposed then return nil end
+    local record = {}; _threads[record] = true
+    record.thread = task.defer(trackedRunner(record, callback), ...)
+    return record.thread
+end
+local function cleanupResources()
+    for record in pairs(_threads) do
+        if record.thread then pcall(task.cancel, record.thread) end
+        _threads[record] = nil
+    end
+    for i = #_resources, 1, -1 do
+        local item = _resources[i]
+        cleanupResource(item.resource, item.cleanup)
+        _resources[i] = nil
+    end
+end
+local function keep(c) if c then _conns[#_conns + 1] = c end; return c end
+function JL:Track(resource, cleanup)
+    if resource == nil then return nil end
+    if _disposed then cleanupResource(resource, cleanup); return resource end
+    _resources[#_resources + 1] = {resource = resource, cleanup = cleanup}
+    return resource
+end
+function JL:Connect(signal, callback)
+    if _disposed then return nil end
+    return keep(signal:Connect(callback))
+end
+function JL:Spawn(callback, ...)
+    return trackedSpawn(callback, ...)
+end
+function JL:Delay(seconds, callback, ...)
+    return trackedDelay(seconds, callback, ...)
+end
+function JL:Defer(callback, ...)
+    return trackedDefer(callback, ...)
+end
+function JL:OnUnload(callback)
+    if type(callback) ~= "function" then return false end
+    if _disposed then pcall(callback); return false end
+    self._unloadHooks[#self._unloadHooks + 1] = callback
+    return true
+end
+function JL:IsAlive() return not _disposed end
+function JL:GetCleanupStats()
+    local connections, threads = 0, 0
+    for _,connection in ipairs(_conns) do
+        if connection and connection.Connected then connections = connections + 1 end
+    end
+    for _ in pairs(_threads) do threads = threads + 1 end
+    return {Connections = connections, Threads = threads, Resources = #_resources, Alive = not _disposed}
+end
 local function touchLast() return UIS:GetLastInputType() == Enum.UserInputType.Touch end
 local function tw(o,p,t,s,d)
     TS:Create(o, TweenInfo.new(t or .2, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out), p):Play()
@@ -63,12 +153,12 @@ local function isPtr(i)
 end
 local function beginDrag(onMove,onEnd)
     local c1,c2
-    c1 = UIS.InputChanged:Connect(function(i)
+    c1 = keep(UIS.InputChanged:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then onMove(i) end
-    end)
-    c2 = UIS.InputEnded:Connect(function(i)
+    end))
+    c2 = keep(UIS.InputEnded:Connect(function(i)
         if isPtr(i) then c1:Disconnect(); c2:Disconnect(); if onEnd then onEnd() end end
-    end)
+    end))
 end
 local function draggable(handle,frame,onTap)
     handle.InputBegan:Connect(function(i)
@@ -135,7 +225,7 @@ end
 local function bgStartAnim()
     if bgRunning then return end
     bgRunning = true
-    task.spawn(function()
+    trackedSpawn(function()
         local last = os.clock()
         while #bgAnims > 0 do
             task.wait(1 / 30)
@@ -253,7 +343,7 @@ function GUIDE.pulse(row,duration)
     TS:Create(hl, info, {BackgroundTransparency = 0.7}):Play()
     TS:Create(st, info, {Transparency = 0.75}):Play()
     GUIDE.pulses[#GUIDE.pulses + 1] = hl
-    if duration and duration > 0 then task.delay(duration, function() if hl and hl.Parent then hl:Destroy() end end) end
+    if duration and duration > 0 then trackedDelay(duration, function() if hl and hl.Parent then hl:Destroy() end end) end
     return hl
 end
 local function groupRules(o)
@@ -271,7 +361,7 @@ function GUIDE.start(src,n)
     GUIDE.cancel()
     local token = {}
     GUIDE.active = token
-    task.spawn(function()
+    trackedSpawn(function()
         local target = GUIDE.targetOf(n)
         local trow = target and target.Row
         local msg = n.Message or src.cfg.NeedsMessage
@@ -517,7 +607,7 @@ end
 local function cfgSave()
     if not (_cfgFile and writefile) or _saveQueued then return end
     _saveQueued = true
-    task.delay(.4, function()
+    trackedDelay(.4, function()
         _saveQueued = false
         pcall(function() writefile(_cfgFile, HTTP:JSONEncode(_cfgData)) end)
     end)
@@ -675,7 +765,7 @@ do
         end
         cb.MouseButton1Click:Connect(close)
         updPos()
-        task.delay(.35, function() if not nd.closing and nd.gen == 0 then nd.restart(dur) end end)
+        trackedDelay(.35, function() if not nd.closing and nd.gen == 0 then nd.restart(dur) end end)
     end
 end
 local function mkPopup(backdrop,w,h,hero)
@@ -865,7 +955,7 @@ local function joinLowestServer(placeId, onFail)
         if onFail then onFail("Your executor doesn't support cross-origin requests") end
         return
     end
-    task.spawn(function()
+    trackedSpawn(function()
         local best,bestN,cursor = nil,math.huge,""
         for _ = 1,6 do
             local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100" .. (cursor ~= "" and ("&cursor=" .. cursor) or "")
@@ -1029,7 +1119,7 @@ local function buildSubPlacesUI(universeId, places)
     local function closePopup()
         alive = false
         hidePopup()
-        task.delay(.18, function() sgP:Destroy() end)
+        trackedDelay(.18, function() sgP:Destroy() end)
     end
     closeBtn.MouseButton1Click:Connect(closePopup)
 
@@ -1136,7 +1226,7 @@ local function buildSubPlacesUI(universeId, places)
             titleL.Text = "Sub-Places"; subL.Text = #places .. " place" .. (#places == 1 and "" or "s") .. " in this experience"
         end
         local mark = view
-        task.delay(.4, function()
+        trackedDelay(.4, function()
             if not alive or view ~= mark then return end
             if toDetail then listPage.Visible = false else detailPage.Visible = false end
         end)
@@ -1166,7 +1256,7 @@ local function buildSubPlacesUI(universeId, places)
         local e = spPlayersCache[id]
         if e and not force and os.clock() - e.t < 60 then label.Text = e.text; return end
         label.Text = "..."
-        task.spawn(function()
+        trackedSpawn(function()
             local total, cursor, pages, truncated = 0, "", 0, false
             for _ = 1,4 do
                 local res = execRequest({Url = "https://games.roblox.com/v1/games/" .. id .. "/servers/Public?limit=100" .. (cursor ~= "" and ("&cursor=" .. cursor) or ""), Method = "GET"})
@@ -1215,7 +1305,7 @@ local function buildSubPlacesUI(universeId, places)
         chip(196, "Place ID", tostring(pl.id), function(v)
             if setclipboard then
                 setclipboard(tostring(pl.id)); v.Text = "Copied!"
-                task.delay(1.2, function() if v.Parent then v.Text = tostring(pl.id) end end)
+                trackedDelay(1.2, function() if v.Parent then v.Text = tostring(pl.id) end end)
             else JL:Notify({Title = "Copy", Desc = "Clipboard unsupported", Type = "Error", Duration = 3}) end
         end)
         local pv = chip(230, "Players online", "...", function(v) loadPlayers(pl, v, true) end)
@@ -1242,7 +1332,7 @@ local function buildSubPlacesUI(universeId, places)
             if not ok then
                 JL:Notify({Title = "Teleport", Desc = "Teleport failed", Type = "Error", Duration = 4})
             end
-            task.delay(4, function() busy = false; if tpLbl.Parent then tpLbl.Text = "Teleport" end end)
+            trackedDelay(4, function() busy = false; if tpLbl.Parent then tpLbl.Text = "Teleport" end end)
         end)
         local cp, cpLbl = spButton(btnHost, 46, "Copy Teleport Script", "copy", false)
         cp.MouseButton1Click:Connect(function()
@@ -1250,7 +1340,7 @@ local function buildSubPlacesUI(universeId, places)
                 setclipboard('game:GetService("TeleportService"):Teleport(' .. tostring(pl.id) .. ', game.Players.LocalPlayer)')
                 cpLbl.Text = "Copied!"
                 JL:Notify({Title = "Copied", Desc = "Teleport script copied", Type = "Success", Duration = 3})
-                task.delay(1.4, function() if cpLbl.Parent then cpLbl.Text = "Copy Teleport Script" end end)
+                trackedDelay(1.4, function() if cpLbl.Parent then cpLbl.Text = "Copy Teleport Script" end end)
             else
                 JL:Notify({Title = "Copy", Desc = "Clipboard unsupported", Type = "Error", Duration = 3})
             end
@@ -1272,7 +1362,7 @@ local function buildSubPlacesUI(universeId, places)
             end
         end
     end)
-    task.spawn(function()
+    trackedSpawn(function()
         if not spCanCustom then return end
         local ids = {}
         for _,pl in ipairs(places) do ids[#ids + 1] = tostring(pl.id) end
@@ -1303,7 +1393,7 @@ local function openSubPlaces(universeId)
         return
     end
     JL:Notify({Title = "Sub-Places", Desc = "Fetching place list...", Type = "Info", Duration = 2})
-    task.spawn(function()
+    trackedSpawn(function()
         local places, cursor = {}, ""
         for _ = 1,3 do
             local res = execRequest({Url = "https://develop.roblox.com/v1/universes/" .. universeId .. "/places?sortOrder=Asc&limit=100" .. (cursor ~= "" and ("&cursor=" .. cursor) or ""), Method = "GET"})
@@ -1331,7 +1421,7 @@ end
 local function fetchDiscordInfo(inviteUrl, callback)
     local code = tostring(inviteUrl):match("discord%.gg/([%w-]+)") or tostring(inviteUrl):match("discord%.com/invite/([%w-]+)")
     if not code then return end
-    task.spawn(function()
+    trackedSpawn(function()
         local ok,body = pcall(function() return game:HttpGet("https://discord.com/api/v10/invites/" .. code .. "?with_counts=true") end)
         if not ok or not body then return end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, body)
@@ -1407,7 +1497,7 @@ function JL:KeySystem(kopts)
     local statusY = btnY + 52
     local avatarBox = Instance.new("ImageLabel"); avatarBox.Size = UDim2.new(0,34,0,34); avatarBox.Position = UDim2.new(0,0,0,statusY); avatarBox.BackgroundColor3 = C.pHdr; avatarBox.BorderSizePixel = 0; avatarBox.Parent = left; corner(17,avatarBox)
     avatarBox:SetAttribute("JLNoRepaint", true)
-    task.spawn(function()
+    trackedSpawn(function()
         local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
         if ok then avatarBox.Image = content end
     end)
@@ -1419,7 +1509,7 @@ function JL:KeySystem(kopts)
     gIcon:SetAttribute("JLNoRepaint", true)
     local gName = newTxt({Parent=gameCard,Text="Loading...",Font=GB,Size=12,Wrap=true,Sz=UDim2.new(1,-56,0,16),Pos=UDim2.new(0,50,0,8)})
     local gSub = newTxt({Parent=gameCard,Text="",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-56,0,14),Pos=UDim2.new(0,50,0,26)})
-    task.spawn(function()
+    trackedSpawn(function()
         local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
         if ok and info then
             gName.Text = kopts.GameName or info.Name or "Unknown"
@@ -1459,7 +1549,7 @@ function JL:KeySystem(kopts)
     closeBtn.MouseButton1Click:Connect(function() if result == nil then result = false end end)
     local function shakeInvalid(msg)
         tw(inputStroke,{Color = C.danger},.1)
-        task.delay(.5, function() tw(inputStroke,{Color = C.border},.2) end)
+        trackedDelay(.5, function() tw(inputStroke,{Color = C.border},.2) end)
         statusV.Text = "Invalid"; statusV.TextColor3 = C.danger
         JL:Notify({Title = "Key System", Desc = msg or "That key is not valid", Type = "Error", Duration = 4})
     end
@@ -1473,7 +1563,7 @@ function JL:KeySystem(kopts)
             if kopts.SaveKey and writefile then
                 pcall(writefile, keyFile, HTTP:JSONEncode({key = key, userId = LP.UserId}))
             end
-            task.delay(.2, function() if result == nil then result = true end end)
+            trackedDelay(.2, function() if result == nil then result = true end end)
         else
             shakeInvalid(reason)
         end
@@ -1661,7 +1751,7 @@ function JL:OpenSubscriptions()
     scroll.ScrollBarThickness = 4; scroll.ScrollBarImageColor3 = C.border; scroll.ScrollingDirection = Enum.ScrollingDirection.X; scroll.CanvasSize = UDim2.new(0,0,0,0); scroll.AutomaticCanvasSize = Enum.AutomaticSize.X; scroll.Parent = card
     local lay = Instance.new("UIListLayout"); lay.FillDirection = Enum.FillDirection.Horizontal; lay.Padding = UDim.new(0,12); lay.SortOrder = Enum.SortOrder.LayoutOrder; lay.Parent = scroll
     pad(0,0,0,10,scroll)
-    local wheelConn = UIS.InputChanged:Connect(function(i)
+    local wheelConn = keep(UIS.InputChanged:Connect(function(i)
         if i.UserInputType ~= Enum.UserInputType.MouseWheel then return end
         local m = UIS:GetMouseLocation(); local ap,as = scroll.AbsolutePosition, scroll.AbsoluteSize
         if m.X >= ap.X and m.X <= ap.X + as.X and m.Y >= ap.Y and m.Y <= ap.Y + as.Y then
@@ -1674,7 +1764,7 @@ function JL:OpenSubscriptions()
         pcall(function() wheelConn:Disconnect() end)
         if watcher then JL:OffTierChanged(watcher) end
         hidePopup()
-        task.delay(.16, function() sgS:Destroy() end)
+        trackedDelay(.16, function() sgS:Destroy() end)
     end
     closeBtn.MouseButton1Click:Connect(closePopup)
     build = function()
@@ -1740,7 +1830,7 @@ function JL:OpenSubscriptions()
                     if ok then
                         JL:Notify({Title = t.Name, Desc = "Subscription activated", Type = "Success", Duration = 4})
                     else
-                        tw(bs,{Color = C.danger},.1); task.delay(.5, function() tw(bs,{Color = C.border},.2) end)
+                        tw(bs,{Color = C.danger},.1); trackedDelay(.5, function() tw(bs,{Color = C.border},.2) end)
                         JL:Notify({Title = "Subscriptions", Desc = reason or "Invalid key", Type = "Error", Duration = 4})
                     end
                 end)
@@ -1932,13 +2022,13 @@ local function mkPageTabs(parent,pos,size,options,init,ac,onChange,mode,cols,uns
         aR.MouseButton1Click:Connect(function() scrollTo(sc.CanvasPosition.X + 120) end)
         sc.InputChanged:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseWheel then scrollTo(sc.CanvasPosition.X - i.Position.Z * 80) end
-        end)
+        end))
         function obj.reveal(name) -- активная страница всегда в центре ленты
             local b = btns[name]; if not b then return end
             local rel = unscale(b.AbsolutePosition.X - sc.AbsolutePosition.X) + sc.CanvasPosition.X
             scrollTo(rel - win() / 2 + unscale(b.AbsoluteSize.X) / 2)
         end
-        task.defer(upd)
+        trackedDefer(upd)
     end
     paint()
     function obj.Set(v,silent) if btns[v] then cur = v; paint(); if obj.reveal then obj.reveal(v) end; if not silent and onChange then onChange(v) end end end
@@ -2019,7 +2109,7 @@ local function mkKeyChip(parent,pos,initName,onSet)
     keep(UIS.InputBegan:Connect(function(i)
         if not capturing or i.UserInputType ~= Enum.UserInputType.Keyboard then return end
         capturing = false; st.Color = C.border
-        task.defer(function() JL._listening = false end)
+        trackedDefer(function() JL._listening = false end)
         if i.KeyCode == Enum.KeyCode.Escape then btn.Text = shortKey(key); return end
         if i.KeyCode == Enum.KeyCode.Backspace then key = nil else key = i.KeyCode end
         btn.Text = shortKey(key); if onSet then onSet(key) end
@@ -2216,7 +2306,7 @@ local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg)
         b.MouseButton1Click:Connect(function()
             local fl = (b:GetAttribute("JLFlash") or 0) + 1; b:SetAttribute("JLFlash", fl)
             tw(b,{BackgroundColor3 = ac},.06)
-            task.delay(.14, function()
+            trackedDelay(.14, function()
                 if b:GetAttribute("JLFlash") ~= fl then return end
                 tw(b,{BackgroundColor3 = b:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
             end)
@@ -2487,7 +2577,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             presses = presses + 1
             local fl = (btn:GetAttribute("JLFlash") or 0) + 1; btn:SetAttribute("JLFlash", fl)
             tw(btn,{BackgroundColor3 = ac},.06)
-            task.delay(.14, function()
+            trackedDelay(.14, function()
                 if btn:GetAttribute("JLFlash") ~= fl then return end
                 tw(btn,{BackgroundColor3 = btn:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
             end)
@@ -2547,7 +2637,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             img.Parent = parent
             corner(10,img)
             img:SetAttribute("JLNoRepaint", true)
-            task.spawn(function()
+            trackedSpawn(function()
                 local ok,content = pcall(function()
                     return game:GetService("Players"):GetUserThumbnailAsync(player.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size100x100)
                 end)
@@ -2712,7 +2802,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             tw(container,{Size = UDim2.new(1,0,0,dropOpen and TOTAL or 0)},.2)
             tw(row,{Size = UDim2.new(1,0,0,dropOpen and (bgH + 4 + TOTAL) or bgH)},.2)
             darr.Text = dropOpen and "▲" or "▼"
-            if not dropOpen then task.delay(.21, function() if not dropOpen then container.Visible = false end end) end
+            if not dropOpen then trackedDelay(.21, function() if not dropOpen then container.Visible = false end end) end
         end)
         if o.Callback and had then
             if multi then local sel = {}; for _,nm in ipairs(options) do if not isDividerOpt(nm) and selected[nm] then sel[#sel + 1] = nm end end; pcall(o.Callback, sel)
@@ -2742,7 +2832,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     darr.Text = "▲"
                 end
                 if state.CanvasPosition then
-                    task.defer(function()
+                    trackedDefer(function()
                         if container.Parent then container.CanvasPosition = state.CanvasPosition end
                     end)
                 end
@@ -2966,7 +3056,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 container.Visible = true; tw(container,{Size = UDim2.new(1,0,0,TOTAL)},.18)
             else
                 tw(container,{Size = UDim2.new(1,0,0,0)},.15)
-                task.delay(.16, function() if mode ~= "list" then container.Visible = false end end)
+                trackedDelay(.16, function() if mode ~= "list" then container.Visible = false end end)
             end
             panel.Visible = (mode == "value")
             tw(row,{Size = UDim2.new(1,0,0,bgH + extra)},.18)
@@ -3062,7 +3152,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                         commit()
                         if o.AutoClose ~= true then return end
                         local t0 = token
-                        task.delay(.7, function() if mode == "value" and token == t0 then finish() end end)
+                        trackedDelay(.7, function() if mode == "value" and token == t0 then finish() end end)
                     end)
                 elseif d.type == "Toggle" then
                     local dv = isMulti[nm] and selected[nm][d.key] or false
@@ -3211,7 +3301,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     relayout()
                 end
                 if state.CanvasPosition then
-                    task.defer(function()
+                    trackedDefer(function()
                         if container.Parent then container.CanvasPosition = state.CanvasPosition end
                     end)
                 end
@@ -3352,7 +3442,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         local function setPlayer(plr)
             status.Text = "loading..."
-            task.spawn(function()
+            trackedSpawn(function()
                 local userId = (typeof(plr) == "Instance") and plr.UserId or tonumber(plr)
                 if not userId then status.Text = "invalid player"; return end
                 local ok,content = pcall(function()
@@ -3619,7 +3709,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 interval = tonumber(o.RefreshInterval)
             end
             if interval and interval > 0 then
-                task.spawn(function()
+                trackedSpawn(function()
                     while stable.Row and stable.Row.Parent do
                         task.wait(math.max(interval,0.1))
                         if stable.Row and stable.Row.Parent then refreshFn() end
@@ -3673,10 +3763,10 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
         tw(arrow,{Rotation = c and 180 or 0},.2)
         if c then
             tw(panel,{Size = UDim2.new(1,0,0,HH)},.18)
-            task.delay(.2, function() animating = false; if collapsed then content.Visible = false end end)
+            trackedDelay(.2, function() animating = false; if collapsed then content.Visible = false end end)
         else
             content.Visible = true; tw(panel,{Size = UDim2.new(1,0,0,fullH())},.18)
-            task.delay(.2, function() animating = false; updatePanel() end)
+            trackedDelay(.2, function() animating = false; updatePanel() end)
         end
     end
     secBtn.MouseButton1Click:Connect(function() setCollapsed(not collapsed) end)
@@ -3864,6 +3954,7 @@ end
 function JL:GetPreview() return JL._preview end
 function JL:Window(opts)
     opts = opts or {}
+    _disposed = false
     local hubStartTick = tick()
     if shared._JLActive and shared._JLActive.alive then
         local restart = restartPrompt()
@@ -4003,7 +4094,7 @@ function JL:Window(opts)
     local fpsConn
     do
         local _lt = tick(); local _fr = 0
-        fpsConn = RunSvc.Heartbeat:Connect(function()
+        fpsConn = keep(RunSvc.Heartbeat:Connect(function()
             _fr = _fr + 1; local n = tick()
             if n - _lt >= 0.5 then
                 local fps = math.round(_fr / (n - _lt)); fpsL.Text = fps .. " FPS"
@@ -4126,7 +4217,7 @@ function JL:Window(opts)
     local function queueSidebar()
         if sbQueued then return end
         sbQueued = true
-        task.defer(function()
+        trackedDefer(function()
             sbQueued = false
             if not _dead then relayoutSidebar() end
         end)
@@ -4189,7 +4280,7 @@ function JL:Window(opts)
                 if prev and animOn then fr.Position = offPos(dir); tw(fr,{Position = TABPOS},.22) else fr.Position = TABPOS end
             elseif tid == prev and animOn then
                 tw(fr,{Position = offPos(-dir)},.22)
-                task.delay(.23, function() if activeTabId ~= tid then fr.Visible = false end end)
+                trackedDelay(.23, function() if activeTabId ~= tid then fr.Visible = false end end)
             else
                 fr.Visible = false
             end
@@ -4215,7 +4306,7 @@ function JL:Window(opts)
         isOpen = false; JL._winOpen = false
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-            task.delay(.19, function() if not isOpen then win.Visible = false end end)
+            trackedDelay(.19, function() if not isOpen then win.Visible = false end end)
         else win.Visible = false end
         tw(badge2,{BackgroundColor3 = C.badge},.15); applyBlur()
     end
@@ -4234,10 +4325,12 @@ function JL:Window(opts)
     local function destroyHub()
         if _dead then return end
         _dead = true; JL._winOpen = false
+        _disposed = true
         if shared._JLActive then shared._JLActive.alive = false end
         pcall(function() fpsConn:Disconnect() end)
         for _,c in ipairs(_conns) do pcall(function() c:Disconnect() end) end
         _conns = {}
+        cleanupResources()
         pcall(function() if blurObj then blurObj:Destroy() end end)
         do
             local hooks = {}
@@ -4250,6 +4343,7 @@ function JL:Window(opts)
         end
         if sg and sg.Parent then sg:Destroy() end
         _cpSg = nil
+        if JL._destroyActive == destroyHub then JL._destroyActive = nil end
         if JL._activeWin == win then JL._activeWin = nil end
         if JL._activeBadge == badge2 then JL._activeBadge = nil end
     end
@@ -4258,6 +4352,7 @@ function JL:Window(opts)
     function Win:Close() if isOpen then closeW() end end
     function Win:Toggle() if isOpen then closeW() else openW() end end
     function Win:Destroy() destroyHub() end
+    function Win:Unload() destroyHub() end
     function Win:IsOpen() return isOpen end
     JL._win = Win
     JL._bridge.getWin = function() if _dead then return nil end return Win end
@@ -4310,7 +4405,7 @@ function JL:Window(opts)
         local el = type(target) == "string" and JL._registry[target] or target
         local row = (typeof(target) == "Instance") and target or (type(el) == "table" and el.Row)
         if not row then return false end
-        task.spawn(function() GUIDE.nav(row); GUIDE.pulse(row, 2.4) end)
+        trackedSpawn(function() GUIDE.nav(row); GUIDE.pulse(row, 2.4) end)
         return true
     end
     function Win:Tab(topts)
@@ -4725,7 +4820,7 @@ function JL:Window(opts)
         a.keeps = {}; a.unload = {}; a.store = {fn = {}}
         local api = amApi(a)
         local runErr
-        a.thread = task.spawn(function()
+        a.thread = trackedSpawn(function()
             local ok, e = pcall(fn, api, a.store)
             if not ok then runErr = tostring(e) end
         end)
@@ -5043,14 +5138,14 @@ function JL:Window(opts)
                 RM.panel.Size = UDim2.new(1,0,0,RM_PILL)
                 tw(RM.panel,{Size = UDim2.new(1,0,0,RM.panelH)},.36,Enum.EasingStyle.Quint)
                 tw(RM.pillScale,{Scale = 0},.14)
-                task.delay(.15, function() if RM.tok == tok and RM.pill then RM.pill.Visible = false end end)
+                trackedDelay(.15, function() if RM.tok == tok and RM.pill then RM.pill.Visible = false end end)
             else
                 RM.panel.Size = UDim2.new(1,0,0,RM.panelH); RM.pill.Visible = false
             end
         else
             if anim then
                 tw(RM.panel,{Size = UDim2.new(1,0,0,RM_PILL)},.26,Enum.EasingStyle.Quint)
-                task.delay(.27, function()
+                trackedDelay(.27, function()
                     if RM.tok ~= tok or not RM.pill then return end
                     RM.panel.Visible = false; RM.setLogical(RM_PILL, RM_PILL)
                     RM.pill.Visible = true; RM.pillScale.Scale = 0.5
@@ -5070,7 +5165,7 @@ function JL:Window(opts)
             local sx, sy = RM.px or 0, RM.py or 0
             local moved = false
             local c1, c2
-            c1 = UIS.InputChanged:Connect(function(m)
+            c1 = keep(UIS.InputChanged:Connect(function(m)
                 if m.UserInputType == Enum.UserInputType.MouseMovement or m.UserInputType == Enum.UserInputType.Touch then
                     local d = Vector2.new(m.Position.X, m.Position.Y) - startIn
                     if not moved and d.Magnitude > 6 then moved = true end
@@ -5088,7 +5183,7 @@ function JL:Window(opts)
     local function rmFlash(row, strokeObj)
         tw(row,{BackgroundColor3 = ACCENTS[1]},.07)
         tw(strokeObj,{Color = ACCENTS[1]},.07)
-        task.delay(.16, function()
+        trackedDelay(.16, function()
             if row.Parent then
                 local on = row:GetAttribute("on")
                 tw(row,{BackgroundColor3 = on and C.badgeHi or C.btnBg},.24); tw(strokeObj,{Color = C.border},.24)
@@ -5540,7 +5635,7 @@ function JL:Window(opts)
         local function closeList2()
             open2 = false; selArr.Text = "▼"
             tw(list2,{Size = UDim2.new(1,-32,0,0)},.15); selRow.Size = UDim2.new(1,0,0,48)
-            task.delay(.16, function() if not open2 then list2.Visible = false end end)
+            trackedDelay(.16, function() if not open2 then list2.Visible = false end end)
         end
         local function refreshProfiles()
             for _,c in ipairs(list2:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
@@ -5653,7 +5748,7 @@ function JL:Window(opts)
         RM.refresh()
         return sTab
     end
-    task.defer(function()
+    trackedDefer(function()
         if _dead then return end
         if cfgGet("_autoload", false) then
             local nm = cfgGet("_autoload_name", "")
@@ -5693,7 +5788,7 @@ function JL:Window(opts)
             local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = card
             avatar:SetAttribute("JLNoRepaint", true)
             corner(32,avatar)
-            task.spawn(function()
+            trackedSpawn(function()
                 local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
                 if ok then avatar.Image = content end
             end)
@@ -5747,7 +5842,7 @@ function JL:Window(opts)
             end
             refreshPlayers()
             keep(game.Players.PlayerAdded:Connect(refreshPlayers)); keep(game.Players.PlayerRemoving:Connect(refreshPlayers))
-            task.spawn(function()
+            trackedSpawn(function()
                 while root.Parent do
                     local ok,ping = pcall(function() return LP:GetNetworkPing() end)
                     if ok then pingV.Text = math.round(ping * 1000) .. "ms" end
@@ -5758,7 +5853,7 @@ function JL:Window(opts)
                 end
             end)
             if friendsV then
-                task.spawn(function()
+                trackedSpawn(function()
                     local ok,list2 = pcall(function()
                         local pages = LP:GetFriendsOnline(50)
                         return pages:GetCurrentPage()
@@ -5774,7 +5869,7 @@ function JL:Window(opts)
             icon:SetAttribute("JLNoRepaint", true)
             local nameL = newTxt({Parent=card,Text="Loading...",Font=GB,Size=14,Sz=UDim2.new(1,-84,0,18),Pos=UDim2.new(0,78,0,12)})
             local byL = newTxt({Parent=card,Text="",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-84,0,14),Pos=UDim2.new(0,78,0,32)})
-            task.spawn(function()
+            trackedSpawn(function()
                 local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
                 if ok and info then
                     nameL.Text = info.Name or "Unknown"
@@ -5864,6 +5959,20 @@ function JL:Window(opts)
         return T
     end
     shared._JLActive = {alive = true, destroy = destroyHub}
+    JL._destroyActive = destroyHub
     return Win
 end
+function JL:Unload()
+    if self._destroyActive then self._destroyActive()
+    else
+        _disposed = true
+        cleanupResources()
+        for i = #_conns, 1, -1 do pcall(function() _conns[i]:Disconnect() end); _conns[i] = nil end
+        local hooks = {}
+        for i,fn in ipairs(self._unloadHooks or {}) do hooks[i] = fn end
+        for i = #(self._unloadHooks or {}), 1, -1 do self._unloadHooks[i] = nil end
+        for _,fn in ipairs(hooks) do pcall(fn) end
+    end
+end
+function JL:Cleanup() return self:Unload() end
 return JL
