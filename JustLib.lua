@@ -2052,7 +2052,7 @@ local function mkPageTabs(parent,pos,size,options,init,ac,onChange,mode,cols,uns
         aR.MouseButton1Click:Connect(function() scrollTo(sc.CanvasPosition.X + 120) end)
         sc.InputChanged:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseWheel then scrollTo(sc.CanvasPosition.X - i.Position.Z * 80) end
-        end))
+        end)
         function obj.reveal(name) -- активная страница всегда в центре ленты
             local b = btns[name]; if not b then return end
             local rel = unscale(b.AbsolutePosition.X - sc.AbsolutePosition.X) + sc.CanvasPosition.X
