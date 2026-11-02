@@ -3983,15 +3983,38 @@ function JL:Preview(popts)
     return obj
 end
 function JL:GetPreview() return JL._preview end
+local function removeOrphanedHubGuis()
+    local names = {JustLib = true, JLRemote = true}
+    local containers = {}
+    local okCore, core = pcall(function() return game:GetService("CoreGui") end)
+    if okCore and core then containers[#containers + 1] = core end
+    if PG then containers[#containers + 1] = PG end
+    for _, container in ipairs(containers) do
+        pcall(function()
+            for _, child in ipairs(container:GetChildren()) do
+                if child:IsA("ScreenGui") and names[child.Name] then
+                    child:Destroy()
+                end
+            end
+        end)
+    end
+end
 function JL:Window(opts)
     opts = opts or {}
     _disposed = false
     local hubStartTick = tick()
     if shared._JLActive and shared._JLActive.alive then
+        local active = shared._JLActive
         local restart = restartPrompt()
         if not restart then return nil end
-        pcall(shared._JLActive.destroy)
+        if type(active.destroy) == "function" then
+            local ok, err = pcall(active.destroy)
+            if not ok then warn("[JustLib] Previous hub cleanup failed: " .. tostring(err)) end
+        end
     end
+    -- Remove leftover UI roots if an older build stopped partway through cleanup.
+    -- This also prevents orphaned Remote panels from stacking after Restart Hub.
+    removeOrphanedHubGuis()
     if opts.Config then cfgLoad(opts.Config) end
     JL._activeCfgSet = cfgSet
     if type(opts.Backgrounds) == "table" then for k,v in pairs(opts.Backgrounds) do JL._bgs[k] = v end end
