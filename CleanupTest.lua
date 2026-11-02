@@ -134,8 +134,31 @@ Section:Button({
         local NewWindow = NewJL:Window({
             Name = "JustLib Cleanup Reload Test",
             Config = "JustLib_CleanupTest",
-            Settings = false,
+            Settings = true,
         })
+
+        if NewWindow then
+            local ReloadTab = NewWindow:Tab({
+                Name = "Reloaded",
+                Icon = "refresh-cw",
+                Type = "Grid",
+            })
+            local ReloadSection = ReloadTab:Section({
+                Title = "Restart Result",
+                Column = 1,
+            })
+            ReloadSection:Button({
+                Name = "Hub restarted successfully",
+                Callback = function()
+                    print("[Cleanup Test] Restarted hub is responsive.")
+                end,
+            })
+            NewWindow:HomeTab({
+                Name = "Home",
+                WelcomeTitle = "Cleanup Test Reloaded",
+                Announcement = "The hub was restarted. Use Settings > About to unload it.",
+            })
+        end
 
         print("[Cleanup Test] New instance created:", NewWindow ~= nil)
 
