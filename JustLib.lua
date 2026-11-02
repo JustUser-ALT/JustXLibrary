@@ -668,6 +668,10 @@ JL._remoteAttach = function() end -- заменяется, когда созда
 JL._bridge = {
     C = C, ACCENTS = ACCENTS, cfgGet = cfgGet, cfgSet = cfgSet, cfgHas = cfgHas,
     keep = keep, tw = tw, icon = resolveIcon,
+    track = function(resource, cleanup) return JL:Track(resource, cleanup) end,
+    connect = function(signal, callback) return JL:Connect(signal, callback) end,
+    spawn = trackedSpawn, delay = trackedDelay, defer = trackedDefer,
+    isAlive = function() return not _disposed end,
     registry = JL._registry, noSave = JL._noSave, flags = JL.Flags,
     extraRoots = JL._extraRoots, themeHooks = JL._themeHooks, unloadHooks = JL._unloadHooks,
     notify = function(c) return JL:Notify(c) end,
@@ -4357,7 +4361,11 @@ function JL:Window(opts)
             for k = #JL._unloadHooks, 1, -1 do JL._unloadHooks[k] = nil end
             for _,fn in ipairs(hooks) do pcall(fn) end
             for k = #JL._themeHooks, 1, -1 do JL._themeHooks[k] = nil end
-            for k = #JL._extraRoots, 1, -1 do JL._extraRoots[k] = nil end
+            for k = #JL._extraRoots, 1, -1 do
+                local root = JL._extraRoots[k]
+                if root then cleanupResource(root) end
+                JL._extraRoots[k] = nil
+            end
             JL._preview = nil
         end
         if sg and sg.Parent then sg:Destroy() end
@@ -4373,6 +4381,13 @@ function JL:Window(opts)
     function Win:Destroy() destroyHub() end
     function Win:Unload() destroyHub() end
     function Win:IsOpen() return isOpen end
+    function Win:Track(resource, cleanup) return JL:Track(resource, cleanup) end
+    function Win:Connect(signal, callback) return JL:Connect(signal, callback) end
+    function Win:Spawn(callback, ...) return JL:Spawn(callback, ...) end
+    function Win:Delay(seconds, callback, ...) return JL:Delay(seconds, callback, ...) end
+    function Win:Defer(callback, ...) return JL:Defer(callback, ...) end
+    function Win:OnUnload(callback) return JL:OnUnload(callback) end
+    function Win:IsAlive() return JL:IsAlive() end
     JL._win = Win
     JL._bridge.getWin = function() if _dead then return nil end return Win end
     JL._bridge.getScale = function() return uiScale.Scale end
