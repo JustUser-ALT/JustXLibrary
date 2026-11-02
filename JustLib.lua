@@ -89,8 +89,8 @@ local function cleanupResources()
     end
     for i = #_resources, 1, -1 do
         local item = _resources[i]
-        cleanupResource(item.resource, item.cleanup)
         _resources[i] = nil
+        if item then pcall(cleanupResource, item.resource, item.cleanup) end
     end
 end
 local function keep(c) if c then _conns[#_conns + 1] = c end; return c end
@@ -4352,11 +4352,13 @@ function JL:Window(opts)
     end
     local isOpen = false
     local function openW()
+        if _dead then return end
         isOpen = true; JL._winOpen = true; win.Visible = true
         if animOn then uiScale.Scale = userScale * 0.88; tw(uiScale,{Scale = userScale},.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out) else uiScale.Scale = userScale end
         tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur()
     end
     local function closeW()
+        if _dead then return end
         isOpen = false; JL._winOpen = false
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
@@ -4378,28 +4380,27 @@ function JL:Window(opts)
     end))
     local function destroyHub()
         if _dead then return end
-        _dead = true; JL._winOpen = false
+        _dead = true; isOpen = false; JL._winOpen = false
         _disposed = true
         if shared._JLActive then shared._JLActive.alive = false end
         pcall(function() fpsConn:Disconnect() end)
         for _,c in ipairs(_conns) do pcall(function() c:Disconnect() end) end
         _conns = {}
-        cleanupResources()
+        -- Cleanup must never abort the final GUI destruction.
+        pcall(cleanupResources)
         pcall(function() if blurObj then blurObj:Destroy() end end)
-        do
-            local hooks = {}
-            for k,fn in ipairs(JL._unloadHooks) do hooks[k] = fn end
-            for k = #JL._unloadHooks, 1, -1 do JL._unloadHooks[k] = nil end
-            for _,fn in ipairs(hooks) do pcall(fn) end
-            for k = #JL._themeHooks, 1, -1 do JL._themeHooks[k] = nil end
-            for k = #JL._extraRoots, 1, -1 do
-                local root = JL._extraRoots[k]
-                if root then cleanupResource(root) end
-                JL._extraRoots[k] = nil
-            end
-            JL._preview = nil
+        local hooks = {}
+        for k,fn in ipairs(JL._unloadHooks) do hooks[k] = fn end
+        for k = #JL._unloadHooks, 1, -1 do JL._unloadHooks[k] = nil end
+        for _,fn in ipairs(hooks) do pcall(fn) end
+        for k = #JL._themeHooks, 1, -1 do JL._themeHooks[k] = nil end
+        for k = #JL._extraRoots, 1, -1 do
+            local root = JL._extraRoots[k]
+            if root then pcall(cleanupResource, root) end
+            JL._extraRoots[k] = nil
         end
-        if sg and sg.Parent then sg:Destroy() end
+        JL._preview = nil
+        pcall(function() if sg and sg.Parent then sg:Destroy() end end)
         _cpSg = nil
         if JL._destroyActive == destroyHub then JL._destroyActive = nil end
         if JL._activeWin == win then JL._activeWin = nil end
