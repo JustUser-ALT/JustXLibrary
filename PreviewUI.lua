@@ -147,12 +147,12 @@ end
 
 local function beginDrag(onMove, onEnd)
 	local c1, c2
-	c1 = UIS.InputChanged:Connect(function(i)
+	c1 = B.keep(UIS.InputChanged:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
 			onMove(i)
 		end
-	end)
-	c2 = UIS.InputEnded:Connect(function(i)
+	end))
+	c2 = B.keep(UIS.InputEnded:Connect(function(i)
 		if isPtr(i) then
 			c1:Disconnect()
 			c2:Disconnect()
@@ -160,7 +160,7 @@ local function beginDrag(onMove, onEnd)
 				onEnd()
 			end
 		end
-	end)
+	end))
 end
 
 -- Перетаскивание внутри ScrollingFrame: пока тянешь ползунок / колорпикер, панель не прокручивается
@@ -585,7 +585,7 @@ CtrlBuilders.Button = function(def, parent, order)
 	}, b)
 	b.Activated:Connect(function()
 		tw(b, { BackgroundColor3 = ACCENTS[1] }, 0.07)
-		task.delay(0.15, function()
+		B.delay(0.15, function()
 			tw(b, { BackgroundColor3 = C.btnBg }, 0.2)
 		end)
 		def:Fire()
@@ -2420,12 +2420,12 @@ function M:_popGrid()
 			local delay = math.min(n * 0.022, 0.26)
 			sc.Scale = 0.9
 			frame:SetAttribute("pop", true)
-			task.delay(delay, function()
+			B.delay(delay, function()
 				if sc.Parent then
 					tw(sc, { Scale = 1 }, 0.4, QUINT)
 				end
 			end)
-			task.delay(delay + 0.4, function()
+			B.delay(delay + 0.4, function()
 				if frame.Parent then
 					frame:SetAttribute("pop", nil)
 				end
@@ -2700,7 +2700,7 @@ function M:_setDrawer(open)
 	TS:Create(nav, info, { Position = U2(0, st.navX, 0, 0) }):Play()
 	TS:Create(card, info, { Position = U2(0, st.cardX, 0, 0) }):Play()
 	TS:Create(drawer, info, { Position = U2(0, st.drawerX, 0, 0) }):Play()
-	task.delay(open and 0.52 or 0.44, function()
+	B.delay(open and 0.52 or 0.44, function()
 		if self._slideTok ~= tok or not self._drawer then
 			return
 		end
