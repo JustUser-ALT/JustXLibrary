@@ -11,7 +11,7 @@ local JL = loadstring(game:HttpGet(LibraryURL))()
 local Window = JL:Window({
     Name = "JustLib Cleanup Test",
     Config = "JustLib_CleanupTest",
-    Settings = false,
+    Settings = true,
 })
 
 if not Window then
@@ -28,6 +28,25 @@ local Tab = Window:Tab({
 local Section = Tab:Section({
     Title = "Resource Tracking",
     Column = 1,
+})
+
+-- Pinned controls are displayed in the built-in Remote UI.
+Section:Toggle({
+    Name = "Remote Test Toggle",
+    Flag = "CleanupTest_RemoteToggle",
+    Default = false,
+    Remote = {Name = "Cleanup Toggle"},
+    Callback = function(value)
+        print("[Cleanup Test] Remote toggle:", value)
+    end,
+})
+
+Section:Button({
+    Name = "Remote Test Button",
+    Remote = {Name = "Cleanup Button"},
+    Callback = function()
+        print("[Cleanup Test] Remote button pressed.")
+    end,
 })
 
 local trackedFolder
@@ -120,6 +139,22 @@ Section:Button({
 
         print("[Cleanup Test] New instance created:", NewWindow ~= nil)
     end,
+})
+
+-- Built-in floating Remote UI. The controls above are pinned to it.
+local Remote = Window:Remote({
+    Title = "Cleanup Test Remote",
+    Key = Enum.KeyCode.RightControl,
+})
+
+-- Built-in Settings tab (Appearance, Interface, Remote, Presets, About, etc.).
+local SettingsTab = Window:Settings()
+
+-- Built-in Home tab with the standard player / game / session cards.
+local HomeTab = Window:HomeTab({
+    Name = "Home",
+    WelcomeTitle = "JustLib Cleanup Test",
+    Announcement = "Use the Cleanup tab to test resource registration and unload.",
 })
 
 JL:Notify({Title = "Cleanup test", Desc = "This notification should disappear when the library unloads.", Duration = 60})
