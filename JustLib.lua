@@ -717,6 +717,7 @@ do
         return cfgGet("_notify_show_regular", true)
     end
     function JL:Notify(cfg2)
+        if _disposed then return false end
         cfg2 = cfg2 or {}
         local typ = cfg2.Type or "Info"
         if not typeAllowed(typ) then return end
