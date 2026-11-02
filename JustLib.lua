@@ -790,6 +790,13 @@ do
         updPos()
         trackedDelay(.35, function() if not nd.closing and nd.gen == 0 then nd.restart(dur) end end)
     end
+    table.insert(JL._unloadHooks, function()
+        for i = #active, 1, -1 do
+            local nd = active[i]
+            if nd and nd.g then pcall(function() nd.g:Destroy() end) end
+            active[i] = nil
+        end
+    end)
 end
 local function mkPopup(backdrop,w,h,hero)
     local shell = Instance.new("Frame"); shell.Size = UDim2.new(0,w,0,h); shell.BackgroundTransparency = 1; shell.BorderSizePixel = 0
