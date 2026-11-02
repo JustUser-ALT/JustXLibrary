@@ -122,5 +122,7 @@ Section:Button({
     end,
 })
 
+JL:Notify({Title = "Cleanup test", Desc = "This notification should disappear when the library unloads.", Duration = 60})
+
 print("[Cleanup Test] Loaded.")
 print("[Cleanup Test] Create the tracked object, inspect stats, then test Unload.")
