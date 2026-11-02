@@ -138,6 +138,26 @@ Section:Button({
         })
 
         print("[Cleanup Test] New instance created:", NewWindow ~= nil)
+
+        task.delay(1, function()
+            local CoreGui = game:GetService("CoreGui")
+            local PlayerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            local containers = {CoreGui}
+            if PlayerGui then containers[#containers + 1] = PlayerGui end
+            local counts = {JustLib = 0, JLRemote = 0}
+            for _, container in ipairs(containers) do
+                for _, child in ipairs(container:GetChildren()) do
+                    if child:IsA("ScreenGui") and counts[child.Name] ~= nil then
+                        counts[child.Name] = counts[child.Name] + 1
+                    end
+                end
+            end
+            print("[Cleanup Test] JustLib UI roots (expected 1):", counts.JustLib)
+            print("[Cleanup Test] Remote UI roots (expected 0-1):", counts.JLRemote)
+            if counts.JustLib ~= 1 or counts.JLRemote > 1 then
+                warn("[Cleanup Test] Duplicate library UI detected.")
+            end
+        end)
     end,
 })
 
