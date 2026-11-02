@@ -1787,7 +1787,7 @@ function JL:OpenSubscriptions()
         if m.X >= ap.X and m.X <= ap.X + as.X and m.Y >= ap.Y and m.Y <= ap.Y + as.Y then
             scroll.CanvasPosition = Vector2.new(math.max(0, scroll.CanvasPosition.X - i.Position.Z * 80), 0)
         end
-    end)
+    end))
     local build
     local watcher
     local function closePopup()
@@ -4132,7 +4132,7 @@ function JL:Window(opts)
                 if homeFpsLabel then homeFpsLabel.Text = tostring(fps) end
                 _fr = 0; _lt = n
             end
-        end)
+        end))
     end
     local badgeTap = Instance.new("TextButton"); badgeTap.Size = UDim2.new(1,0,1,0); badgeTap.BackgroundTransparency = 1; badgeTap.Text = ""; badgeTap.ZIndex = 62; badgeTap.Parent = badge2
     local win = Instance.new("Frame"); win.Size = UDim2.new(0,WW,0,WH); win.AnchorPoint = Vector2.new(0.5,0.5); win.Position = UDim2.new(0.5,0,0.5,0)
@@ -5212,13 +5212,13 @@ function JL:Window(opts)
                     if not moved and d.Magnitude > 6 then moved = true end
                     if moved then RM.px, RM.py = sx + d.X, sy + d.Y; RM.clamp() end
                 end
-            end)
-            c2 = UIS.InputEnded:Connect(function(e)
+            end))
+            c2 = keep(UIS.InputEnded:Connect(function(e)
                 if e.UserInputType == Enum.UserInputType.MouseButton1 or e.UserInputType == Enum.UserInputType.Touch then
                     c1:Disconnect(); c2:Disconnect()
                     if moved then RM.savePos() elseif onTap then onTap() end
                 end
-            end)
+            end))
         end)
     end
     local function rmFlash(row, strokeObj)
