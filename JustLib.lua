@@ -75,6 +75,14 @@ local function trackedDefer(callback, ...)
     return record.thread
 end
 local function cleanupResources()
+    for record in pairs(_tweens) do
+        _tweens[record] = nil
+        if record.connection then pcall(function() record.connection:Disconnect() end) end
+        if record.tween then
+            pcall(function() record.tween:Cancel() end)
+            pcall(function() record.tween:Destroy() end)
+        end
+    end
     for record in pairs(_threads) do
         if record.thread then pcall(task.cancel, record.thread) end
         _threads[record] = nil
@@ -121,8 +129,19 @@ function JL:GetCleanupStats()
     return {Connections = connections, Threads = threads, Resources = #_resources, Alive = not _disposed}
 end
 local function touchLast() return UIS:GetLastInputType() == Enum.UserInputType.Touch end
+local _tweens = {}
+local function createTween(...)
+    local tween = TS:Create(...)
+    local record = {tween = tween}
+    _tweens[record] = true
+    record.connection = tween.Completed:Connect(function()
+        _tweens[record] = nil
+        if record.connection then pcall(function() record.connection:Disconnect() end) end
+    end)
+    return tween
+end
 local function tw(o,p,t,s,d)
-    TS:Create(o, TweenInfo.new(t or .2, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out), p):Play()
+    createTween(o, TweenInfo.new(t or .2, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out), p):Play()
 end
 local function corner(r,p) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,r); c.Parent = p; return c end
 local function stroke(col,t,p) local s = Instance.new("UIStroke"); s.Color = col; s.Thickness = t; s.Parent = p; return s end
@@ -340,8 +359,8 @@ function GUIDE.pulse(row,duration)
     hl:SetAttribute("JLNoRepaint", true)
     local st = stroke(ACCENTS[1], 2, hl); st:SetAttribute("JLNoRepaint", true)
     local info = TweenInfo.new(.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-    TS:Create(hl, info, {BackgroundTransparency = 0.7}):Play()
-    TS:Create(st, info, {Transparency = 0.75}):Play()
+    createTween(hl, info, {BackgroundTransparency = 0.7}):Play()
+    createTween(st, info, {Transparency = 0.75}):Play()
     GUIDE.pulses[#GUIDE.pulses + 1] = hl
     if duration and duration > 0 then trackedDelay(duration, function() if hl and hl.Parent then hl:Destroy() end end) end
     return hl
@@ -747,7 +766,7 @@ do
             updPos()
             if f and f.Parent then
                 local exitX = left and (x - 260) or (x + 260)
-                local t2=TS:Create(f,TweenInfo.new(0.4,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),{Position=UDim2.new(0,exitX,0,f.Position.Y.Offset)}); t2:Play(); t2.Completed:Connect(function() sg2:Destroy() end)
+                local t2=createTween(f,TweenInfo.new(0.4,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),{Position=UDim2.new(0,exitX,0,f.Position.Y.Offset)}); t2:Play(); t2.Completed:Connect(function() sg2:Destroy() end)
             end
         end
         nd.close = close
@@ -756,7 +775,7 @@ do
             local gen = nd.gen
             if nd.barTw then nd.barTw:Cancel() end
             db.Size = UDim2.new(0,180,0,3)
-            local tween = TS:Create(db, TweenInfo.new(d,Enum.EasingStyle.Linear), {Size = UDim2.new(0,0,0,3)})
+            local tween = createTween(db, TweenInfo.new(d,Enum.EasingStyle.Linear), {Size = UDim2.new(0,0,0,3)})
             nd.barTw = tween
             tween.Completed:Connect(function(state)
                 if state == Enum.PlaybackState.Completed and nd.gen == gen and not nd.closing then close() end
@@ -787,7 +806,7 @@ local function mkPopup(backdrop,w,h,hero)
         local shine = Instance.new("Frame"); shine.Size = UDim2.new(0.45,0,3,0); shine.Position = UDim2.new(-0.5,0,-1,0); shine.Rotation = 18
         shine.BackgroundColor3 = Color3.new(1,1,1); shine.BorderSizePixel = 0; shine.BackgroundTransparency = 1; shine.ZIndex = 2; shine.Parent = band
         local sg = Instance.new("UIGradient"); sg.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.5,0.82),NumberSequenceKeypoint.new(1,1)}); sg.Parent = shine
-        shineTw = TS:Create(shine, TweenInfo.new(3.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Position = UDim2.new(1.15,0,-1,0)})
+        shineTw = createTween(shine, TweenInfo.new(3.4,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Position = UDim2.new(1.15,0,-1,0)})
         shineTw:Play()
         if hero.Icon then
             local ic = mkIcon(band, hero.Icon, 26, 4); ic.AnchorPoint = Vector2.new(0.5,0.5); ic.Position = UDim2.new(0, (hero.Title and 30 or (w/2)), 0.5, 2)
@@ -907,8 +926,8 @@ local function restartPrompt()
     local glowHolder = Instance.new("Frame"); glowHolder.Size = UDim2.new(0,86,0,86); glowHolder.AnchorPoint = Vector2.new(0.5,0); glowHolder.Position = UDim2.new(0.5,0,0,34); glowHolder.BackgroundTransparency = 1; glowHolder.Parent = card
     local ring = Instance.new("Frame"); ring.Size = UDim2.new(1,0,1,0); ring.AnchorPoint = Vector2.new(0.5,0.5); ring.Position = UDim2.new(0.5,0,0.5,0); ring.BackgroundTransparency = 1; ring.Parent = glowHolder
     corner(43,ring); local ringStroke = stroke(ACCENTS[1],2,ring); ringStroke.Transparency = 0.3
-    local pulseTw = TS:Create(ring, TweenInfo.new(1.6,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Size = UDim2.new(1.25,0,1.25,0)})
-    local pulseFadeTw = TS:Create(ringStroke, TweenInfo.new(1.6,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Transparency = 0.85})
+    local pulseTw = createTween(ring, TweenInfo.new(1.6,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Size = UDim2.new(1.25,0,1.25,0)})
+    local pulseFadeTw = createTween(ringStroke, TweenInfo.new(1.6,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true), {Transparency = 0.85})
     pulseTw:Play(); pulseFadeTw:Play()
     local iconCircle = Instance.new("Frame"); iconCircle.Size = UDim2.new(0,64,0,64); iconCircle.AnchorPoint = Vector2.new(0.5,0.5); iconCircle.Position = UDim2.new(0.5,0,0.5,0); iconCircle.BackgroundColor3 = ACCENTS[1]; iconCircle.BorderSizePixel = 0; iconCircle.Parent = glowHolder; corner(32,iconCircle)
     local ig = Instance.new("UIGradient"); ig.Rotation = 100; ig.Color = ColorSequence.new(ACCENTS[1]:Lerp(Color3.new(1,1,1),0.15), ACCENTS[1]:Lerp(Color3.new(0,0,0),0.4)); ig.Parent = iconCircle
@@ -1215,13 +1234,13 @@ local function buildSubPlacesUI(universeId, places)
         local info = TweenInfo.new(.38, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
         if toDetail then
             detailPage.Visible = true; detailPage.Position = UDim2.new(0.14,0,0,0)
-            TS:Create(detailPage, info, {Position = UDim2.new(0,0,0,0)}):Play()
-            TS:Create(listPage, info, {Position = UDim2.new(-0.14,0,0,0)}):Play()
+            createTween(detailPage, info, {Position = UDim2.new(0,0,0,0)}):Play()
+            createTween(listPage, info, {Position = UDim2.new(-0.14,0,0,0)}):Play()
             backBtn.Visible = true; hicon.Visible = false
         else
             listPage.Visible = true
-            TS:Create(listPage, info, {Position = UDim2.new(0,0,0,0)}):Play()
-            TS:Create(detailPage, info, {Position = UDim2.new(0.14,0,0,0)}):Play()
+            createTween(listPage, info, {Position = UDim2.new(0,0,0,0)}):Play()
+            createTween(detailPage, info, {Position = UDim2.new(0.14,0,0,0)}):Play()
             backBtn.Visible = false; hicon.Visible = true
             titleL.Text = "Sub-Places"; subL.Text = #places .. " place" .. (#places == 1 and "" or "s") .. " in this experience"
         end
@@ -2013,7 +2032,7 @@ local function mkPageTabs(parent,pos,size,options,init,ac,onChange,mode,cols,uns
         end
         local function scrollTo(x)
             x = math.clamp(x, 0, math.max(0, total() - win()))
-            TS:Create(sc, TweenInfo.new(.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new(x,0)}):Play()
+            createTween(sc, TweenInfo.new(.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new(x,0)}):Play()
         end
         lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(upd)
         sc:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(upd)
@@ -4485,7 +4504,7 @@ function JL:Window(opts)
             local function numPages() return math.max(1, math.ceil(ncols / VIS)) end
             local function goCol(i)
                 i = math.clamp(i, 1, math.max(1, ncols - VIS + 1))
-                TS:Create(scroll, TweenInfo.new(.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new((i - 1) * (colW + COLGAP), scroll.CanvasPosition.Y)}):Play()
+                createTween(scroll, TweenInfo.new(.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new((i - 1) * (colW + COLGAP), scroll.CanvasPosition.Y)}):Play()
             end
             local function goPage(p)
                 p = math.clamp(p, 1, numPages())
