@@ -184,7 +184,7 @@ Section:Button({
     end,
 })
 
--- Built-in floating Remote UI. The controls above are pinned to it.
+-- Built-in Remote UI. The controls above can be selected in Edit Remote Items.
 local Remote = Window:Remote({
     Title = "Cleanup Test Remote",
     Key = Enum.KeyCode.RightControl,
