@@ -190,6 +190,14 @@ local Remote = Window:Remote({
     Key = Enum.KeyCode.RightControl,
 })
 
+Section:Button({
+    Name = "Toggle Remote Edit Mode",
+    Callback = function()
+        local enabled = Remote:Edit()
+        print("[Cleanup Test] Remote edit mode:", enabled)
+    end,
+})
+
 -- Built-in Settings tab (Appearance, Interface, Remote, Presets, About, etc.).
 local SettingsTab = Window:Settings()
 
