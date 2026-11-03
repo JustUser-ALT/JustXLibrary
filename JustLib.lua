@@ -5107,7 +5107,7 @@ function JL:Window(opts)
     function Win:Addons() AM.boot(); return AM end
     JL._addons = AM
     -- ===== Remote: плавающая панель быстрого доступа (тоглы, кнопки и кейбинды под рукой; удобно на телефоне) =====
-    -- Свернуть/развернуть, перетащить за шапку или за кружок. Любой Toggle / Button / Keybind попадает сюда через Remote = true.
+    -- Игрок сам выбирает, какие разрешённые разработчиком Toggle / Button / Keybind закреплять в Remote UI.
     local RM = {items = {}, available = {}, built = false, open = false, editMode = false, opts = {}, idCounts = {}}
     local RM_W, RM_HDR, RM_ROW, RM_GAP, RM_MAXROWS, RM_PILL = 208, 36, 32, 4, 7, 46
     local RM_KEYS = {LeftShift="LShift",RightShift="RShift",LeftControl="LCtrl",RightControl="RCtrl",LeftAlt="LAlt",RightAlt="RAlt",
@@ -5522,10 +5522,13 @@ function JL:Window(opts)
     function RemoteAPI:Show() cfgSet("_remote_on", true); RM.refresh() end
     function RemoteAPI:Hide() if RM.gui then RM.gui.Enabled = false end end
     function RemoteAPI:SetOpen(v) RM.refresh(); if RM.built then RM.setOpen(v) end end
-    function RemoteAPI:Edit(enabled) return RM.setEditMode(enabled == nil and not RM.editMode or enabled) end
+    function RemoteAPI:Edit(enabled)
+        if enabled == nil then enabled = not RM.editMode end
+        return RM.setEditMode(enabled)
+    end
     function RemoteAPI:IsOpen() return RM.open end
     function RemoteAPI:SetPosition(ud)
-        RM.forced = true; RM.refresh()
+        RM.refresh()
         if RM.built and ud then
             local v = rmViewport()
             RM.px = ud.X.Scale * v.X + ud.X.Offset; RM.py = ud.Y.Scale * v.Y + ud.Y.Offset
