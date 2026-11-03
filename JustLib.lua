@@ -2444,6 +2444,16 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             Set = function(_,v) state = v; sw.Set(v); cfgSet(o.Flag, v); notifyW(v) end, Get = function() return state end,
             Click = function() click() end, Watch = function(_,fn) watchers[#watchers + 1] = fn end,
         }
+        -- Keep the Remote edit layout inside this Toggle's scope so it can resize
+        -- the real label and switch instances instead of relying on out-of-scope locals.
+        ret._remoteEditLayout = function(editing)
+            local reserve = editing and 32 or 0
+            bg.Size = UDim2.new(1,-reserve,1,0)
+            bg.ClipsDescendants = true
+            titleLabel.Size = UDim2.new(0,math.max(0,labW - reserve - (editing and 8 or 0)),1,0)
+            titleLabel.ClipsDescendants = true
+            sw.Frame.Position = UDim2.new(1,editing and -76 or -44,0.5,-9)
+        end
         regFlag(o.Flag, ret, o.NoSave)
         local out = mergeLock(ret, row, o)
         if o.Remote then JL._remoteAttach("Toggle", o, out) end
@@ -5476,26 +5486,9 @@ function JL:Window(opts)
         RM.idCounts[baseId] = (RM.idCounts[baseId] or 0) + 1
         local id = baseId .. ":" .. tostring(RM.idCounts[baseId])
         local entry = {id = id, kind = kind:lower(), name = tostring(nm), ret = ret}
-        -- Reserve a dedicated slot for the edit control instead of drawing it over the Toggle.
-        if entry.kind == "toggle" then
-            local control
-            for _,child in ipairs(ret.Row:GetChildren()) do
-                if child:IsA("TextButton") then control = child; break end
-            end
-            if control then
-                local label = titleLabel
-                local switchFrame = sw and sw.Frame
-                entry.setEditLayout = function(editing)
-                    local offset = editing and -32 or 0
-                    if control.Parent then control.Size = UDim2.new(1, offset, 1, 0) end
-                    if label and label.Parent then
-                        label.Size = UDim2.new(0, math.max(0, labW + offset), 1, 0)
-                    end
-                    if switchFrame and switchFrame.Parent then
-                        switchFrame.Position = UDim2.new(1, editing and -76 or -44, 0.5, -9)
-                    end
-                end
-            end
+        -- Toggle owns its layout closure; this keeps the label and switch in sync.
+        if entry.kind == "toggle" and type(ret._remoteEditLayout) == "function" then
+            entry.setEditLayout = ret._remoteEditLayout
         end
         local pin = Instance.new("TextButton")
         pin.Name = "JLRemotePin"; pin.Size = UDim2.new(0,22,0,22); pin.AnchorPoint = Vector2.new(1,0.5)
