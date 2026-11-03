@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.4"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.5"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -5417,6 +5417,7 @@ function JL:Window(opts)
     function RM.setEditMode(enabled)
         RM.editMode = enabled == true
         for _,entry in ipairs(RM.available) do
+            if entry.setEditLayout then entry.setEditLayout(RM.editMode) end
             if entry.pinButton then
                 entry.pinButton.Visible = RM.editMode
                 entry.pinButton.Text = RM.isPinned(entry.id) and "✓" or "+"
@@ -5475,11 +5476,26 @@ function JL:Window(opts)
         RM.idCounts[baseId] = (RM.idCounts[baseId] or 0) + 1
         local id = baseId .. ":" .. tostring(RM.idCounts[baseId])
         local entry = {id = id, kind = kind:lower(), name = tostring(nm), ret = ret}
+        -- Reserve a dedicated slot for the edit control instead of drawing it over the Toggle.
+        if entry.kind == "toggle" then
+            local control
+            for _,child in ipairs(ret.Row:GetChildren()) do
+                if child:IsA("TextButton") then control = child; break end
+            end
+            if control then
+                entry.setEditLayout = function(editing)
+                    if control.Parent then
+                        control.Size = UDim2.new(1, editing and -32 or 0, 1, 0)
+                    end
+                end
+            end
+        end
         local pin = Instance.new("TextButton")
         pin.Name = "JLRemotePin"; pin.Size = UDim2.new(0,22,0,22); pin.AnchorPoint = Vector2.new(1,0.5)
         pin.Position = UDim2.new(1,-4,0.5,0); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
         pin.AutoButtonColor = false; pin.Text = RM.isPinned(id) and "✓" or "+"; pin.Font = GB; pin.TextSize = 15
         pin.TextColor3 = Color3.new(1,1,1); pin.Visible = RM.editMode; pin.ZIndex = 20; pin.Parent = ret.Row
+        if entry.setEditLayout then entry.setEditLayout(RM.editMode) end
         corner(6,pin); stroke(C.border,1,pin)
         pin.MouseButton1Click:Connect(function()
             if RM.editMode then RM.togglePin(entry) end
