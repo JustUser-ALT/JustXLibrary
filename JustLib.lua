@@ -5447,6 +5447,17 @@ function JL:Window(opts)
         end
         return RM.isPinned(entry.id)
     end
+    function RM.clearPins()
+        RM.savePins({})
+        RM.items = {}
+        for _,entry in ipairs(RM.available) do
+            if entry.pinButton then
+                entry.pinButton.Text = "+"
+                entry.pinButton.BackgroundColor3 = C.btnBg
+            end
+        end
+        RM.refresh()
+    end
     function RM.destroy()
         if RM.gui then pcall(function() RM.gui:Destroy() end) end
         for _,entry in ipairs(RM.available) do
@@ -5748,6 +5759,11 @@ function JL:Window(opts)
         local pR = newPage("Remote", "Floating quick-access panel for toggles, buttons and keybinds")
         addButton(pR, "Edit Remote Items", "Enter edit mode, browse your tabs and pin supported controls with the + button beside them", "Edit", false, function()
             RM.setEditMode(not RM.editMode)
+        end)
+        addButton(pR, "Clear All Pins", "Removes every function from Remote UI", "Clear", false, function()
+            if confirmDialog("Clear Remote UI", "Remove all pinned functions from Remote UI?", {Danger = true, ConfirmText = "Clear"}) then
+                RM.clearPins()
+            end
         end)
         addSwitch(pR, "Show Remote", "Shows the floating panel only when at least one function is pinned", "_remote_on", true, function() RM.refresh() end)
         addSlider(pR, "Remote Scale", "Size of the floating panel", "_remote_scale", 100, 70, 150, 5, "%", function() RM.applyScale() end)
