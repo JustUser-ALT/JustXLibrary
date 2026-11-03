@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.5"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.6"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2422,7 +2422,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local bg = Instance.new("TextButton"); bg.Size = UDim2.new(1,0,1,0); bg.BackgroundColor3 = C.btnBg; bg.Text = ""; bg.AutoButtonColor = false; bg.BorderSizePixel = 0; bg.Parent = row
         corner(7,bg); stroke(C.border,1,bg); hover(bg, C.btnBg, C.btnHov); tip(bg, o.Tooltip)
         iconSlot(bg, o.Icon)
-        newTxt({Parent=bg,Text=name,Font=GB,Size=12,Wrap=true,Sz=UDim2.new(0,labW,1,0),Pos=UDim2.new(0,10 + iconW,0,0)})
+        local titleLabel = newTxt({Parent=bg,Text=name,Font=GB,Size=12,Wrap=true,Sz=UDim2.new(0,labW,1,0),Pos=UDim2.new(0,10 + iconW,0,0)})
         local sw = mkSwitch(bg, UDim2.new(1,-44,0.5,-9), state, ac)
         local ret
         local watchers = {}
@@ -5483,9 +5483,16 @@ function JL:Window(opts)
                 if child:IsA("TextButton") then control = child; break end
             end
             if control then
+                local label = titleLabel
+                local switchFrame = sw and sw.Frame
                 entry.setEditLayout = function(editing)
-                    if control.Parent then
-                        control.Size = UDim2.new(1, editing and -32 or 0, 1, 0)
+                    local offset = editing and -32 or 0
+                    if control.Parent then control.Size = UDim2.new(1, offset, 1, 0) end
+                    if label and label.Parent then
+                        label.Size = UDim2.new(0, math.max(0, labW + offset), 1, 0)
+                    end
+                    if switchFrame and switchFrame.Parent then
+                        switchFrame.Position = UDim2.new(1, editing and -76 or -44, 0.5, -9)
                     end
                 end
             end
