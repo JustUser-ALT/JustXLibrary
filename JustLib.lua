@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.2"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.3"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
