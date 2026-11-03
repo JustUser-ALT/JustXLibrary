@@ -5108,7 +5108,7 @@ function JL:Window(opts)
     JL._addons = AM
     -- ===== Remote: плавающая панель быстрого доступа (тоглы, кнопки и кейбинды под рукой; удобно на телефоне) =====
     -- Свернуть/развернуть, перетащить за шапку или за кружок. Любой Toggle / Button / Keybind попадает сюда через Remote = true.
-    local RM = {items = {}, built = false, open = false, forced = false, opts = {}}
+    local RM = {items = {}, available = {}, built = false, open = false, editMode = false, opts = {}, idCounts = {}}
     local RM_W, RM_HDR, RM_ROW, RM_GAP, RM_MAXROWS, RM_PILL = 208, 36, 32, 4, 7, 46
     local RM_KEYS = {LeftShift="LShift",RightShift="RShift",LeftControl="LCtrl",RightControl="RCtrl",LeftAlt="LAlt",RightAlt="RAlt",
         Return="Enter",Backspace="Back",Escape="Esc",Space="Space",Tab="Tab",CapsLock="Caps",Insert="Ins",Delete="Del",
@@ -5345,7 +5345,7 @@ function JL:Window(opts)
         list.CanvasSize = UDim2.new(0,0,0,0); list.Parent = panel
         local ll = Instance.new("UIListLayout"); ll.Padding = UDim.new(0,RM_GAP); ll.SortOrder = Enum.SortOrder.LayoutOrder; ll.Parent = list
         RM.list = list
-        RM.empty = newTxt({Parent=panel,Text="Add Remote = true to a toggle, button or keybind",Font=GM,Size=10,Color=C.dim,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-24,0,30),Pos=UDim2.new(0,12,0,RM_HDR + 10)})
+        RM.empty = newTxt({Parent=panel,Text="Use Edit Remote Items to choose toggles, buttons and keybinds",Font=GM,Size=10,Color=C.dim,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-24,0,30),Pos=UDim2.new(0,12,0,RM_HDR + 10)})
 
         -- свёрнутая «таблетка»
         local pill = Instance.new("TextButton"); pill.Size = UDim2.new(0,RM_PILL,0,RM_PILL); pill.BackgroundColor3 = C.panel; pill.BorderSizePixel = 0; pill.Text = ""
@@ -5370,15 +5370,42 @@ function JL:Window(opts)
         keep(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function() RM.applyScale(); RM.restorePos() end))
     end
 
+    local function rmPinnedMap()
+        local map = cfgGet("_remote_pins", {})
+        return type(map) == "table" and map or {}
+    end
+    function RM.isPinned(id)
+        return rmPinnedMap()[id] == true
+    end
+    function RM.savePins(map)
+        cfgSet("_remote_pins", map)
+    end
+    function RM.findItem(id)
+        for i,item in ipairs(RM.items) do if item.id == id then return i,item end end
+    end
+    function RM.removeItem(id)
+        local index = RM.findItem(id)
+        if not index then return end
+        table.remove(RM.items, index)
+        for i,item in ipairs(RM.items) do item.order = i end
+        if RM.built then RM.layout(true); RM.updateBadge() end
+        RM.refresh()
+    end
     function RM.refresh()
         local on = cfgGet("_remote_on", true) ~= false
-        if on and (#RM.items > 0 or RM.forced) then
-            RM.build(); RM.gui.Enabled = true
+        if on and #RM.items > 0 then
+            RM.build()
+            if RM.gui then RM.gui.Enabled = true end
         elseif RM.gui then
-            RM.gui.Enabled = false
+            RM.gui:Destroy()
+            RM.gui, RM.built = nil, false
         end
     end
     function RM.addItem(item)
+        if item.id then
+            local _,existing = RM.findItem(item.id)
+            if existing then existing.ret = item.ret; existing.name = item.name; return existing end
+        end
         item.order = #RM.items + 1
         RM.items[#RM.items + 1] = item
         if RM.built then
@@ -5387,16 +5414,68 @@ function JL:Window(opts)
         RM.refresh()
         return item
     end
+    function RM.setEditMode(enabled)
+        RM.editMode = enabled == true
+        for _,entry in ipairs(RM.available) do
+            if entry.pinButton then
+                entry.pinButton.Visible = RM.editMode
+                entry.pinButton.Text = RM.isPinned(entry.id) and "✓" or "+"
+                entry.pinButton.BackgroundColor3 = RM.isPinned(entry.id) and ACCENTS[1] or C.btnBg
+            end
+        end
+        if RM.editMode then
+            JL:Notify({Title = "Remote Edit Mode", Desc = "Browse the tabs and tap + beside a supported control to pin it. Tap ✓ to remove it.", Type = "Info", Duration = 5})
+        else
+            JL:Notify({Title = "Remote Edit Mode", Desc = "Editing finished.", Type = "Success", Duration = 2})
+        end
+        return RM.editMode
+    end
+    function RM.togglePin(entry)
+        local map = {}; for id,value in pairs(rmPinnedMap()) do map[id] = value end
+        if map[entry.id] then
+            map[entry.id] = nil
+            RM.savePins(map)
+            RM.removeItem(entry.id)
+        else
+            map[entry.id] = true
+            RM.savePins(map)
+            RM.addItem({id = entry.id, kind = entry.kind, name = entry.name, ret = entry.ret})
+        end
+        if entry.pinButton then
+            entry.pinButton.Text = RM.isPinned(entry.id) and "✓" or "+"
+            entry.pinButton.BackgroundColor3 = RM.isPinned(entry.id) and ACCENTS[1] or C.btnBg
+        end
+        return RM.isPinned(entry.id)
+    end
     function RM.destroy()
         if RM.gui then pcall(function() RM.gui:Destroy() end) end
-        RM.gui, RM.built, RM.items = nil, false, {}
+        for _,entry in ipairs(RM.available) do
+            if entry.pinButton then pcall(function() entry.pinButton:Destroy() end) end
+        end
+        RM.gui, RM.built, RM.items, RM.available = nil, false, {}, {}
+        RM.editMode = false
         JL._remote = nil
     end
-    -- Элементы секций с Remote = true попадают сюда (вызывается из Toggle / Button / Keybind)
+    -- Remote = true разрешает игроку закреплять функцию, но не добавляет её автоматически.
     JL._remoteAttach = function(kind, o, ret)
-        if not o or not o.Remote or type(ret) ~= "table" then return end
+        if not o or not o.Remote or type(ret) ~= "table" or not ret.Row then return end
         local nm = (type(o.Remote) == "table" and o.Remote.Name) or o.Name or kind
-        RM.addItem({kind = kind:lower(), name = tostring(nm), ret = ret})
+        local baseId = tostring(o.Flag or (kind:lower() .. ":" .. tostring(nm)))
+        RM.idCounts[baseId] = (RM.idCounts[baseId] or 0) + 1
+        local id = baseId .. ":" .. tostring(RM.idCounts[baseId])
+        local entry = {id = id, kind = kind:lower(), name = tostring(nm), ret = ret}
+        local pin = Instance.new("TextButton")
+        pin.Name = "JLRemotePin"; pin.Size = UDim2.new(0,22,0,22); pin.AnchorPoint = Vector2.new(1,0.5)
+        pin.Position = UDim2.new(1,-4,0.5,0); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
+        pin.AutoButtonColor = false; pin.Text = RM.isPinned(id) and "✓" or "+"; pin.Font = GB; pin.TextSize = 15
+        pin.TextColor3 = Color3.new(1,1,1); pin.Visible = RM.editMode; pin.ZIndex = 20; pin.Parent = ret.Row
+        corner(6,pin); stroke(C.border,1,pin)
+        pin.MouseButton1Click:Connect(function()
+            if RM.editMode then RM.togglePin(entry) end
+        end)
+        entry.pinButton = pin
+        RM.available[#RM.available + 1] = entry
+        if RM.isPinned(id) then RM.addItem({id=id,kind=entry.kind,name=entry.name,ret=ret}) end
     end
 
     -- публичный объект: Win:Remote(...)
@@ -5440,9 +5519,10 @@ function JL:Window(opts)
         RM.addItem({kind = "keybind", name = o.Name or "Keybind", ret = ret})
         return ret
     end
-    function RemoteAPI:Show() cfgSet("_remote_on", true); RM.forced = true; RM.refresh() end
+    function RemoteAPI:Show() cfgSet("_remote_on", true); RM.refresh() end
     function RemoteAPI:Hide() if RM.gui then RM.gui.Enabled = false end end
-    function RemoteAPI:SetOpen(v) RM.forced = true; RM.refresh(); RM.setOpen(v) end
+    function RemoteAPI:SetOpen(v) RM.refresh(); if RM.built then RM.setOpen(v) end end
+    function RemoteAPI:Edit(enabled) return RM.setEditMode(enabled == nil and not RM.editMode or enabled) end
     function RemoteAPI:IsOpen() return RM.open end
     function RemoteAPI:SetPosition(ud)
         RM.forced = true; RM.refresh()
@@ -5456,13 +5536,12 @@ function JL:Window(opts)
     function RM.resetPos() cfgSet("_remote_x", 0.012); cfgSet("_remote_y", 0.30); RM.restorePos() end
     function Win:Remote(ropts)
         RM.opts = ropts or RM.opts or {}
-        RM.forced = true
         if RM.title and RM.opts.Title then RM.title.Text = RM.opts.Title end
         if RM.opts.Open ~= nil and not cfgHas("_remote_open") then cfgSet("_remote_open", RM.opts.Open) end
         if RM.opts.Key then
             keep(UIS.InputBegan:Connect(function(i,gp)
                 if gp or JL._listening then return end
-                if i.KeyCode == RM.opts.Key then RM.build(); RM.setOpen(not RM.open) end
+                if i.KeyCode == RM.opts.Key and RM.built then RM.setOpen(not RM.open) end
             end))
         end
         RM.refresh()
@@ -5664,11 +5743,14 @@ function JL:Window(opts)
         end)
         addValue(pD, "Folder", "Put .lua / .txt files here. Mark functions with --@toggle / --@button / --@slider / --@dropdown above them", AM.dir)
         local pR = newPage("Remote", "Floating quick-access panel for toggles, buttons and keybinds")
-        addSwitch(pR, "Show Remote", "Shows the floating panel once something is pinned to it. Add Remote = true to a toggle, button or keybind", "_remote_on", true, function() RM.refresh() end)
+        addButton(pR, "Edit Remote Items", "Enter edit mode, browse your tabs and pin supported controls with the + button beside them", "Edit", false, function()
+            RM.setEditMode(not RM.editMode)
+        end)
+        addSwitch(pR, "Show Remote", "Shows the floating panel only when at least one function is pinned", "_remote_on", true, function() RM.refresh() end)
         addSlider(pR, "Remote Scale", "Size of the floating panel", "_remote_scale", 100, 70, 150, 5, "%", function() RM.applyScale() end)
         addSlider(pR, "Remote Opacity", "How solid the panel and its button are", "_remote_opacity", 94, 40, 100, 2, "%", function() RM.applyOpacity() end)
         addButton(pR, "Expand / Collapse", "Opens the panel or folds it into a small button", "Toggle", false, function()
-            RM.forced = true; RM.refresh(); RM.setOpen(not RM.open)
+            RM.refresh(); if RM.built then RM.setOpen(not RM.open) end
         end)
         addButton(pR, "Reset Position", "Moves the panel back to its default place", "Reset", false, function() RM.resetPos() end)
         local pP = newPage("Presets", "Save and load snapshots of your enabled features")
