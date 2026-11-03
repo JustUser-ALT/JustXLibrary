@@ -198,8 +198,27 @@ Section:Button({
     end,
 })
 
--- Built-in Settings tab (Appearance, Interface, Remote, Presets, About, etc.).
+-- Built-in Settings tab (Interface, Notifications, Preview UI, Remote, Presets, About, etc.).
 local SettingsTab = Window:Settings()
+
+task.delay(1, function()
+    local root = Window and Window.Frame
+    local nav
+    if root then
+        for _, item in ipairs(root:GetDescendants()) do
+            if item.Name == "SettingsNavigation" then
+                nav = item
+                break
+            end
+        end
+    end
+    if nav and nav:IsA("ScrollingFrame") then
+        print("[Cleanup Test] Settings navigation is scrollable:",
+            nav.CanvasSize.Y.Offset > nav.AbsoluteSize.Y)
+    else
+        warn("[Cleanup Test] SettingsNavigation ScrollingFrame not found.")
+    end
+end)
 
 -- Built-in Home tab with the standard player / game / session cards.
 local HomeTab = Window:HomeTab({
