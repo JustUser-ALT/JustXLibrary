@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.3"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.4"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -5580,8 +5580,14 @@ function JL:Window(opts)
         newTxt({Parent=nav,Text=opts.Title or "JustLib",Font=GB,Size=15,Sz=UDim2.new(1,-28,0,20),Pos=UDim2.new(0,14,0,14)})
         newTxt({Parent=nav,Text="Settings · v" .. JL.Version,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,14,0,35)})
         local nl = Instance.new("Frame"); nl.Size = UDim2.new(1,-28,0,1); nl.Position = UDim2.new(0,14,0,58); nl.BackgroundColor3 = C.divLine; nl.BackgroundTransparency = 0.4; nl.BorderSizePixel = 0; nl.Parent = nav
-        local navList = Instance.new("Frame"); navList.Size = UDim2.new(1,-16,1,-74); navList.Position = UDim2.new(0,8,0,68); navList.BackgroundTransparency = 1; navList.Parent = nav
+        local navList = Instance.new("ScrollingFrame"); navList.Name = "SettingsNavigation"; navList.Size = UDim2.new(1,-16,1,-74); navList.Position = UDim2.new(0,8,0,68)
+        navList.BackgroundTransparency = 1; navList.BorderSizePixel = 0; navList.ClipsDescendants = true
+        navList.ScrollBarThickness = 3; navList.ScrollBarImageColor3 = ACC; navList.ScrollingDirection = Enum.ScrollingDirection.Y
+        navList.CanvasSize = UDim2.new(0,0,0,0); navList.AutomaticCanvasSize = Enum.AutomaticSize.None; navList.Parent = nav
         local nlay = Instance.new("UIListLayout"); nlay.Padding = UDim.new(0,4); nlay.SortOrder = Enum.SortOrder.LayoutOrder; nlay.Parent = navList
+        nlay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            navList.CanvasSize = UDim2.new(0,0,0,nlay.AbsoluteContentSize.Y + 8)
+        end)
         local card = Instance.new("Frame"); card.Size = UDim2.new(1,-(navW + 8),1,0); card.Position = UDim2.new(0,navW + 8,0,0); card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.Parent = root; corner(10,card); stroke(C.border,1,card)
         local pgTitle = newTxt({Parent=card,Text="",Font=GB,Size=16,Sz=UDim2.new(1,-32,0,20),Pos=UDim2.new(0,16,0,12)})
         local pgSub = newTxt({Parent=card,Text="",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-32,0,14),Pos=UDim2.new(0,16,0,34)})
@@ -5652,7 +5658,7 @@ function JL:Window(opts)
             local _,ctrl = mkRow(sf, title, desc, 170)
             newTxt({Parent=ctrl,Text=text,Font=GB,Size=11,Color=C.dim,XAlign=Enum.TextXAlignment.Right})
         end
-        local pA = newPage("Appearance", "Look and feel of the hub")
+        local pA = newPage("Interface", "Appearance, themes and interface controls")
         addSlider(pA, "UI Scale", "Enlarges or shrinks the whole window", "_uiscale", 100, 70, 130, 5, "%", function(v)
             userScale = v / 100; uiScale.Scale = userScale
         end)
@@ -5667,7 +5673,7 @@ function JL:Window(opts)
         addSwitch(pA, "Sidebar Labels", "Tab names under the sidebar icons. Takes effect the next time the hub starts", "_sidebar_labels", opts.SidebarLabels == true, function()
             JL:Notify({Title = "Sidebar", Desc = "Restart the hub to apply", Type = "Info", Duration = 3})
         end)
-        local pT = newPage("Themes", "Recolor the whole hub instantly")
+        local pT = pA
         rowOrd = rowOrd + 1
         local themeIntro = Instance.new("Frame"); themeIntro.Size = UDim2.new(1,0,0,26); themeIntro.BackgroundTransparency = 1; themeIntro.LayoutOrder = rowOrd; themeIntro.Parent = pT
         newTxt({Parent=themeIntro,Text="Pick a palette — everything on screen repaints live",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-32,1,0),Pos=UDim2.new(0,16,0,0)})
@@ -5702,7 +5708,7 @@ function JL:Window(opts)
             btn.MouseButton1Click:Connect(function() JL:SetTheme(nm); paintCards() end)
         end
         paintCards()
-        local pI = newPage("Interface", "Controls and badge")
+        local pI = pA
         do
             local _,ctrl = mkRow(pI, "Menu Key", "Click, then press a key. Esc cancels, Backspace clears", 84)
             local chip = mkKeyChip(ctrl, UDim2.new(0,0,0.5,-11), hotkey and hotkey.Name or "None", function(k)
@@ -5898,7 +5904,7 @@ function JL:Window(opts)
             JL:Notify({Title = "Config Imported", Desc = applied .. " setting(s) applied", Type = (applied > 0) and "Success" or "Warn", Duration = 4})
         end)
         local pC = newPage("Backup", "Restore interface defaults")
-        addButton(pC, "Reset interface", "Restores every setting on the Appearance and Interface pages", "Reset", true, function()
+        addButton(pC, "Reset interface", "Restores every setting on the Interface page", "Reset", true, function()
             if confirmDialog("Reset Settings", "Restore all interface settings to their defaults?", {Danger = true, ConfirmText = "Reset"}) then
                 for _,fn in ipairs(resetters) do pcall(fn) end
             end
@@ -5910,7 +5916,7 @@ function JL:Window(opts)
         addButton(pB, "Close Hub", "Fully unloads the hub", "Unload", true, function()
             if unloadDialog() then destroyHub() end
         end)
-        showPage("Appearance")
+        showPage("Interface")
         AM.boot()
         RM.refresh()
         return sTab
