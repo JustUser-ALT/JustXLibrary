@@ -30,7 +30,7 @@ local Section = Tab:Section({
     Column = 1,
 })
 
--- Pinned controls are displayed in the built-in Remote UI.
+-- These controls are eligible for player pinning through Settings > Remote > Edit Remote Items.
 Section:Toggle({
     Name = "Remote Test Toggle",
     Flag = "CleanupTest_RemoteToggle",
