@@ -191,33 +191,78 @@ local function draggable(handle,frame,onTap)
     end)
 end
 JL._iconOverrides = {}
+JL._iconTextNodes = {}
+local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
+local function iconAsset(name)
+    local pack = JL._iconPack
+    if not pack then return nil end
+    if type(pack.GetAsset) == "function" then
+        local ok,asset = pcall(pack.GetAsset, name)
+        if ok and asset and tostring(asset) ~= "" then return tostring(asset) end
+    end
+    if type(pack.GetIcon) == "function" then
+        local ok,asset = pcall(pack.GetIcon, name)
+        if ok and asset and tostring(asset) ~= "" then return tostring(asset) end
+    end
+    return nil
+end
+local function refreshIconTextNodes()
+    for i = #JL._iconTextNodes, 1, -1 do
+        local entry = JL._iconTextNodes[i]
+        local label = entry.label
+        if not (label and label.Parent) then
+            table.remove(JL._iconTextNodes, i)
+        else
+            local asset = iconAsset(entry.name)
+            if asset and (asset:match("^rbxassetid://") or asset:match("^%d+$")) then
+                local image = label:FindFirstChild("JLIconAsset")
+                if not image then
+                    image = Instance.new("ImageLabel")
+                    image.Name = "JLIconAsset"
+                    image.BackgroundTransparency = 1
+                    image.Size = UDim2.new(1,0,1,0)
+                    image.Position = UDim2.new(0,0,0,0)
+                    image.ZIndex = label.ZIndex
+                    image.Parent = label
+                end
+                image.Image = asset:match("^%d+$") and ("rbxassetid://" .. asset) or asset
+                image.ImageColor3 = label.TextColor3
+                label.Text = ""
+            end
+        end
+    end
+end
 function JL:LoadIconPack(url)
-    url = url or "https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
+    url = url or ICON_PACK_URL
     local ok,body = pcall(function() return game:HttpGet(url) end)
     if not ok or not body or body == "" then return false end
     local ok2,fn = pcall(loadstring, body)
     if not ok2 or not fn then return false end
     local ok3,mod = pcall(fn)
     if not ok3 or type(mod) ~= "table" then return false end
+    if type(mod.SetProvider) == "function" then
+        local providerOk = pcall(mod.SetProvider, "lucide")
+        if not providerOk then return false end
+    end
     JL._iconPack = mod
+    refreshIconTextNodes()
     return true
 end
 function JL:SetIconType(iconType)
-    if JL._iconPack and JL._iconPack.SetIconsType then pcall(JL._iconPack.SetIconsType, iconType) end
+    if JL._iconPack then
+        if JL._iconPack.SetProvider then pcall(JL._iconPack.SetProvider, iconType)
+        elseif JL._iconPack.SetIconsType then pcall(JL._iconPack.SetIconsType, iconType) end
+        refreshIconTextNodes()
+    end
 end
 function JL:SetIcons(tbl)
     for k,v in pairs(tbl or {}) do JL._iconOverrides[k] = v end
 end
 local function resolveIcon(s)
     if JL._iconOverrides[s] then return tostring(JL._iconOverrides[s]) end
-    if JL._iconPack then
-        if JL._iconPack.GetIcon then
-            local ok,id = pcall(JL._iconPack.GetIcon, s)
-            if ok and id and id ~= "" then return tostring(id) end
-        elseif JL._iconPack[s] then
-            return tostring(JL._iconPack[s])
-        end
-    end
+    local asset = iconAsset(s)
+    if asset then return asset end
+    if JL._iconPack and JL._iconPack[s] then return tostring(JL._iconPack[s]) end
     return s
 end
 local function mkIcon(parent,icon,sz,z)
@@ -227,7 +272,9 @@ local function mkIcon(parent,icon,sz,z)
         img.Image = s:match("^%d+$") and ("rbxassetid://" .. s) or s; img.ZIndex = z; img.Parent = parent; return img
     else
         local l = Instance.new("TextLabel"); l.Size = UDim2.new(0,sz,0,sz); l.BackgroundTransparency = 1
-        l.Text = s; l.TextScaled = true; l.Font = GB; l.TextColor3 = C.txt; l.ZIndex = z; l.Parent = parent; return l
+        l.Text = s; l.TextScaled = true; l.Font = GB; l.TextColor3 = C.txt; l.ZIndex = z; l.Parent = parent
+        JL._iconTextNodes[#JL._iconTextNodes + 1] = {label = l, name = tostring(icon)}
+        return l
     end
 end
 local BG = {reg = {}}
@@ -1307,9 +1354,11 @@ local function buildSubPlacesUI(universeId, places)
     grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() gridSc.CanvasSize = UDim2.new(0,0,0,grid.AbsoluteContentSize.Y + 22) end)
     local emptyL = newTxt({Parent=listPage,Text="No places found.",Font=GM,Size=12,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,0,24),Pos=UDim2.new(0,0,0,110)})
     emptyL.Visible = false
+    showPopup()
 
     local showDetail
     local cards = {}
+    local cardBuildStarted = os.clock()
     for i,pl in ipairs(places) do
         local isCur = (tostring(pl.id) == tostring(game.PlaceId))
         local cf = Instance.new("Frame"); cf.BackgroundColor3 = C.badge; cf.BorderSizePixel = 0; cf.LayoutOrder = i; cf.Parent = gridSc; corner(10, cf)
@@ -1332,6 +1381,10 @@ local function buildSubPlacesUI(universeId, places)
         end)
         btn.MouseButton1Click:Connect(function() showDetail(pl) end)
         cards[#cards + 1] = {frame = cf, pl = pl}
+        if i % 6 == 0 and i < #places then task.wait() end
+    end
+    if JL._perfEnabled then
+        warn("[JustLib Perf] Sub-Places cards: " .. tostring(#cards) .. " cards in " .. string.format("%.3f s", os.clock() - cardBuildStarted))
     end
     local function applySearch()
         local q = search.Text:lower()
@@ -1494,8 +1547,6 @@ local function buildSubPlacesUI(universeId, places)
         slide(true)
     end
 
-    showPopup()
-
     -- настоящие иконки мест: Roblox thumbnails -> файл -> getcustomasset (если executor умеет); иначе остаётся градиент с буквой
     pcall(function()
         for _,pl in ipairs(places) do
@@ -1536,6 +1587,7 @@ local function openSubPlaces(universeId)
     end
     JL:Notify({Title = "Sub-Places", Desc = "Fetching place list...", Type = "Info", Duration = 2})
     trackedSpawn(function()
+        local fetchStarted = os.clock()
         local places, cursor = {}, ""
         for _ = 1,3 do
             local res = execRequest({Url = "https://develop.roblox.com/v1/universes/" .. universeId .. "/places?sortOrder=Asc&limit=100" .. (cursor ~= "" and ("&cursor=" .. cursor) or ""), Method = "GET"})
@@ -1552,7 +1604,14 @@ local function openSubPlaces(universeId)
             cursor = data.nextPageCursor
             if not cursor or cursor == "" then break end
         end
+        if JL._perfEnabled then
+            warn("[JustLib Perf] Sub-Places fetch: " .. tostring(#places) .. " places in " .. string.format("%.3f s", os.clock() - fetchStarted))
+        end
+        local uiStarted = os.clock()
         local ok,err = pcall(buildSubPlacesUI, universeId, places)
+        if JL._perfEnabled then
+            warn("[JustLib Perf] Sub-Places UI total: " .. string.format("%.3f s", os.clock() - uiStarted))
+        end
         if not ok then
             JL:Notify({Title = "Sub-Places", Desc = "UI error: " .. tostring(err), Type = "Error", Duration = 5})
             local g = (PG and PG:FindFirstChild("JLSubPlaces")) or game:GetService("CoreGui"):FindFirstChild("JLSubPlaces")
@@ -4230,11 +4289,18 @@ local function removeOrphanedHubGuis()
 end
 function JL:Window(opts)
     opts = opts or {}
-    if not JL._iconPack and opts.LoadIcons ~= false then
-        pcall(function() self:LoadIconPack(opts.IconPackURL) end)
-    end
     _disposed = false
-    local hubStartTick = tick()
+    JL._perfEnabled = opts.DebugPerformance == true
+    local hubStartTick = os.clock()
+    local iconLoadStarted = os.clock()
+    if not JL._iconPack and opts.LoadIcons ~= false then
+        trackedSpawn(function()
+            local ok = self:LoadIconPack(opts.IconPackURL)
+            if JL._perfEnabled then
+                warn("[JustLib Perf] Molto icon pack: " .. string.format("%.3f s", os.clock() - iconLoadStarted) .. " (loaded=" .. tostring(ok) .. ")")
+            end
+        end)
+    end
     if shared._JLActive and shared._JLActive.alive then
         local active = shared._JLActive
         local restart = restartPrompt()
@@ -6911,6 +6977,9 @@ function JL:Window(opts)
     end
     shared._JLActive = {alive = true, destroy = destroyHub}
     JL._destroyActive = destroyHub
+    if JL._perfEnabled then
+        warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - hubStartTick))
+    end
     return Win
 end
 function JL:Unload()
