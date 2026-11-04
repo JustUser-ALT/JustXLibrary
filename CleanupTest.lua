@@ -338,8 +338,8 @@ local HomeTab = Window:HomeTab({
     Name = "Home",
     WelcomeTitle = "JustLib Cleanup Test",
     Changelog = {
-        {Title = "4.0.7", Description = "Added the Home Changelog panel."},
-        "Updated the Home executor label.",
+        {Title = "4.1.0", Description = "Added global Search Update and control navigation."},
+        "Added tests for nested ValueDropdown search and hidden MultiSection pages.",
         "This list is configured from the test script, not inside JustLib.lua.",
     },
 })
