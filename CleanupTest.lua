@@ -92,6 +92,27 @@ SearchPages:Page("Second"):Toggle({
 })
 
 SearchSection:Button({
+    Name = "Test Dropdown Alpha Search",
+    Callback = function()
+        Window:Search("Alpha")
+    end,
+})
+
+SearchSection:Button({
+    Name = "Test Dropdown Beta Search",
+    Callback = function()
+        Window:Search("Beta")
+    end,
+})
+
+SearchSection:Button({
+    Name = "Test Value Option Search",
+    Callback = function()
+        Window:Search("Advanced")
+    end,
+})
+
+SearchSection:Button({
     Name = "Test Nested Global Search",
     Callback = function()
         Window:Search("Nested Search Toggle")
