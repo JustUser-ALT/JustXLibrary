@@ -6086,18 +6086,102 @@ function JL:Window(opts)
             changelogScroll.CanvasSize = UDim2.new(0,0,0,0)
             changelogScroll.Parent = changelogFrame
 
+            changelogScroll.Active = true
             local changelogLayout = Instance.new("UIListLayout")
             changelogLayout.Padding = UDim.new(0,5)
             changelogLayout.SortOrder = Enum.SortOrder.LayoutOrder
             changelogLayout.Parent = changelogScroll
 
             local function refreshChangelogCanvas()
-                changelogScroll.CanvasSize = UDim2.new(0,0,0,changelogLayout.AbsoluteContentSize.Y + 4)
+                changelogScroll.CanvasSize = UDim2.new(0,0,0,changelogLayout.AbsoluteContentSize.Y + 6)
             end
             changelogLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshChangelogCanvas)
 
             local entries = type(hopts.Changelog) == "table" and hopts.Changelog or {}
             local entryCount = 0
+            local function showChangelogDetails(heading,description)
+                local existing = root:FindFirstChild("ChangelogDetailOverlay")
+                if existing then existing:Destroy() end
+
+                local overlay = Instance.new("Frame")
+                overlay.Name = "ChangelogDetailOverlay"
+                overlay.Size = UDim2.new(1,0,1,0)
+                overlay.BackgroundColor3 = Color3.new(0,0,0)
+                overlay.BackgroundTransparency = 0.35
+                overlay.BorderSizePixel = 0
+                overlay.ZIndex = 80
+                overlay.Parent = root
+
+                local panel = Instance.new("Frame")
+                panel.Name = "ChangelogDetailPanel"
+                panel.Size = UDim2.new(0.82,0,0.78,0)
+                panel.Position = UDim2.new(0.5,0,0.5,0)
+                panel.AnchorPoint = Vector2.new(0.5,0.5)
+                panel.BackgroundColor3 = C.panel
+                panel.BorderSizePixel = 0
+                panel.ClipsDescendants = true
+                panel.ZIndex = 81
+                panel.Parent = overlay
+                corner(10,panel)
+                stroke(C.border,1,panel)
+
+                local accent = Instance.new("Frame")
+                accent.Size = UDim2.new(1,-24,0,2)
+                accent.Position = UDim2.new(0,12,0,0)
+                accent.BackgroundColor3 = ACCENTS[1]
+                accent.BorderSizePixel = 0
+                accent.ZIndex = 82
+                accent.Parent = panel
+                corner(1,accent)
+
+                newTxt({Parent=panel,Text="CHANGELOG",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-64,0,14),Pos=UDim2.new(0,14,0,12)})
+                local close = Instance.new("TextButton")
+                close.Name = "CloseChangelog"
+                close.Size = UDim2.new(0,28,0,28)
+                close.Position = UDim2.new(1,-40,0,7)
+                close.BackgroundColor3 = C.pHdr
+                close.BorderSizePixel = 0
+                close.AutoButtonColor = false
+                close.Text = "×"
+                close.Font = GB
+                close.TextSize = 20
+                close.TextColor3 = C.txt
+                close.ZIndex = 83
+                close.Parent = panel
+                corner(7,close)
+                close.MouseButton1Click:Connect(function() overlay:Destroy() end)
+
+                local title = newTxt({Parent=panel,Text=heading,Font=GB,Size=16,Sz=UDim2.new(1,-28,0,24),Pos=UDim2.new(0,14,0,38)})
+                title.ZIndex = 82
+                local divider = Instance.new("Frame")
+                divider.Size = UDim2.new(1,-28,0,1)
+                divider.Position = UDim2.new(0,14,0,70)
+                divider.BackgroundColor3 = C.border
+                divider.BorderSizePixel = 0
+                divider.ZIndex = 82
+                divider.Parent = panel
+
+                local detailScroll = Instance.new("ScrollingFrame")
+                detailScroll.Name = "ChangelogFullText"
+                detailScroll.Size = UDim2.new(1,-28,1,-88)
+                detailScroll.Position = UDim2.new(0,14,0,80)
+                detailScroll.BackgroundTransparency = 1
+                detailScroll.BorderSizePixel = 0
+                detailScroll.ScrollBarThickness = 3
+                detailScroll.ScrollBarImageColor3 = ACCENTS[1]
+                detailScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                detailScroll.Active = true
+                detailScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                detailScroll.CanvasSize = UDim2.new(0,0,0,0)
+                detailScroll.ZIndex = 82
+                detailScroll.Parent = panel
+
+                local fullText = newTxt({Parent=detailScroll,Text=description ~= "" and description or "No description provided.",Font=GM,Size=12,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,fitH(description,12,GM,TextService:GetTextSize("M",12,GM,Vector2.new(100,20)).X > 0 and 400 or 400,18,4)),Pos=UDim2.new(0,4,0,2)})
+                fullText.Size = UDim2.new(1,-8,0,fitH(description ~= "" and description or "No description provided.",12,GM,400,18,4))
+                fullText.TextYAlignment = Enum.TextYAlignment.Top
+                fullText.ZIndex = 83
+            end
+
             for index,entry in ipairs(entries) do
                 local heading,description
                 if type(entry) == "table" then
@@ -6110,6 +6194,7 @@ function JL:Window(opts)
                 description = description ~= nil and tostring(description) or ""
                 if (heading and heading ~= "") or description ~= "" then
                     entryCount = entryCount + 1
+                    local titleText = heading and heading ~= "" and heading or "UPDATE"
                     local item = Instance.new("Frame")
                     item.Name = "ChangelogEntry"
                     item.Size = UDim2.new(1,-4,0,34)
@@ -6127,12 +6212,28 @@ function JL:Window(opts)
                     marker.Parent = item
                     corner(1,marker)
 
-                    local titleText = heading and heading ~= "" and heading or "UPDATE"
-                    newTxt({Parent=item,Text=titleText,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-14,0,12),Pos=UDim2.new(0,8,0,4)})
+                    newTxt({Parent=item,Text=titleText,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,8,0,4)})
                     local descHeight = description ~= "" and fitH(description,9,GM,146,11,2) or 0
-                    local desc = newTxt({Parent=item,Text=description,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-14,0,descHeight),Pos=UDim2.new(0,8,0,17)})
+                    local preview = description
+                    if #preview > 78 then preview = preview:sub(1,75) .. "..." end
+                    local desc = newTxt({Parent=item,Text=preview,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,descHeight),Pos=UDim2.new(0,8,0,17)})
                     desc.TextYAlignment = Enum.TextYAlignment.Top
-                    item.Size = UDim2.new(1,-4,0,math.max(30,17 + descHeight + 5))
+
+                    local openHint = newTxt({Parent=item,Text="›",Font=GB,Size=18,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,16,1,0),Pos=UDim2.new(1,-20,0,0)})
+                    openHint.ZIndex = 2
+                    local click = Instance.new("TextButton")
+                    click.Name = "OpenChangelogEntry"
+                    click.Size = UDim2.new(1,0,1,0)
+                    click.BackgroundTransparency = 1
+                    click.BorderSizePixel = 0
+                    click.AutoButtonColor = false
+                    click.Text = ""
+                    click.ZIndex = 5
+                    click.Parent = item
+                    click.MouseButton1Click:Connect(function()
+                        showChangelogDetails(titleText,description)
+                    end)
+                    item.Size = UDim2.new(1,-4,0,math.max(34,17 + math.min(descHeight,22) + 5))
                 end
             end
             if entryCount == 0 then
@@ -6268,15 +6369,6 @@ function JL:Window(opts)
             actBtn(btnRow2,2,"Sub-Places",100,function()
                 openSubPlaces(game.GameId)
             end)
-        end
-        do
-            local h = 54
-            local card = newCard(h)
-            local execName,execVer = detectExecutor()
-            local ok2 = execName ~= nil
-            local dot = Instance.new("Frame"); dot.Size = UDim2.new(0,10,0,10); dot.Position = UDim2.new(0,16,0.5,-5); dot.BackgroundColor3 = ok2 and C.fpsGrn or C.danger; dot.BorderSizePixel = 0; dot.Parent = card; corner(5,dot)
-            newTxt({Parent=card,Text=ok2 and "Executor" or "Unknown",Font=GB,Size=13,Sz=UDim2.new(1,-40,0,18),Pos=UDim2.new(0,34,0,8)})
-            newTxt({Parent=card,Text=ok2 and ("Detected: " .. execName .. (execVer and (" " .. execVer) or "")) or "Could not detect your executor.",Font=GM,Size=11,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-50,0,18),Pos=UDim2.new(0,34,0,28)})
         end
         if hopts.DiscordInvite or hopts.Website then
             local h = 60
