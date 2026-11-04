@@ -205,38 +205,110 @@ local function iconAsset(name)
         local ok,value = pcall(pack.GetIcon, name)
         if ok then asset = value end
     end
-    if type(asset) == "table" then
-        asset = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
-            or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
-    elseif typeof(asset) == "Instance" and asset:IsA("ImageLabel") then
-        asset = asset.Image
+    if typeof(asset) == "Instance" then
+        if asset:IsA("ImageLabel") or asset:IsA("ImageButton") then
+            asset = {Url = asset.Image, ImageRectOffset = asset.ImageRectOffset, ImageRectSize = asset.ImageRectSize}
+        elseif asset:IsA("TextLabel") or asset:IsA("TextButton") then
+            asset = {Text = asset.Text, Font = asset.Font, FontFace = asset.FontFace}
+        else
+            return nil
+        end
     end
-    if asset ~= nil and tostring(asset) ~= "" then return tostring(asset) end
+    if type(asset) == "string" or type(asset) == "number" then
+        local value = tostring(asset)
+        if value ~= "" then return {Url = value} end
+        return nil
+    end
+    if type(asset) ~= "table" then return nil end
+    local url = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
+        or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
+    local text = asset.Text or asset.Glyph
+    if url ~= nil and tostring(url) ~= "" then
+        return {
+            Url = tostring(url),
+            ImageRectOffset = typeof(asset.ImageRectOffset) == "Vector2" and asset.ImageRectOffset or Vector2.zero,
+            ImageRectSize = typeof(asset.ImageRectSize) == "Vector2" and asset.ImageRectSize or Vector2.zero,
+            FontFace = asset.FontFace,
+            Text = text,
+        }
+    end
+    if text ~= nil and tostring(text) ~= "" then
+        return {Text = tostring(text), Font = asset.Font, FontFace = asset.FontFace}
+    end
     return nil
+end
+local function iconImageId(value)
+    local value = tostring(value or "")
+    if value:match("^%d+$") then return "rbxassetid://" .. value end
+    if value:match("^rbxassetid://") or value:match("^https?://") then return value end
+    return nil
+end
+local function applyIcon(entry)
+    local label = entry and entry.label
+    if not (label and label.Parent) then return false end
+    local raw = JL._iconOverrides[entry.name]
+    local asset
+    if raw ~= nil then
+        if type(raw) == "table" then
+            asset = raw
+        else
+            asset = {Url = tostring(raw)}
+        end
+    else
+        asset = iconAsset(entry.name)
+        if not asset and JL._iconPack and JL._iconPack[entry.name] ~= nil then
+            local fallback = JL._iconPack[entry.name]
+            if type(fallback) == "string" or type(fallback) == "number" then
+                asset = {Url = tostring(fallback)}
+            end
+        end
+    end
+    local imageUrl = asset and iconImageId(asset.Url or asset.Image or asset.Id)
+    local image = label:FindFirstChild("JLIconAsset")
+    if imageUrl then
+        if not image then
+            image = Instance.new("ImageLabel")
+            image.Name = "JLIconAsset"
+            image.BackgroundTransparency = 1
+            image.BorderSizePixel = 0
+            image.Size = UDim2.new(1,0,1,0)
+            image.Position = UDim2.new(0,0,0,0)
+            image.ScaleType = Enum.ScaleType.Fit
+            image.ZIndex = label.ZIndex
+            image.Parent = label
+        end
+        image.Image = imageUrl
+        image.ImageRectOffset = typeof(asset.ImageRectOffset) == "Vector2" and asset.ImageRectOffset or Vector2.zero
+        image.ImageRectSize = typeof(asset.ImageRectSize) == "Vector2" and asset.ImageRectSize or Vector2.zero
+        image.ImageColor3 = label.TextColor3
+        image.Visible = true
+        label.Text = ""
+        label.TextTransparency = 1
+        return true
+    end
+    if image then image.Visible = false end
+    if asset and asset.Text then
+        label.Text = tostring(asset.Text)
+        label.TextTransparency = 0
+        if asset.FontFace then
+            pcall(function() label.FontFace = asset.FontFace end)
+        elseif asset.Font then
+            pcall(function() label.Font = asset.Font end)
+        end
+        return true
+    end
+    label.Text = entry.name
+    label.TextTransparency = 0
+    label.Font = GB
+    return false
 end
 local function refreshIconTextNodes()
     for i = #JL._iconTextNodes, 1, -1 do
         local entry = JL._iconTextNodes[i]
-        local label = entry.label
-        if not (label and label.Parent) then
+        if not (entry.label and entry.label.Parent) then
             table.remove(JL._iconTextNodes, i)
         else
-            local asset = iconAsset(entry.name)
-            if asset and (asset:match("^rbxassetid://") or asset:match("^%d+$")) then
-                local image = label:FindFirstChild("JLIconAsset")
-                if not image then
-                    image = Instance.new("ImageLabel")
-                    image.Name = "JLIconAsset"
-                    image.BackgroundTransparency = 1
-                    image.Size = UDim2.new(1,0,1,0)
-                    image.Position = UDim2.new(0,0,0,0)
-                    image.ZIndex = label.ZIndex
-                    image.Parent = label
-                end
-                image.Image = asset:match("^%d+$") and ("rbxassetid://" .. asset) or asset
-                image.ImageColor3 = label.TextColor3
-                label.Text = ""
-            end
+            applyIcon(entry)
         end
     end
 end
@@ -245,7 +317,7 @@ function JL:LoadIconPack(url)
     local ok,body = pcall(function() return game:HttpGet(url) end)
     if not ok or not body or body == "" then return false end
     local ok2,fn = pcall(loadstring, body)
-    if not ok2 or not fn then return false end
+    if not ok2 or type(fn) ~= "function" then return false end
     local ok3,mod = pcall(fn)
     if not ok3 or type(mod) ~= "table" then return false end
     if type(mod.SetProvider) == "function" then
@@ -265,25 +337,61 @@ function JL:SetIconType(iconType)
 end
 function JL:SetIcons(tbl)
     for k,v in pairs(tbl or {}) do JL._iconOverrides[k] = v end
+    refreshIconTextNodes()
 end
 local function resolveIcon(s)
-    if JL._iconOverrides[s] then return tostring(JL._iconOverrides[s]) end
+    local override = JL._iconOverrides[s]
+    if override ~= nil then
+        if type(override) == "table" then return override end
+        return tostring(override)
+    end
     local asset = iconAsset(s)
     if asset then return asset end
-    if JL._iconPack and JL._iconPack[s] then return tostring(JL._iconPack[s]) end
+    if JL._iconPack and JL._iconPack[s] then return JL._iconPack[s] end
     return s
 end
 local function mkIcon(parent,icon,sz,z)
-    sz = sz or 20; z = z or 13; local s = resolveIcon(tostring(icon))
-    if s:match("^rbxassetid://") or s:match("^%d+$") then
-        local img = Instance.new("ImageLabel"); img.Size = UDim2.new(0,sz,0,sz); img.BackgroundTransparency = 1
-        img.Image = s:match("^%d+$") and ("rbxassetid://" .. s) or s; img.ZIndex = z; img.Parent = parent; return img
-    else
-        local l = Instance.new("TextLabel"); l.Size = UDim2.new(0,sz,0,sz); l.BackgroundTransparency = 1
-        l.Text = s; l.TextScaled = true; l.Font = GB; l.TextColor3 = C.txt; l.ZIndex = z; l.Parent = parent
-        JL._iconTextNodes[#JL._iconTextNodes + 1] = {label = l, name = tostring(icon)}
-        return l
+    sz = sz or 20; z = z or 13
+    local name = tostring(icon)
+    local resolved = resolveIcon(name)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0,sz,0,sz)
+    label.BackgroundTransparency = 1
+    label.BorderSizePixel = 0
+    label.Text = name
+    label.TextScaled = true
+    label.Font = GB
+    label.TextColor3 = C.txt
+    label.ZIndex = z
+    label.Parent = parent
+    local entry = {label = label, name = name}
+    JL._iconTextNodes[#JL._iconTextNodes + 1] = entry
+    if type(resolved) == "table" then
+        applyIcon(entry)
+    elseif type(resolved) == "string" then
+        local imageUrl = iconImageId(resolved)
+        if imageUrl then
+            applyIcon({label = label, name = name})
+            local image = label:FindFirstChild("JLIconAsset")
+            if not image then
+                image = Instance.new("ImageLabel")
+                image.Name = "JLIconAsset"
+                image.BackgroundTransparency = 1
+                image.BorderSizePixel = 0
+                image.Size = UDim2.new(1,0,1,0)
+                image.ScaleType = Enum.ScaleType.Fit
+                image.ZIndex = z
+                image.Parent = label
+            end
+            image.Image = imageUrl
+            image.ImageColor3 = label.TextColor3
+            label.Text = ""
+            label.TextTransparency = 1
+        else
+            label.Text = resolved
+        end
     end
+    return label
 end
 local BG = {reg = {}}
 JL._bgs = {}
