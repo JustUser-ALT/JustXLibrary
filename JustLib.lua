@@ -6176,8 +6176,9 @@ function JL:Window(opts)
                 detailScroll.ZIndex = 82
                 detailScroll.Parent = panel
 
-                local fullText = newTxt({Parent=detailScroll,Text=description ~= "" and description or "No description provided.",Font=GM,Size=12,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,fitH(description,12,GM,TextService:GetTextSize("M",12,GM,Vector2.new(100,20)).X > 0 and 400 or 400,18,4)),Pos=UDim2.new(0,4,0,2)})
-                fullText.Size = UDim2.new(1,-8,0,fitH(description ~= "" and description or "No description provided.",12,GM,400,18,4))
+                local fullDescription = description ~= "" and description or "No description provided."
+                local fullText = newTxt({Parent=detailScroll,Text=fullDescription,Font=GM,Size=12,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,0),Pos=UDim2.new(0,4,0,2)})
+                fullText.AutomaticSize = Enum.AutomaticSize.Y
                 fullText.TextYAlignment = Enum.TextYAlignment.Top
                 fullText.ZIndex = 83
             end
