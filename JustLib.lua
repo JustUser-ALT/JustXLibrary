@@ -1369,30 +1369,6 @@ local function spThumb(parent, pl, radius)
     return holder, setImage
 end
 local spPlayersCache = {}
-local spCanCustom = (typeof(writefile) == "function" and (typeof(getcustomasset) == "function" or typeof(getsynasset) == "function"))
-local function spDownload(url, id)
-    if not spCanCustom then return nil end
-    pcall(function()
-        if isfolder and makefolder then
-            if not isfolder("JustLib") then makefolder("JustLib") end
-            if not isfolder("JustLib/cache") then makefolder("JustLib/cache") end
-        end
-    end)
-    local path = "JustLib/cache/place_" .. tostring(id) .. ".png"
-    local have = false
-    if isfile then local ok,r = pcall(isfile, path); have = ok and r == true end
-    if not have then
-        local r = execRequest({Url = url, Method = "GET"})
-        if not r or type(r.Body) ~= "string" or #r.Body < 200 then return nil end
-        local ok = pcall(writefile, path, r.Body)
-        if not ok then return nil end
-    end
-    local fn = getcustomasset or getsynasset
-    local ok,asset = pcall(fn, path)
-    if ok and asset and asset ~= "" then return asset end
-    return nil
-end
-
 local function buildSubPlacesUI(universeId, places)
     local CoreGui = game:GetService("CoreGui")
     local sgP = Instance.new("ScreenGui"); sgP.Name = "JLSubPlaces"; sgP.ResetOnSpawn = false; sgP.IgnoreGuiInset = true; sgP.DisplayOrder = 1000
@@ -1671,33 +1647,9 @@ local function buildSubPlacesUI(universeId, places)
             end
         end
     end)
-    -- Запускаем сетевую загрузку только после возврата buildSubPlacesUI,
-    -- чтобы медленный executor request не задерживал первое отображение окна.
-    trackedDelay(0.25, function()
-        trackedSpawn(function()
-        if not spCanCustom then return end
-        local ids = {}
-        for _,pl in ipairs(places) do ids[#ids + 1] = tostring(pl.id) end
-        local i = 1
-        while i <= #ids and alive do
-            local chunk = table.concat(ids, ",", i, math.min(i + 49, #ids))
-            i = i + 50
-            local res = execRequest({Url = "https://thumbnails.roblox.com/v1/places/gameicons?placeIds=" .. chunk .. "&size=256x256&format=Png&isCircular=false", Method = "GET"})
-            if res and res.Body then
-                local ok,data = pcall(HTTP.JSONDecode, HTTP, res.Body)
-                if ok and type(data) == "table" and type(data.data) == "table" then
-                    for _,it in ipairs(data.data) do
-                        if not alive then return end
-                        if it.state == "Completed" and type(it.imageUrl) == "string" and it.imageUrl ~= "" then
-                            local asset = spDownload(it.imageUrl, it.targetId)
-                            if asset then applyAsset(it.targetId, asset); task.wait(0.15) end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    end)
+    -- Для остальных мест оставляем локальный градиент с первой буквой.
+    -- Не скачиваем миниатюры через executor request: синхронный HTTP может
+    -- заморозить весь клиент даже из task.spawn/task.delay.
 end
 local function openSubPlaces(universeId)
     local hasReq = typeof(request) == "function" or typeof(http_request) == "function" or (syn and typeof(syn.request) == "function")
