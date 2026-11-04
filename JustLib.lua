@@ -2960,6 +2960,14 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             else for k in pairs(selected) do pcall(o.Callback, k) end end
         end
         local ret = {
+            Open = function()
+                if not dropOpen then
+                    dropOpen = true; container.Visible = true
+                    tw(container,{Size = UDim2.new(1,0,0,TOTAL)},.2)
+                    tw(row,{Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)},.2)
+                    darr.Text = "▲"
+                end
+            end,
             Get = function() return selected end,
             Set = function(_,v)
                 selected = {}
@@ -3431,6 +3439,15 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end)
         if o.Callback and had then pcall(o.Callback, snapshot()) end
         local ret = {
+            Open = function()
+                if mode == "closed" then mode = "list"; relayout() end
+            end,
+            OpenValue = function(_,nm)
+                if not dimsOf[nm] then return false end
+                if selected[nm] == nil then selected[nm] = defaultValue(nm); refreshOptions() end
+                openPanel(nm)
+                return true
+            end,
             Get = snapshot,
             GetValue = function(_,nm) return selected[nm] end,
             Set = function(_,m) loadMap(decodeMap(m)); normalizeSel(); refreshOptions(); refreshLabel(); persist() end,
@@ -3870,6 +3887,39 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             return stable
         end
     end
+    local searchMethods = {
+        Toggle = true, ToggleGroup = true, Slider = true, Button = true, Input = true,
+        Dropdown = true, TextSlider = true, ValueDropdown = true, ColorPicker = true,
+        Keybind = true, Segmented = true, Group = true, Text = true, Screen = true,
+        Label = true, PreviewButton = true, PreviewToggle = true, PreviewDropdown = true,
+    }
+    for methodName in pairs(searchMethods) do
+        local original = Sec[methodName]
+        if type(original) == "function" then
+            Sec[methodName] = function(self, o, ...)
+                local result = original(self, o, ...)
+                if type(result) == "table" and result.Row and type(o) == "table" and JL._searchRegister then
+                    JL._searchRegister({Name = o.Name or methodName, Kind = methodName, Row = result.Row, Control = result})
+                    if methodName == "ValueDropdown" and type(o.Values) == "table" then
+                        for valueName, definitions in pairs(o.Values) do
+                            if type(definitions) == "table" and type(definitions[1]) == "table" then
+                                for _, definition in ipairs(definitions) do
+                                    if type(definition) == "table" then
+                                        JL._searchRegister({
+                                            Name = definition.Name or definition.Type or "Nested control",
+                                            Kind = definition.Type or "Control", ParentName = tostring(valueName),
+                                            Row = result.Row, Control = result, OpenValue = tostring(valueName),
+                                        })
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+                return result
+            end
+        end
+    end
     return Sec
 end
 local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip)
@@ -3884,6 +3934,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
         return px / s
     end
     local panel = Instance.new("Frame"); panel.Size = UDim2.new(1,0,0,HH); panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0
+    panel:SetAttribute("JLSearchSection", tostring(title or "Section"))
     panel.LayoutOrder = layoutOrder or 1; panel.ClipsDescendants = true; panel.Parent = parentFrame
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10, so.Background)
@@ -3959,6 +4010,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
         return px / s
     end
     local panel = Instance.new("Frame"); panel.Size = UDim2.new(1,0,0,HH); panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0
+    panel:SetAttribute("JLSearchSection", tostring(sopts.Title or "MultiSection"))
     panel.LayoutOrder = layoutOrder or 1; panel.ClipsDescendants = true; panel.Parent = parentFrame
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10)
@@ -3980,6 +4032,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
         activePage = v; repaint()
     end, mode, cols, unscale)
     local sharedHost = Instance.new("Frame"); sharedHost.Size = UDim2.new(1,0,0,0); sharedHost.Position = UDim2.new(0,0,0,HH + 1)
+    sharedHost:SetAttribute("JLSearchPage", "Shared")
     sharedHost.BackgroundTransparency = 1; sharedHost.BorderSizePixel = 0; sharedHost.ClipsDescendants = true; sharedHost.Parent = panel
     local sharedList = Instance.new("UIListLayout"); sharedList.Padding = UDim.new(0,6); sharedList.SortOrder = Enum.SortOrder.LayoutOrder; sharedList.Parent = sharedHost
     pad(8,8,8,8,sharedHost)
@@ -4007,6 +4060,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     local pageSecs = {}
     for _,name in ipairs(pages) do
         local content = Instance.new("Frame"); content.Size = UDim2.new(1,0,0,0); content.Position = UDim2.new(0,0,0,contentY())
+        content:SetAttribute("JLSearchPage", tostring(name))
         content.BackgroundTransparency = 1; content.ClipsDescendants = true; content.Visible = (name == activePage); content.Parent = panel
         local list = Instance.new("UIListLayout"); list.Padding = UDim.new(0,6); list.SortOrder = Enum.SortOrder.LayoutOrder; list.Parent = content
         pad(8,8,8,8,content)
@@ -4433,7 +4487,7 @@ function JL:Window(opts)
         guiObject.MouseEnter:Connect(function() showTip(guiObject, text) end)
         guiObject.MouseLeave:Connect(hideTip)
     end
-    local TABPOS = UDim2.new(0,PADIN,0,PADIN)
+    local TABPOS = UDim2.new(0,PADIN,0,PADIN + 36)
     local function offPos(dir) return UDim2.new(dir,PADIN,0,PADIN) end
     local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local _tabCount = 0
     local function styleTab(id,active)
@@ -4587,6 +4641,188 @@ function JL:Window(opts)
         tw(sc,{CanvasPosition = Vector2.new(tx,ty)},.45)
         task.wait(.5)
     end
+    local searchEntries = {}
+    local searchButton = Instance.new("TextButton")
+    searchButton.Name = "JLGlobalSearchButton"
+    searchButton.Size = UDim2.new(0,92,0,28)
+    searchButton.Position = UDim2.new(1,-(PADIN + 92),0,PADIN + 3)
+    searchButton.BackgroundColor3 = C.btnBg
+    searchButton.BorderSizePixel = 0
+    searchButton.AutoButtonColor = false
+    searchButton.Text = "⌕  Search"
+    searchButton.Font = GB
+    searchButton.TextSize = 11
+    searchButton.TextColor3 = C.txt
+    searchButton.Parent = win
+    searchButton.ZIndex = 80
+    corner(7,searchButton); stroke(C.border,1,searchButton)
+    local searchWidth = math.max(180,CWW - 2 * PADIN)
+    local searchPanel = Instance.new("Frame")
+    searchPanel.Name = "JLGlobalSearchPanel"
+    searchPanel.Size = UDim2.new(0,searchWidth,0,204)
+    searchPanel.Position = UDim2.new(0,SBW + GAP + PADIN,0,PADIN + 35)
+    searchPanel.BackgroundColor3 = C.panel
+    searchPanel.BorderSizePixel = 0
+    searchPanel.Visible = false
+    searchPanel.ClipsDescendants = true
+    searchPanel.Parent = win
+    searchPanel.ZIndex = 81
+    corner(9,searchPanel); stroke(C.border,1,searchPanel)
+    local searchBox = Instance.new("TextBox")
+    searchBox.Name = "JLGlobalSearchInput"
+    searchBox.Size = UDim2.new(1,-42,0,30)
+    searchBox.Position = UDim2.new(0,8,0,8)
+    searchBox.BackgroundColor3 = C.input
+    searchBox.BorderSizePixel = 0
+    searchBox.PlaceholderText = "Search controls..."
+    searchBox.PlaceholderColor3 = C.dim
+    searchBox.ClearTextOnFocus = false
+    searchBox.Font = GB
+    searchBox.TextSize = 11
+    searchBox.TextColor3 = C.txt
+    searchBox.TextXAlignment = Enum.TextXAlignment.Left
+    searchBox.Text = ""
+    searchBox.Parent = searchPanel
+    searchBox.ZIndex = 82
+    corner(6,searchBox); stroke(C.border,1,searchBox); pad(9,8,0,0,searchBox)
+    local searchClose = Instance.new("TextButton")
+    searchClose.Size = UDim2.new(0,26,0,26)
+    searchClose.Position = UDim2.new(1,-34,0,10)
+    searchClose.BackgroundColor3 = C.btnBg
+    searchClose.BorderSizePixel = 0
+    searchClose.Text = "×"
+    searchClose.Font = GB
+    searchClose.TextSize = 16
+    searchClose.TextColor3 = C.dim
+    searchClose.Parent = searchPanel
+    searchClose.ZIndex = 82
+    corner(6,searchClose)
+    local searchResults = Instance.new("ScrollingFrame")
+    searchResults.Name = "JLGlobalSearchResults"
+    searchResults.Size = UDim2.new(1,-16,1,-48)
+    searchResults.Position = UDim2.new(0,8,0,42)
+    searchResults.BackgroundTransparency = 1
+    searchResults.BorderSizePixel = 0
+    searchResults.ScrollBarThickness = 3
+    searchResults.ScrollBarImageColor3 = C.border
+    searchResults.CanvasSize = UDim2.new(0,0,0,0)
+    searchResults.Parent = searchPanel
+    searchResults.ZIndex = 82
+    local resultLayout = Instance.new("UIListLayout")
+    resultLayout.Padding = UDim.new(0,4)
+    resultLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    resultLayout.Parent = searchResults
+    resultLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        searchResults.CanvasSize = UDim2.new(0,0,0,resultLayout.AbsoluteContentSize.Y + 4)
+    end)
+    local function searchPath(row)
+        local tabName, sectionName, pageName
+        local p = row
+        while p and p ~= win do
+            local page = p:GetAttribute("JLSearchPage")
+            if page then pageName = page end
+            local section = p:GetAttribute("JLSearchSection")
+            if section then sectionName = section end
+            for id,frame in pairs(tabFrames) do
+                if frame == p then
+                    local ui = tabUI[id]
+                    tabName = ui and ui.name or ("Tab " .. tostring(id))
+                    break
+                end
+            end
+            p = p.Parent
+        end
+        local parts = {}
+        if tabName then parts[#parts + 1] = tabName end
+        if sectionName then parts[#parts + 1] = sectionName end
+        if pageName then parts[#parts + 1] = pageName end
+        return table.concat(parts,"  ›  ")
+    end
+    local function addSearchEntry(entry)
+        if not entry or not entry.Row then return end
+        entry.Path = searchPath(entry.Row)
+        entry.SearchText = (tostring(entry.Name or "") .. " " .. tostring(entry.Kind or "") .. " " .. tostring(entry.ParentName or "") .. " " .. tostring(entry.Path or "")):lower()
+        searchEntries[#searchEntries + 1] = entry
+    end
+    JL._searchRegister = addSearchEntry
+    local function clearSearchResults()
+        for _,child in ipairs(searchResults:GetChildren()) do
+            if child ~= resultLayout then child:Destroy() end
+        end
+    end
+    local function refreshSearch()
+        clearSearchResults()
+        local query = searchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
+        if query == "" then return end
+        local matches = {}
+        for _,entry in ipairs(searchEntries) do
+            if entry.Row and entry.Row.Parent and entry.SearchText:find(query,1,true) then
+                matches[#matches + 1] = entry
+            end
+        end
+        table.sort(matches,function(a,b)
+            if a.Name:lower() ~= b.Name:lower() then return a.Name:lower() < b.Name:lower() end
+            return a.Path < b.Path
+        end)
+        for i = 1,math.min(#matches,60) do
+            local entry = matches[i]
+            local item = Instance.new("TextButton")
+            item.Name = "JLSearchResult"
+            item.Size = UDim2.new(1,-2,0,42)
+            item.BackgroundColor3 = C.btnBg
+            item.BorderSizePixel = 0
+            item.AutoButtonColor = false
+            item.Text = ""
+            item.LayoutOrder = i
+            item.Parent = searchResults
+            item.ZIndex = 83
+            corner(6,item)
+            newTxt({Parent=item,Text=tostring(entry.Name),Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-16,0,16),Pos=UDim2.new(0,8,0,5),Z=84})
+            newTxt({Parent=item,Text=entry.Path .. (entry.ParentName and ("  ›  " .. entry.ParentName) or "") .. "  ·  " .. tostring(entry.Kind),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-16,0,13),Pos=UDim2.new(0,8,0,23),Z=84})
+            item.MouseEnter:Connect(function() if not touchLast() then tw(item,{BackgroundColor3=C.btnHov},.1) end end)
+            item.MouseLeave:Connect(function() tw(item,{BackgroundColor3=C.btnBg},.1) end)
+            item.MouseButton1Click:Connect(function()
+                searchPanel.Visible = false
+                searchButton.Visible = true
+                if entry.OpenValue and entry.Control and entry.Control.OpenValue then
+                    pcall(entry.Control.OpenValue,entry.Control,entry.OpenValue)
+                elseif entry.Control and entry.Control.Open then
+                    pcall(entry.Control.Open,entry.Control)
+                end
+                trackedSpawn(function()
+                    task.wait(.28)
+                    if entry.Row and entry.Row.Parent then
+                        GUIDE.nav(entry.Row)
+                        GUIDE.pulse(entry.Row,2.6)
+                    end
+                end)
+            end)
+        end
+        if #matches == 0 then
+            newTxt({Parent=searchResults,Text="No matching controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
+        end
+    end
+    searchBox:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
+    local function openSearch()
+        searchPanel.Visible = true
+        searchPanel.Size = UDim2.new(0,searchWidth,0,0)
+        tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,204)},.18)
+        searchButton.Visible = false
+        refreshSearch()
+        trackedDefer(function() pcall(function() searchBox:CaptureFocus() end) end)
+    end
+    local function closeSearch()
+        searchButton.Visible = true
+        tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,0)},.16)
+        trackedDelay(.17,function() if searchPanel and searchPanel.Parent then searchPanel.Visible = false end end)
+    end
+    searchButton.MouseButton1Click:Connect(openSearch)
+    searchClose.MouseButton1Click:Connect(closeSearch)
+    function Win:Search(query)
+        openSearch()
+        if query ~= nil then searchBox.Text = tostring(query) end
+        return true
+    end
     function Win:GoTo(target)
         local el = type(target) == "string" and JL._registry[target] or target
         local row = (typeof(target) == "Instance") and target or (type(el) == "table" and el.Row)
@@ -4604,10 +4840,10 @@ function JL:Window(opts)
         if labelsOn then tabLabel = newTxt({Parent=btn,Text=topts.Name or "",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-4,0,12),Pos=UDim2.new(0,2,0,28),Z=14}) end
         if ic:IsA("TextLabel") then ic.TextColor3 = C.dim else ic.ImageColor3 = C.dim end
         local ind = Instance.new("Frame"); ind.Size = UDim2.new(0,3,0,14); ind.Position = UDim2.new(0,-5,0.5,-7); ind.BackgroundColor3 = ACCENTS[1]; ind.BorderSizePixel = 0; ind.Visible = false; ind.Parent = btn; corner(2,ind)
-        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel}
+        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id))}
         attachTip(btn, topts.Tooltip or topts.Name)
         local tabLock = attachLockHidden(btn, {Locked = topts.Locked, Hidden = topts.Hidden, LockedMessage = topts.LockedMessage, LockedTitle = topts.LockedTitle, Requires = topts.Requires, HiddenUntil = topts.HiddenUntil, OpenStore = topts.OpenStore})
-        local tabFrame = Instance.new("Frame"); tabFrame.Size = UDim2.new(1,-2 * PADIN,1,-2 * PADIN); tabFrame.Position = TABPOS
+        local tabFrame = Instance.new("Frame"); tabFrame.Size = UDim2.new(1,-2 * PADIN,1,-2 * PADIN - 36); tabFrame.Position = TABPOS
         tabFrame.BackgroundTransparency = 1; tabFrame.Visible = false; tabFrame.Parent = content
         tabFrames[id] = tabFrame
         btn.MouseButton1Click:Connect(function() switchToTab(id) end)
