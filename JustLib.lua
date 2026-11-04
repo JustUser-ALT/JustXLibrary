@@ -4769,11 +4769,41 @@ function JL:Window(opts)
         local query = searchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
         if query == "" then return end
         local matches = {}
+        local indexedRows = {}
         for _,entry in ipairs(searchEntries) do
             local currentRow = entry.Control and entry.Control.Row or entry.Row
+            if currentRow then indexedRows[currentRow] = true end
             if currentRow and currentRow.Parent and entry.SearchText:find(query,1,true) then
                 entry.Row = currentRow
                 matches[#matches + 1] = entry
+            end
+        end
+        local function insideIndexedControl(object,tabFrame)
+            local parent = object
+            while parent and parent ~= tabFrame do
+                if indexedRows[parent] then return true end
+                parent = parent.Parent
+            end
+            return false
+        end
+        for _,tabFrame in pairs(tabFrames) do
+            for _,object in ipairs(tabFrame:GetDescendants()) do
+                if (object:IsA("TextButton") or object:IsA("TextBox")) and not insideIndexedControl(object,tabFrame) then
+                    local label = object:IsA("TextBox") and object.PlaceholderText or object.Text
+                    if not label or label == "" then
+                        local childLabel = object:FindFirstChildWhichIsA("TextLabel",true)
+                        label = childLabel and childLabel.Text or ""
+                    end
+                    label = tostring(label or "")
+                    if label ~= "" then
+                        local kind = object:IsA("TextBox") and "Input" or "Button"
+                        local path = searchPath(object)
+                        local searchText = (label .. " " .. kind .. " " .. path):lower()
+                        if searchText:find(query,1,true) then
+                            matches[#matches + 1] = {Name = label, Kind = kind, Path = path, SearchText = searchText, Row = object}
+                        end
+                    end
+                end
             end
         end
         table.sort(matches,function(a,b)
