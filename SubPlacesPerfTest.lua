@@ -1,6 +1,6 @@
 --==================================================
 -- JUSTLIB SUB-PLACES PERFORMANCE TEST
--- Opens the built-in Home tab with detailed Sub-Places profiling enabled.
+-- Verifies that Sub-Places UI opens before background thumbnail requests begin.
 --==================================================
 
 local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/JustLib.lua"
@@ -26,5 +26,5 @@ Window:HomeTab({
 })
 
 print("[Sub-Places Perf Test] Ready.")
-print("[Sub-Places Perf Test] Open Home > Sub-Places and wait for the thumbnails.")
-print("[Sub-Places Perf Test] Send all console lines beginning with [JustLib Perf] Sub-Places.")
+print("[Sub-Places Perf Test] Open Home > Sub-Places. The window should appear before thumbnails load.")
+print("[Sub-Places Perf Test] Send all [JustLib Perf] Sub-Places lines and report whether the window still freezes.")
