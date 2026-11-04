@@ -232,6 +232,17 @@ local HomeTab = Window:HomeTab({
     Announcement = "Use the Cleanup tab to test resource registration and unload.",
 })
 
+task.delay(1, function()
+    local homeFrame = HomeTab and HomeTab.Frame
+    local changelogFrame = homeFrame and homeFrame:FindFirstChild("ChangelogFrame", true)
+    local changelogList = changelogFrame and changelogFrame:FindFirstChild("ChangelogList", true)
+    print("[Cleanup Test] Home Changelog frame created:", changelogFrame ~= nil)
+    print("[Cleanup Test] Home Changelog list created:", changelogList ~= nil)
+    if changelogList then
+        print("[Cleanup Test] Changelog content height:", changelogList.CanvasSize.Y.Offset)
+    end
+end)
+
 JL:Notify({Title = "Cleanup test", Desc = "This notification should disappear when the library unloads.", Duration = 60})
 
 print("[Cleanup Test] Loaded.")
