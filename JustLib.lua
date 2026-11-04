@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.7"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.1.0"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -4563,6 +4563,9 @@ function JL:Window(opts)
     local function destroyHub()
         if _dead then return end
         _dead = true; isOpen = false; JL._winOpen = false
+        JL._searchRegister = nil
+        if JL._searchEntries then for k in pairs(JL._searchEntries) do JL._searchEntries[k] = nil end end
+        if JL._searchPageTargets then for k in pairs(JL._searchPageTargets) do JL._searchPageTargets[k] = nil end end
         _disposed = true
         if shared._JLActive then shared._JLActive.alive = false end
         pcall(function() fpsConn:Disconnect() end)
@@ -4652,6 +4655,7 @@ function JL:Window(opts)
         task.wait(.5)
     end
     local searchEntries = {}
+    JL._searchEntries = searchEntries
     local searchButton = Instance.new("TextButton")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,92,0,28)
@@ -4773,7 +4777,8 @@ function JL:Window(opts)
             end
         end
         table.sort(matches,function(a,b)
-            if a.Name:lower() ~= b.Name:lower() then return a.Name:lower() < b.Name:lower() end
+            local an, bn = tostring(a.Name):lower(), tostring(b.Name):lower()
+            if an ~= bn then return an < bn end
             return a.Path < b.Path
         end)
         for i = 1,math.min(#matches,60) do
@@ -4796,6 +4801,7 @@ function JL:Window(opts)
             item.MouseButton1Click:Connect(function()
                 searchPanel.Visible = false
                 searchButton.Visible = true
+                entry.Row = entry.Control and entry.Control.Row or entry.Row
                 if entry.OpenValue and entry.Control and entry.Control.OpenValue then
                     pcall(entry.Control.OpenValue,entry.Control,entry.OpenValue)
                 elseif entry.Control and entry.Control.Open then
@@ -4803,9 +4809,10 @@ function JL:Window(opts)
                 end
                 trackedSpawn(function()
                     task.wait(.28)
-                    if entry.Row and entry.Row.Parent then
-                        GUIDE.nav(entry.Row)
-                        GUIDE.pulse(entry.Row,2.6)
+                    local targetRow = entry.Control and entry.Control.Row or entry.Row
+                    if targetRow and targetRow.Parent then
+                        GUIDE.nav(targetRow)
+                        GUIDE.pulse(targetRow,2.6)
                     end
                 end)
             end)
