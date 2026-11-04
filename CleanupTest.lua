@@ -234,10 +234,23 @@ local HomeTab = Window:HomeTab({
 
 task.delay(1, function()
     local homeFrame = HomeTab and HomeTab.Frame
+    local playerCard = homeFrame and homeFrame:FindFirstChild("PlayerCard", true)
     local changelogFrame = homeFrame and homeFrame:FindFirstChild("ChangelogFrame", true)
     local changelogList = changelogFrame and changelogFrame:FindFirstChild("ChangelogList", true)
+    local playerStatus = playerCard and playerCard:FindFirstChild("PlayerStatus", true)
+    local changelogEntries = 0
+    if changelogList then
+        for _, child in ipairs(changelogList:GetChildren()) do
+            if child.Name == "ChangelogEntry" then
+                changelogEntries = changelogEntries + 1
+            end
+        end
+    end
+    print("[Cleanup Test] Home Player Card created:", playerCard ~= nil)
+    print("[Cleanup Test] Home Player status created:", playerStatus ~= nil)
     print("[Cleanup Test] Home Changelog frame created:", changelogFrame ~= nil)
     print("[Cleanup Test] Home Changelog list created:", changelogList ~= nil)
+    print("[Cleanup Test] Changelog entries rendered (expected 3):", changelogEntries)
     if changelogList then
         print("[Cleanup Test] Changelog content height:", changelogList.CanvasSize.Y.Offset)
     end
