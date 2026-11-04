@@ -2684,6 +2684,14 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         if settings then make("settings","Settings",function() openMetaPanel((definition.Name or "Control") .. " · Settings",definition.Settings,true) end) end
         if info then make("info","More information",function() openMetaPanel((definition.Name or "Control") .. " · Info",definition.Info,false) end) end
+        local reserve = ((settings and 1 or 0) + (info and 1 or 0)) * 22 + 4
+        for _,child in ipairs(row:GetChildren()) do
+            if child:IsA("GuiObject") and child.ZIndex < 55 then
+                if child.Size.X.Scale == 1 then child.Size = UDim2.new(1,child.Size.X.Offset-reserve,child.Size.Y.Scale,child.Size.Y.Offset) end
+                if child.Position.X.Scale == 1 then child.Position = UDim2.new(1,child.Position.X.Offset-reserve,child.Position.Y.Scale,child.Position.Y.Offset) end
+                if child:IsA("TextLabel") and child.Size.X.Scale == 0 then child.Size = UDim2.new(0,math.max(0,child.Size.X.Offset-reserve),child.Size.Y.Scale,child.Size.Y.Offset) end
+            end
+        end
     end
     local function newRow(h2)
         iOrd = iOrd + 1
@@ -3259,13 +3267,13 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                         local steps = buildSteps(d)
                         local defIdx = 1
                         if d.Default ~= nil then for si,s in ipairs(steps) do if s.value == d.Default then defIdx = si; break end end end
-                        dims[i] = {type = "Slider", name = d.Name, key = d.Name or ("v" .. i), steps = steps, defaultIndex = defIdx}
+                        dims[i] = {type = "Slider", name = d.Name, key = d.Name or ("v" .. i), steps = steps, defaultIndex = defIdx, meta = d}
                     elseif t == "Toggle" then
-                        dims[i] = {type = "Toggle", name = d.Name or "Toggle", key = d.Name or ("v" .. i), default = d.Default or false, callback = d.Callback, master = d.Master == true}
+                        dims[i] = {type = "Toggle", name = d.Name or "Toggle", key = d.Name or ("v" .. i), default = d.Default or false, callback = d.Callback, master = d.Master == true, meta = d}
                     elseif t == "ColorPicker" then
-                        dims[i] = {type = "ColorPicker", name = d.Name or "Color", key = d.Name or ("v" .. i), default = d.Default or Color3.fromRGB(255,255,255), callback = d.Callback}
+                        dims[i] = {type = "ColorPicker", name = d.Name or "Color", key = d.Name or ("v" .. i), default = d.Default or Color3.fromRGB(255,255,255), callback = d.Callback, meta = d}
                     elseif t == "Button" then
-                        dims[i] = {type = "Button", name = d.Name or "Button", key = d.Name or ("v" .. i), callback = d.Callback}
+                        dims[i] = {type = "Button", name = d.Name or "Button", key = d.Name or ("v" .. i), callback = d.Callback, meta = d}
                     end
                 end
                 dimsOf[nm] = dims; isMulti[nm] = true
@@ -3574,6 +3582,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     btn.MouseLeave:Connect(function() tw(btn,{BackgroundColor3 = C.btnBg},.1) end)
                     local d2 = d
                     btn.MouseButton1Click:Connect(function() if d2.callback then pcall(d2.callback) end end)
+                end
+                if d.meta then
+                    local metaRow = Instance.new("Frame"); metaRow.Size = UDim2.new(1,0,0,rowH); metaRow.Position = UDim2.new(0,0,0,y); metaRow.BackgroundTransparency = 1; metaRow.ZIndex = 45; metaRow.Parent = panel
+                    addMetaButtons(metaRow,d.meta)
                 end
             end
             if groupMode[nm] then
