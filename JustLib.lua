@@ -5974,7 +5974,6 @@ function JL:Window(opts)
         do
             local h = 180
             local card = newCard(h)
-
             card.BackgroundTransparency = 1
             for _,child in ipairs(card:GetChildren()) do
                 if child:IsA("UIStroke") then child.Transparency = 1 end
@@ -5982,41 +5981,103 @@ function JL:Window(opts)
 
             local playerCard = Instance.new("Frame")
             playerCard.Name = "PlayerCard"
-            playerCard.Size = UDim2.new(1,-194,0,96)
-            playerCard.Position = UDim2.new(0,0,0.5,-48)
+            playerCard.Size = UDim2.new(1,-194,0,180)
+            playerCard.Position = UDim2.new(0,0,0,0)
             playerCard.BackgroundColor3 = C.panel
             playerCard.BorderSizePixel = 0
+            playerCard.ClipsDescendants = true
             playerCard.Parent = card
             corner(10,playerCard)
             stroke(C.border,1,playerCard)
 
-            local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = playerCard
+            local profileAccent = Instance.new("Frame")
+            profileAccent.Size = UDim2.new(0,3,1,-20)
+            profileAccent.Position = UDim2.new(0,0,0,10)
+            profileAccent.BackgroundColor3 = ACCENTS[1]
+            profileAccent.BorderSizePixel = 0
+            profileAccent.Parent = playerCard
+            corner(2,profileAccent)
+
+            newTxt({Parent=playerCard,Text="PLAYER PROFILE",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-104,0,14),Pos=UDim2.new(0,14,0,10)})
+
+            local statusChip = Instance.new("Frame")
+            statusChip.Name = "PlayerStatus"
+            statusChip.Size = UDim2.new(0,78,0,22)
+            statusChip.Position = UDim2.new(1,-90,0,7)
+            statusChip.BackgroundColor3 = C.pHdr
+            statusChip.BorderSizePixel = 0
+            statusChip.Parent = playerCard
+            corner(7,statusChip)
+            local statusDot = Instance.new("Frame")
+            statusDot.Size = UDim2.new(0,6,0,6)
+            statusDot.Position = UDim2.new(0,8,0.5,-3)
+            statusDot.BackgroundColor3 = C.fpsGrn
+            statusDot.BorderSizePixel = 0
+            statusDot.Parent = statusChip
+            corner(3,statusDot)
+            newTxt({Parent=statusChip,Text="ONLINE",Font=GB,Size=9,Color=C.fpsGrn,Sz=UDim2.new(1,-20,1,0),Pos=UDim2.new(0,18,0,0)})
+
+            local avatar = Instance.new("ImageLabel")
+            avatar.Size = UDim2.new(0,64,0,64)
+            avatar.Position = UDim2.new(0,14,0,48)
+            avatar.BackgroundColor3 = C.pHdr
+            avatar.BorderSizePixel = 0
+            avatar.Parent = playerCard
             avatar:SetAttribute("JLNoRepaint", true)
             corner(32,avatar)
             trackedSpawn(function()
-                local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
+                local ok,content = pcall(function()
+                    return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+                end)
                 if ok then avatar.Image = content end
             end)
-            newTxt({Parent=playerCard,Text="Welcome back,",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,16)})
-            newTxt({Parent=playerCard,Text=LP.DisplayName,Font=GB,Size=17,Sz=UDim2.new(0,260,0,22),Pos=UDim2.new(0,90,0,30)})
-            newTxt({Parent=playerCard,Text="@" .. LP.Name,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,54)})
+
+            newTxt({Parent=playerCard,Text="Welcome back,",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-104,0,13),Pos=UDim2.new(0,90,0,48)})
+            newTxt({Parent=playerCard,Text=LP.DisplayName,Font=GB,Size=16,Sz=UDim2.new(1,-104,0,22),Pos=UDim2.new(0,90,0,63)})
+            newTxt({Parent=playerCard,Text="@" .. LP.Name,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-104,0,14),Pos=UDim2.new(0,90,0,86)})
+
+            local profileDivider = Instance.new("Frame")
+            profileDivider.Size = UDim2.new(1,-28,0,1)
+            profileDivider.Position = UDim2.new(0,14,0,122)
+            profileDivider.BackgroundColor3 = C.border
+            profileDivider.BorderSizePixel = 0
+            profileDivider.Parent = playerCard
+
+            local execName,execVer = detectExecutor()
+            local executorText = execName or "Unknown"
+            if execVer and execVer ~= "" then executorText = executorText .. " " .. tostring(execVer) end
+            newTxt({Parent=playerCard,Text="EXECUTOR",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(0.48,-18,0,12),Pos=UDim2.new(0,14,0,132)})
+            newTxt({Parent=playerCard,Text=executorText,Font=GB,Size=11,Color=execName and C.txt or C.dim,Sz=UDim2.new(0.48,-18,0,16),Pos=UDim2.new(0,14,0,148)})
+            newTxt({Parent=playerCard,Text="ACCOUNT AGE",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(0.48,-18,0,12),Pos=UDim2.new(0.52,4,0,132)})
+            newTxt({Parent=playerCard,Text=tostring(LP.AccountAge) .. " days",Font=GB,Size=11,Sz=UDim2.new(0.48,-18,0,16),Pos=UDim2.new(0.52,4,0,148)})
 
             local changelogFrame = Instance.new("Frame")
             changelogFrame.Name = "ChangelogFrame"
             changelogFrame.Size = UDim2.new(0,180,0,180)
             changelogFrame.Position = UDim2.new(1,-180,0,0)
-            changelogFrame.BackgroundColor3 = C.pHdr
+            changelogFrame.BackgroundColor3 = C.panel
             changelogFrame.BorderSizePixel = 0
             changelogFrame.ClipsDescendants = true
             changelogFrame.Parent = card
             corner(9,changelogFrame)
             stroke(C.border,1,changelogFrame)
 
-            newTxt({Parent=changelogFrame,Text="Changelog",Font=GB,Size=11,Sz=UDim2.new(1,-16,0,14),Pos=UDim2.new(0,8,0,7)})
+            local changelogAccent = Instance.new("Frame")
+            changelogAccent.Size = UDim2.new(1,-20,0,2)
+            changelogAccent.Position = UDim2.new(0,10,0,0)
+            changelogAccent.BackgroundColor3 = ACCENTS[1]
+            changelogAccent.BorderSizePixel = 0
+            changelogAccent.Parent = changelogFrame
+            corner(1,changelogAccent)
+
+            newTxt({Parent=changelogFrame,Text="WHAT'S NEW",Font=GB,Size=10,Sz=UDim2.new(1,-72,0,14),Pos=UDim2.new(0,10,0,8)})
+            local changelogCount = # (type(hopts.Changelog) == "table" and hopts.Changelog or {})
+            newTxt({Parent=changelogFrame,Text=tostring(changelogCount) .. " updates",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,64,0,14),Pos=UDim2.new(1,-74,0,8)})
+
             local changelogScroll = Instance.new("ScrollingFrame")
             changelogScroll.Name = "ChangelogList"
-            changelogScroll.Size = UDim2.new(1,-12,1,-31)
-            changelogScroll.Position = UDim2.new(0,6,0,25)
+            changelogScroll.Size = UDim2.new(1,-12,1,-38)
+            changelogScroll.Position = UDim2.new(0,6,0,32)
             changelogScroll.BackgroundTransparency = 1
             changelogScroll.BorderSizePixel = 0
             changelogScroll.ScrollBarThickness = 2
@@ -6026,7 +6087,7 @@ function JL:Window(opts)
             changelogScroll.Parent = changelogFrame
 
             local changelogLayout = Instance.new("UIListLayout")
-            changelogLayout.Padding = UDim.new(0,3)
+            changelogLayout.Padding = UDim.new(0,5)
             changelogLayout.SortOrder = Enum.SortOrder.LayoutOrder
             changelogLayout.Parent = changelogScroll
 
@@ -6047,40 +6108,71 @@ function JL:Window(opts)
                 end
                 heading = heading ~= nil and tostring(heading) or nil
                 description = description ~= nil and tostring(description) or ""
-                local content = heading and heading ~= "" and (description ~= "" and (heading .. "  —  " .. description) or heading) or description
-                if content ~= "" then
+                if (heading and heading ~= "") or description ~= "" then
                     entryCount = entryCount + 1
-                    local label = newTxt({Parent=changelogScroll,Text=content,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-4,0,fitH(content,10,GM,148,13,2)),Pos=UDim2.new(0,2,0,0)})
-                    label.LayoutOrder = index
-                    label.TextYAlignment = Enum.TextYAlignment.Top
+                    local item = Instance.new("Frame")
+                    item.Name = "ChangelogEntry"
+                    item.Size = UDim2.new(1,-4,0,34)
+                    item.BackgroundColor3 = C.pHdr
+                    item.BorderSizePixel = 0
+                    item.LayoutOrder = index
+                    item.Parent = changelogScroll
+                    corner(6,item)
+
+                    local marker = Instance.new("Frame")
+                    marker.Size = UDim2.new(0,2,1,-10)
+                    marker.Position = UDim2.new(0,0,0,5)
+                    marker.BackgroundColor3 = ACCENTS[1]
+                    marker.BorderSizePixel = 0
+                    marker.Parent = item
+                    corner(1,marker)
+
+                    local titleText = heading and heading ~= "" and heading or "UPDATE"
+                    newTxt({Parent=item,Text=titleText,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-14,0,12),Pos=UDim2.new(0,8,0,4)})
+                    local descHeight = description ~= "" and fitH(description,9,GM,146,11,2) or 0
+                    local desc = newTxt({Parent=item,Text=description,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-14,0,descHeight),Pos=UDim2.new(0,8,0,17)})
+                    desc.TextYAlignment = Enum.TextYAlignment.Top
+                    item.Size = UDim2.new(1,-4,0,math.max(30,17 + descHeight + 5))
                 end
             end
             if entryCount == 0 then
-                newTxt({Parent=changelogScroll,Text="No changelog entries.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-4,0,14),Pos=UDim2.new(0,2,0,0)})
+                newTxt({Parent=changelogScroll,Text="No updates yet.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Pos=UDim2.new(0,4,0,4)})
             end
             refreshChangelogCanvas()
 
             if hopts.Tier or #SUB.order > 0 then
-                local chip = Instance.new("TextButton"); chip.AutoButtonColor = false; chip.Text = ""; chip.BackgroundColor3 = C.badgeHi; chip.BorderSizePixel = 0; chip.Parent = changelogFrame; corner(7,chip)
+                local chip = Instance.new("TextButton")
+                chip.AutoButtonColor = false
+                chip.Text = ""
+                chip.BackgroundColor3 = C.badgeHi
+                chip.BorderSizePixel = 0
+                chip.Parent = changelogFrame
+                corner(7,chip)
                 local chipStroke = stroke(ACCENTS[1],1,chip)
-                local chipTxt = newTxt({Parent=chip,Text="",Font=GB,Size=12,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center})
-                local timeTxt = newTxt({Parent=changelogFrame,Text="",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,120,0,10),Pos=UDim2.new(1,-128,0,29)})
-                changelogScroll.Position = UDim2.new(0,6,0,42)
-                changelogScroll.Size = UDim2.new(1,-12,1,-48)
+                local chipTxt = newTxt({Parent=chip,Text="",Font=GB,Size=10,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center})
+                local timeTxt = newTxt({Parent=changelogFrame,Text="",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,86,0,10),Pos=UDim2.new(1,-94,0,25)})
+                changelogScroll.Position = UDim2.new(0,6,0,48)
+                changelogScroll.Size = UDim2.new(1,-12,1,-54)
                 local function refreshChip()
                     local info = JL:GetSubscriptionInfo()
                     local label = info.Subscribed and info.Name or (hopts.Tier or info.Name)
                     local custom = info.Tier and info.Tier.Color
                     local col = custom or ACCENTS[1]
-                    local w = math.max(64, math.floor(TextService:GetTextSize(label, 12, GB, Vector2.new(200,20)).X) + 26)
-                    chip.Size = UDim2.new(0,w,0,20); chip.Position = UDim2.new(1,-(w + 6),0,2)
-                    chipTxt.Text = label; chipTxt.TextColor3 = col; chipStroke.Color = col
-                    chipTxt:SetAttribute("JLNoRepaint", custom ~= nil); chipStroke:SetAttribute("JLNoRepaint", custom ~= nil)
+                    local w = math.max(58, math.min(86, math.floor(TextService:GetTextSize(label, 10, GB, Vector2.new(120,20)).X) + 18))
+                    chip.Size = UDim2.new(0,w,0,18)
+                    chip.Position = UDim2.new(0,8,0,25)
+                    chipTxt.Text = label
+                    chipTxt.TextColor3 = col
+                    chipStroke.Color = col
+                    chipTxt:SetAttribute("JLNoRepaint", custom ~= nil)
+                    chipStroke:SetAttribute("JLNoRepaint", custom ~= nil)
                     timeTxt.Text = info.TimeText or ""
                 end
                 refreshChip()
                 JL:OnTierChanged(refreshChip)
-                chip.MouseButton1Click:Connect(function() if #SUB.order > 0 then JL:OpenSubscriptions() end end)
+                chip.MouseButton1Click:Connect(function()
+                    if #SUB.order > 0 then JL:OpenSubscriptions() end
+                end)
             end
         end
         do
