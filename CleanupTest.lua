@@ -30,6 +30,49 @@ local Section = Tab:Section({
     Column = 1,
 })
 
+local PrivacySection = Tab:Section({
+    Title = "Streamer Mode",
+    Column = 2,
+})
+
+local function makePrivacyLabel(name,text)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = name
+    gui.ResetOnSpawn = false
+    gui.Parent = game:GetService("CoreGui")
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.fromOffset(320,32)
+    label.Position = UDim2.fromOffset(20,20)
+    label.BackgroundTransparency = 0
+    label.Text = text
+    label.Parent = gui
+    return gui,label
+end
+
+local privacyGui,privacyLabel = makePrivacyLabel("JL_StreamerModeTest", "Player: " .. Players.LocalPlayer.DisplayName .. " (@" .. Players.LocalPlayer.Name .. ")")
+PrivacySection:Toggle({
+    Name = "Streamer Mode Test",
+    Default = false,
+    Callback = function(value)
+        JL:SetStreamerMode(value)
+        print("[Cleanup Test] Streamer Mode:", JL:GetStreamerMode())
+    end,
+})
+PrivacySection:Button({
+    Name = "Update Test Name",
+    Callback = function()
+        privacyLabel.Text = "Leaderboard: " .. Players.LocalPlayer.Name
+        print("[Cleanup Test] Updated test label. Streamer Mode should mask it if enabled.")
+    end,
+})
+PrivacySection:Button({
+    Name = "Remove Test Label",
+    Callback = function()
+        if privacyGui then privacyGui:Destroy(); privacyGui = nil end
+    end,
+})
+
+
 -- These controls are eligible for player pinning through Settings > Remote > Edit Remote Items.
 Section:Toggle({
     Name = "Remote Test Toggle",
