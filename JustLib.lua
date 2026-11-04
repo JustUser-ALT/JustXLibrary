@@ -3926,12 +3926,13 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     if (methodName == "Dropdown" or methodName == "ValueDropdown") and type(o.Options) == "table" then
                         for _, optionName in ipairs(o.Options) do
                             if not isDividerOpt(optionName) then
+                                local optionKey = optionName
                                 JL._searchRegister({
-                                    Name = tostring(optionName), Kind = "Option",
+                                    Name = tostring(optionKey), Kind = "Option",
                                     ParentName = o.Name or methodName, Row = result.Row, Control = result,
                                     TargetResolver = function()
                                         local refs = result._searchOptionRows
-                                        local ref = refs and refs[optionName]
+                                        local ref = refs and refs[optionKey]
                                         return ref and ref.opt or nil
                                     end,
                                 })
@@ -3945,14 +3946,15 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                                 nestedEntries[tostring(valueName)] = {}
                                 for index, definition in ipairs(definitions) do
                                     if type(definition) == "table" then
-                                        nestedEntries[tostring(valueName)][index] = JL._searchRegister({
+                                        local nestedIndex = index
+                                        nestedEntries[tostring(valueName)][nestedIndex] = JL._searchRegister({
                                             Name = definition.Name or definition.Type or "Nested control",
                                             Kind = definition.Type or "Control", ParentName = tostring(valueName),
                                             Row = result.Row, Control = result, OpenValue = tostring(valueName),
-                                            NestedIndex = index,
+                                            NestedIndex = nestedIndex,
                                             TargetResolver = function()
                                                 local targets = result._searchTargetRows
-                                                return targets and targets[index] or nil
+                                                return targets and targets[nestedIndex] or nil
                                             end,
                                         })
                                     end
