@@ -668,19 +668,26 @@ JL._streamerMode = false
 local streamerRecords = setmetatable({}, {__mode = "k"})
 local streamerConnections = {}
 local function streamerNames()
-    local names = {}
+    local names, seen = {}, {}
     for _,name in ipairs({LP.Name, LP.DisplayName}) do
-        if type(name) == "string" and name ~= "" and not names[name] then
-            names[name] = true
+        if type(name) == "string" and name ~= "" and not seen[name] then
+            seen[name] = true
+            names[#names + 1] = name
         end
     end
+    table.sort(names, function(a,b) return #a > #b end)
     return names
 end
 local function streamerMaskText(value)
     if type(value) ~= "string" or value == "" then return value end
     local names = streamerNames()
-    for name in pairs(names) do
-        local replacement = string.rep("#", (utf8 and utf8.len and utf8.len(name)) or #name)
+    for _,name in ipairs(names) do
+        local charCount = #name
+        if utf8 and utf8.len then
+            local ok,count = pcall(utf8.len, name)
+            if ok and count then charCount = count end
+        end
+        local replacement = string.rep("#", charCount)
         local parts, position = {}, 1
         while true do
             local first,last = string.find(value, name, position, true)
