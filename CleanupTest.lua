@@ -99,6 +99,13 @@ SearchSection:Button({
 })
 
 SearchSection:Button({
+    Name = "Test Nested Slider Search",
+    Callback = function()
+        Window:Search("Nested Search Slider")
+    end,
+})
+
+SearchSection:Button({
     Name = "Test Hidden Page Search",
     Callback = function()
         Window:Search("Hidden Page Search Toggle")
