@@ -105,6 +105,13 @@ SearchSection:Button({
     end,
 })
 
+SearchSection:Button({
+    Name = "Test Settings Search Navigation",
+    Callback = function()
+        Window:Search("Streamer Mode")
+    end,
+})
+
 local function makePrivacyLabel(name,text)
     local gui = Instance.new("ScreenGui")
     gui.Name = name
