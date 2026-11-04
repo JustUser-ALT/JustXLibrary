@@ -5975,12 +5975,20 @@ function JL:Window(opts)
             local h = 180
             local card = newCard(h)
 
-            local playerInfo = Instance.new("Frame")
-            playerInfo.Name = "PlayerInfo"
-            playerInfo.Size = UDim2.new(1,-194,0,96)
-            playerInfo.Position = UDim2.new(0,0,0.5,-48)
-            playerInfo.BackgroundTransparency = 1
-            playerInfo.Parent = card
+            card.BackgroundTransparency = 1
+            for _,child in ipairs(card:GetChildren()) do
+                if child:IsA("UIStroke") then child.Transparency = 1 end
+            end
+
+            local playerCard = Instance.new("Frame")
+            playerCard.Name = "PlayerCard"
+            playerCard.Size = UDim2.new(1,-194,0,96)
+            playerCard.Position = UDim2.new(0,0,0.5,-48)
+            playerCard.BackgroundColor3 = C.panel
+            playerCard.BorderSizePixel = 0
+            playerCard.Parent = card
+            corner(10,playerCard)
+            stroke(C.border,1,playerCard)
 
             local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = playerInfo
             avatar:SetAttribute("JLNoRepaint", true)
@@ -5989,7 +5997,7 @@ function JL:Window(opts)
                 local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
                 if ok then avatar.Image = content end
             end)
-            newTxt({Parent=playerInfo,Text="Welcome back,",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,16)})
+            newTxt({Parent=playerCard,Text="Welcome back,",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,16)})
             newTxt({Parent=playerInfo,Text=LP.DisplayName,Font=GB,Size=17,Sz=UDim2.new(0,260,0,22),Pos=UDim2.new(0,90,0,30)})
             newTxt({Parent=playerInfo,Text="@" .. LP.Name,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,54)})
 
