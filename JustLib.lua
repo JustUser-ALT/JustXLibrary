@@ -4183,6 +4183,9 @@ local function removeOrphanedHubGuis()
 end
 function JL:Window(opts)
     opts = opts or {}
+    if not JL._iconPack and opts.LoadIcons ~= false then
+        pcall(function() self:LoadIconPack(opts.IconPackURL) end)
+    end
     _disposed = false
     local hubStartTick = tick()
     if shared._JLActive and shared._JLActive.alive then
@@ -6019,7 +6022,7 @@ function JL:Window(opts)
     end)
     function Win:Settings()
         if opts.Settings == false then return nil end
-        local sTab = self:Tab({Icon = JL._iconPack and "settings" or "⚙", Type = "Custom", Name = "Settings"})
+        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings"})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
         local navW = 146
