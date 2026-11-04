@@ -1372,6 +1372,7 @@ local spPlayersCache = {}
 local spCanCustom = (typeof(writefile) == "function" and (typeof(getcustomasset) == "function" or typeof(getsynasset) == "function"))
 local function spDownload(url, id)
     if not spCanCustom then return nil end
+    local started = os.clock()
     pcall(function()
         if isfolder and makefolder then
             if not isfolder("JustLib") then makefolder("JustLib") end
@@ -1382,13 +1383,31 @@ local function spDownload(url, id)
     local have = false
     if isfile then local ok,r = pcall(isfile, path); have = ok and r == true end
     if not have then
+        local requestStarted = os.clock()
         local r = execRequest({Url = url, Method = "GET"})
-        if not r or type(r.Body) ~= "string" or #r.Body < 200 then return nil end
+        if JL._perfEnabled then
+            warn("[JustLib Perf] Sub-Places thumbnail download request (" .. tostring(id) .. "): " .. string.format("%.3f s", os.clock() - requestStarted))
+        end
+        if not r or type(r.Body) ~= "string" or #r.Body < 200 then
+            if JL._perfEnabled then warn("[JustLib Perf] Sub-Places thumbnail failed (" .. tostring(id) .. "): empty/invalid response") end
+            return nil
+        end
+        local writeStarted = os.clock()
         local ok = pcall(writefile, path, r.Body)
+        if JL._perfEnabled then
+            warn("[JustLib Perf] Sub-Places thumbnail write (" .. tostring(id) .. "): " .. string.format("%.3f s", os.clock() - writeStarted))
+        end
         if not ok then return nil end
+    elseif JL._perfEnabled then
+        warn("[JustLib Perf] Sub-Places thumbnail cache hit (" .. tostring(id) .. ")")
     end
+    local assetStarted = os.clock()
     local fn = getcustomasset or getsynasset
     local ok,asset = pcall(fn, path)
+    if JL._perfEnabled then
+        warn("[JustLib Perf] Sub-Places getcustomasset (" .. tostring(id) .. "): " .. string.format("%.3f s", os.clock() - assetStarted))
+        warn("[JustLib Perf] Sub-Places thumbnail total (" .. tostring(id) .. "): " .. string.format("%.3f s", os.clock() - started))
+    end
     if ok and asset and asset ~= "" then return asset end
     return nil
 end
@@ -1672,26 +1691,50 @@ local function buildSubPlacesUI(universeId, places)
         end
     end)
     trackedSpawn(function()
-        if not spCanCustom then return end
+        if not spCanCustom then
+            if JL._perfEnabled then warn("[JustLib Perf] Sub-Places thumbnail pipeline skipped: executor has no writefile/getcustomasset pair") end
+            return
+        end
+        local pipelineStarted = os.clock()
         local ids = {}
         for _,pl in ipairs(places) do ids[#ids + 1] = tostring(pl.id) end
-        local i = 1
+        local i, applied, failed = 1, 0, 0
         while i <= #ids and alive do
             local chunk = table.concat(ids, ",", i, math.min(i + 49, #ids))
             i = i + 50
+            local requestStarted = os.clock()
             local res = execRequest({Url = "https://thumbnails.roblox.com/v1/places/gameicons?placeIds=" .. chunk .. "&size=256x256&format=Png&isCircular=false", Method = "GET"})
+            if JL._perfEnabled then
+                warn("[JustLib Perf] Sub-Places thumbnail batch request: " .. string.format("%.3f s", os.clock() - requestStarted) .. " (" .. tostring(#ids) .. " ids)")
+            end
             if res and res.Body then
+                local decodeStarted = os.clock()
                 local ok,data = pcall(HTTP.JSONDecode, HTTP, res.Body)
+                if JL._perfEnabled then
+                    warn("[JustLib Perf] Sub-Places thumbnail JSON decode: " .. string.format("%.3f s", os.clock() - decodeStarted))
+                end
                 if ok and type(data) == "table" and type(data.data) == "table" then
                     for _,it in ipairs(data.data) do
                         if not alive then return end
                         if it.state == "Completed" and type(it.imageUrl) == "string" and it.imageUrl ~= "" then
                             local asset = spDownload(it.imageUrl, it.targetId)
-                            if asset then applyAsset(it.targetId, asset); task.wait(0.15) end
+                            if asset then
+                                applyAsset(it.targetId, asset)
+                                applied = applied + 1
+                            else
+                                failed = failed + 1
+                            end
                         end
                     end
+                elseif JL._perfEnabled then
+                    warn("[JustLib Perf] Sub-Places thumbnail response could not be decoded")
                 end
+            elseif JL._perfEnabled then
+                warn("[JustLib Perf] Sub-Places thumbnail batch request failed")
             end
+        end
+        if JL._perfEnabled then
+            warn("[JustLib Perf] Sub-Places thumbnail pipeline total: " .. string.format("%.3f s", os.clock() - pipelineStarted) .. " (applied=" .. tostring(applied) .. ", failed=" .. tostring(failed) .. ")")
         end
     end)
 end
