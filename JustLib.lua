@@ -2960,7 +2960,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             if multi then local sel = {}; for _,nm in ipairs(options) do if not isDividerOpt(nm) and selected[nm] then sel[#sel + 1] = nm end end; pcall(o.Callback, sel)
             else for k in pairs(selected) do pcall(o.Callback, k) end end
         end
-        local ret = {
+        ret = {
             Open = function()
                 if not dropOpen then
                     dropOpen = true; container.Visible = true
@@ -3270,6 +3270,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             mode = multi and "list" or "closed"
             refreshLabel()
         end
+        local ret
         local function openPanel(nm)
             for _,c in ipairs(panel:GetChildren()) do c:Destroy() end
             local dims = dimsOf[nm]; local nDims = #dims
@@ -3291,6 +3292,19 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             end
             for i,d in ipairs(dims) do
                 local y = 6 + (i - 1) * rowH
+                local searchEntriesForValue = ret and ret._searchNestedEntries and ret._searchNestedEntries[tostring(nm)]
+                local searchEntry = searchEntriesForValue and searchEntriesForValue[i]
+                if searchEntry then
+                    local targetRow = Instance.new("Frame")
+                    targetRow.Name = "JLNestedSearchTarget"
+                    targetRow.Size = UDim2.new(1,0,0,rowH)
+                    targetRow.Position = UDim2.new(0,0,0,y)
+                    targetRow.BackgroundTransparency = 1
+                    targetRow.BorderSizePixel = 0
+                    targetRow.ZIndex = 1
+                    targetRow.Parent = panel
+                    searchEntry.TargetRow = targetRow
+                end
                 if d.type == "Slider" then
                     local dimVal = isMulti[nm] and selected[nm][d.key] or selected[nm]
                     local curIdx = 1
@@ -3902,19 +3916,23 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if type(result) == "table" and result.Row and type(o) == "table" and JL._searchRegister then
                     JL._searchRegister({Name = o.Name or methodName, Kind = methodName, Row = result.Row, Control = result})
                     if methodName == "ValueDropdown" and type(o.Values) == "table" then
+                        local nestedEntries = {}
                         for valueName, definitions in pairs(o.Values) do
                             if type(definitions) == "table" and type(definitions[1]) == "table" then
-                                for _, definition in ipairs(definitions) do
+                                nestedEntries[tostring(valueName)] = {}
+                                for index, definition in ipairs(definitions) do
                                     if type(definition) == "table" then
-                                        JL._searchRegister({
+                                        nestedEntries[tostring(valueName)][index] = JL._searchRegister({
                                             Name = definition.Name or definition.Type or "Nested control",
                                             Kind = definition.Type or "Control", ParentName = tostring(valueName),
                                             Row = result.Row, Control = result, OpenValue = tostring(valueName),
+                                            NestedIndex = index,
                                         })
                                     end
                                 end
                             end
                         end
+                        result._searchNestedEntries = nestedEntries
                     end
                 end
                 return result
@@ -4789,6 +4807,7 @@ function JL:Window(opts)
         entry.Path = searchPath(entry.Row)
         entry.SearchText = (tostring(entry.Name or "") .. " " .. tostring(entry.Kind or "") .. " " .. tostring(entry.ParentName or "") .. " " .. tostring(entry.Path or "")):lower()
         searchEntries[#searchEntries + 1] = entry
+        return entry
     end
     JL._searchRegister = addSearchEntry
     local function clearSearchResults()
@@ -4879,10 +4898,12 @@ function JL:Window(opts)
                 end
                 trackedSpawn(function()
                     task.wait(.28)
-                    local targetRow = entry.Control and entry.Control.Row or entry.Row
-                    if targetRow and targetRow.Parent then
-                        GUIDE.nav(targetRow)
-                        GUIDE.pulse(targetRow,2.6)
+                    local navRow = entry.Control and entry.Control.Row or entry.Row
+                    if navRow and navRow.Parent then
+                        GUIDE.nav(navRow)
+                        local pulseRow = entry.TargetRow
+                        if not (pulseRow and pulseRow.Parent) then pulseRow = navRow end
+                        GUIDE.pulse(pulseRow,2.6)
                     end
                 end)
             end)
