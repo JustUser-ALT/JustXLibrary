@@ -50,19 +50,6 @@ local function makePrivacyLabel(name,text)
 end
 
 local privacyGui,privacyLabel = makePrivacyLabel("JL_StreamerModeTest", "Player: " .. Players.LocalPlayer.DisplayName .. " (@" .. Players.LocalPlayer.Name .. ")")
-local privacyAvatar = Instance.new("ImageLabel")
-privacyAvatar.Name = "StreamerModeTestAvatar"
-privacyAvatar.Size = UDim2.fromOffset(48,48)
-privacyAvatar.Position = UDim2.fromOffset(350,20)
-privacyAvatar.BackgroundTransparency = 0
-privacyAvatar.Parent = privacyGui
-task.spawn(function()
-    local ok,content = pcall(function()
-        return Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
-    end)
-    if ok and privacyAvatar.Parent then privacyAvatar.Image = content end
-end)
-
 PrivacySection:Toggle({
     Name = "Streamer Mode Test",
     Default = false,
@@ -81,7 +68,7 @@ PrivacySection:Button({
 PrivacySection:Button({
     Name = "Remove Test Label",
     Callback = function()
-        if privacyGui then privacyGui:Destroy(); privacyGui = nil; privacyAvatar = nil end
+        if privacyGui then privacyGui:Destroy(); privacyGui = nil end
     end,
 })
 
