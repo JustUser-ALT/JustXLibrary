@@ -3889,7 +3889,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     local searchMethods = {
         Toggle = true, ToggleGroup = true, Slider = true, Button = true, Input = true,
-        Dropdown = true, TextSlider = true, ValueDropdown = true, ColorPicker = true,
+        Dropdown = true, TextSlider = true, NumberTextSlider = true, ValueDropdown = true, ColorPicker = true,
         Keybind = true, Segmented = true, Group = true, Text = true, Screen = true,
         Label = true, PreviewButton = true, PreviewToggle = true, PreviewDropdown = true,
     }
@@ -4756,7 +4756,9 @@ function JL:Window(opts)
         if query == "" then return end
         local matches = {}
         for _,entry in ipairs(searchEntries) do
-            if entry.Row and entry.Row.Parent and entry.SearchText:find(query,1,true) then
+            local currentRow = entry.Control and entry.Control.Row or entry.Row
+            if currentRow and currentRow.Parent and entry.SearchText:find(query,1,true) then
+                entry.Row = currentRow
                 matches[#matches + 1] = entry
             end
         end
