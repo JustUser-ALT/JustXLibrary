@@ -2962,6 +2962,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         ret = {
             _searchTargetRows = searchTargetRows,
+            _searchOptionRows = optRefs,
             Open = function()
                 if not dropOpen then
                     dropOpen = true; container.Visible = true
@@ -3304,7 +3305,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     targetRow.Position = UDim2.new(0,0,0,y)
                     targetRow.BackgroundTransparency = 1
                     targetRow.BorderSizePixel = 0
-                    targetRow.ZIndex = 1
+                    targetRow.ClipsDescendants = true
+                    targetRow.ZIndex = 40
                     targetRow.Parent = panel
                     searchTargetRows[i] = targetRow
                     searchEntry.TargetRow = targetRow
@@ -3458,6 +3460,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end)
         if o.Callback and had then pcall(o.Callback, snapshot()) end
         local ret = {
+            _searchTargetRows = searchTargetRows,
+            _searchOptionRows = optRefs,
             Open = function()
                 if mode == "closed" then mode = "list"; relayout() end
             end,
@@ -3919,6 +3923,21 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local result = original(self, o, ...)
                 if type(result) == "table" and result.Row and type(o) == "table" and JL._searchRegister then
                     JL._searchRegister({Name = o.Name or methodName, Kind = methodName, Row = result.Row, Control = result})
+                    if (methodName == "Dropdown" or methodName == "ValueDropdown") and type(o.Options) == "table" then
+                        for _, optionName in ipairs(o.Options) do
+                            if not isDividerOpt(optionName) then
+                                JL._searchRegister({
+                                    Name = tostring(optionName), Kind = "Option",
+                                    ParentName = o.Name or methodName, Row = result.Row, Control = result,
+                                    TargetResolver = function()
+                                        local refs = result._searchOptionRows
+                                        local ref = refs and refs[optionName]
+                                        return ref and ref.opt or nil
+                                    end,
+                                })
+                            end
+                        end
+                    end
                     if methodName == "ValueDropdown" and type(o.Values) == "table" then
                         local nestedEntries = {}
                         for valueName, definitions in pairs(o.Values) do
