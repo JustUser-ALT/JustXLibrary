@@ -1671,7 +1671,10 @@ local function buildSubPlacesUI(universeId, places)
             end
         end
     end)
-    trackedSpawn(function()
+    -- Запускаем сетевую загрузку только после возврата buildSubPlacesUI,
+    -- чтобы медленный executor request не задерживал первое отображение окна.
+    trackedDelay(0.25, function()
+        trackedSpawn(function()
         if not spCanCustom then return end
         local ids = {}
         for _,pl in ipairs(places) do ids[#ids + 1] = tostring(pl.id) end
@@ -1693,6 +1696,7 @@ local function buildSubPlacesUI(universeId, places)
                 end
             end
         end
+    end)
     end)
 end
 local function openSubPlaces(universeId)
