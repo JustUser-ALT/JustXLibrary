@@ -1,6 +1,6 @@
 --==================================================
 -- JUSTLIB ICON PACK / MOLTO ADAPTER TEST
--- Executor test: structured assets, Lucide names, fallback and refresh
+-- Executor test: broad Lucide coverage, atlas assets, fallback and refresh
 --==================================================
 
 local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/JustLib.lua"
@@ -25,11 +25,14 @@ local Tab = Window:Tab({
 })
 
 local Section = Tab:Section({
-    Title = "Molto / Lucide",
+    Title = "Molto / Lucide — Extended Coverage",
     Column = 1,
 })
 
+-- Names are grouped by purpose. All entries except the final fallback
+-- are intended to be valid Lucide icon names.
 local iconNames = {
+    -- Basic / navigation
     "house",
     "moon",
     "settings",
@@ -39,10 +42,50 @@ local iconNames = {
     "folder",
     "message-circle",
     "gamepad-2",
+    "activity",
+    "alarm-clock",
+    "bell",
+    "calendar",
+    "check",
+    "chevron-down",
+    "circle-help",
+    "clock",
+    "compass",
+    "crown",
+
+    -- Files / content
+    "book-open",
+    "camera",
+    "file",
+    "image",
+    "layers",
+    "palette",
+    "pencil",
+    "save",
+    "upload",
+    "download",
+
+    -- System / tools
+    "cloud",
+    "code",
+    "eye",
+    "flame",
+    "globe",
+    "key-round",
+    "map-pin",
+    "monitor",
+    "rocket",
+    "sparkles",
+    "terminal",
+    "users",
+    "wifi",
+    "wrench",
+
+    -- Deliberately invalid: used to verify fallback handling.
     "not-a-real-lucide-icon",
 }
 
-for _,name in ipairs(iconNames) do
+for _, name in ipairs(iconNames) do
     Section:Button({
         Name = "Icon: " .. name,
         Icon = name,
@@ -55,23 +98,29 @@ end
 local function inspectIcons()
     local root = JL._activeWin
     local total, images, cropped, brokenText = 0, 0, 0, 0
+
     if root then
-        for _,obj in ipairs(root:GetDescendants()) do
+        for _, obj in ipairs(root:GetDescendants()) do
             if obj:IsA("TextLabel") and obj:FindFirstChild("JLIconAsset") then
                 total = total + 1
                 local image = obj.JLIconAsset
+
                 if image:IsA("ImageLabel") and image.Image ~= "" then
                     images = images + 1
+
                     if image.ImageRectSize.X > 0 and image.ImageRectSize.Y > 0 then
                         cropped = cropped + 1
                     end
                 end
             end
+
             if obj:IsA("TextLabel") and obj.Text:match("^table: 0x") then
                 brokenText = brokenText + 1
             end
         end
     end
+
+    print("[Icon Test] Icon names tested:", #iconNames)
     print("[Icon Test] Image-backed icon nodes:", total)
     print("[Icon Test] Image URLs assigned:", images)
     print("[Icon Test] Atlas-cropped icons:", cropped)
@@ -103,4 +152,4 @@ Section:Button({
 
 task.delay(2, inspectIcons)
 
-print("[Icon Test] Loaded. Check the icons, then press Inspect Rendered Icons.")
+print("[Icon Test] Loaded. Check the full list, then press Inspect Rendered Icons.")
