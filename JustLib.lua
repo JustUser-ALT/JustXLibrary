@@ -3459,7 +3459,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             else finish(); mode = "closed"; refreshLabel() end
         end)
         if o.Callback and had then pcall(o.Callback, snapshot()) end
-        local ret = {
+        ret = {
             _searchTargetRows = searchTargetRows,
             _searchOptionRows = optRefs,
             Open = function()
