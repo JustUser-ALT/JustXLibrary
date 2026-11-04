@@ -224,6 +224,11 @@ end)
 local HomeTab = Window:HomeTab({
     Name = "Home",
     WelcomeTitle = "JustLib Cleanup Test",
+    Changelog = {
+        {Title = "4.0.7", Description = "Added the Home Changelog panel."},
+        "Updated the Home executor label.",
+        "This list is configured from the test script, not inside JustLib.lua.",
+    },
     Announcement = "Use the Cleanup tab to test resource registration and unload.",
 })
 
