@@ -4815,7 +4815,7 @@ function JL:Window(opts)
             local entry = matches[i]
             local item = Instance.new("TextButton")
             item.Name = "JLSearchResult"
-            item.Size = UDim2.new(1,-2,0,42)
+            item.Size = UDim2.new(1,-2,0,50)
             item.BackgroundColor3 = C.btnBg
             item.BorderSizePixel = 0
             item.AutoButtonColor = false
@@ -4823,9 +4823,17 @@ function JL:Window(opts)
             item.LayoutOrder = i
             item.Parent = searchResults
             item.ZIndex = 83
-            corner(6,item)
-            newTxt({Parent=item,Text=tostring(entry.Name),Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-16,0,16),Pos=UDim2.new(0,8,0,5),Z=84})
-            newTxt({Parent=item,Text=entry.Path .. (entry.ParentName and ("  ›  " .. entry.ParentName) or "") .. "  ·  " .. tostring(entry.Kind),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-16,0,13),Pos=UDim2.new(0,8,0,23),Z=84})
+            corner(8,item); stroke(C.border,1,item)
+            local resultDot = Instance.new("Frame")
+            resultDot.Size = UDim2.new(0,3,0,24)
+            resultDot.Position = UDim2.new(0,0,0.5,-12)
+            resultDot.BackgroundColor3 = ACCENTS[1]
+            resultDot.BorderSizePixel = 0
+            resultDot.Parent = item
+            resultDot.ZIndex = 84
+            corner(2,resultDot)
+            newTxt({Parent=item,Text=tostring(entry.Name),Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-28,0,17),Pos=UDim2.new(0,12,0,6),Z=84})
+            newTxt({Parent=item,Text=(entry.Path ~= "" and entry.Path or "General") .. (entry.ParentName and ("  ›  " .. entry.ParentName) or "") .. "   ·   " .. tostring(entry.Kind),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,12,0,27),Z=84})
             item.MouseEnter:Connect(function() if not touchLast() then tw(item,{BackgroundColor3=C.btnHov},.1) end end)
             item.MouseLeave:Connect(function() tw(item,{BackgroundColor3=C.btnBg},.1) end)
             item.MouseButton1Click:Connect(function()
@@ -6015,7 +6023,7 @@ function JL:Window(opts)
         end
         local function newPage(name,sub)
             pOrd = pOrd + 1
-            local sf = Instance.new("ScrollingFrame"); sf.Size = UDim2.new(1,0,1,0); sf.BackgroundTransparency = 1; sf.BorderSizePixel = 0; sf.ScrollBarThickness = 3
+            local sf = Instance.new("ScrollingFrame"); sf.Name = "JLSettingsPage_" .. tostring(name); sf:SetAttribute("JLSearchPage", tostring(name)); sf.Size = UDim2.new(1,0,1,0); sf.BackgroundTransparency = 1; sf.BorderSizePixel = 0; sf.ScrollBarThickness = 3
             sf.ScrollBarImageColor3 = ACC; sf.CanvasSize = UDim2.new(0,0,0,0); sf.Visible = false; sf.Parent = holder
             local L = Instance.new("UIListLayout"); L.SortOrder = Enum.SortOrder.LayoutOrder; L.Parent = sf; pad(3,5,3,0,sf)
             L:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() sf.CanvasSize = UDim2.new(0,0,0,unscaleWin(L.AbsoluteContentSize.Y) + 8) end)
@@ -6024,6 +6032,11 @@ function JL:Window(opts)
             local lbl = newTxt({Parent=nb,Text=name,Font=GB,Size=12,Color=C.dim,Sz=UDim2.new(1,-20,1,0),Pos=UDim2.new(0,14,0,0)})
             local bar = Instance.new("Frame"); bar.Size = UDim2.new(0,3,0,16); bar.Position = UDim2.new(0,0,0.5,-8); bar.BackgroundColor3 = ACC; bar.BorderSizePixel = 0; bar.Visible = false; bar.Parent = nb; corner(2,bar)
             pages[name] = {sf = sf, btn = nb, lbl = lbl, bar = bar, sub = sub}
+            JL._searchPageTargets[sf] = function()
+                if pages[name].sf.Visible then return false end
+                showPage(name)
+                return true
+            end
             nb.MouseButton1Click:Connect(function() showPage(name) end)
             return sf
         end
@@ -6033,7 +6046,8 @@ function JL:Window(opts)
             local labW = PW - 32 - ctrlW - 14
             local th = fitH(title, 13, GB, labW, 0, 0); local dh = desc and fitH(desc, 10, GM, labW, 0, 0) or 0
             local h = math.max(48, th + dh + (desc and 24 or 22))
-            local row = Instance.new("Frame"); row.Size = UDim2.new(1,0,0,h); row.BackgroundTransparency = 1; row.BorderSizePixel = 0; row.LayoutOrder = rowOrd; row.Parent = sf
+            local row = Instance.new("Frame"); row.Name = "JLSettingsRow"; row:SetAttribute("JLSearchSection", tostring(title)); row.Size = UDim2.new(1,0,0,h); row.BackgroundTransparency = 1; row.BorderSizePixel = 0; row.LayoutOrder = rowOrd; row.Parent = sf
+            if JL._searchRegister then JL._searchRegister({Name = title, Kind = "Settings", Row = row}) end
             newTxt({Parent=row,Text=title,Font=GB,Size=13,Wrap=true,Sz=UDim2.new(0,labW,0,th),Pos=UDim2.new(0,16,0,desc and 10 or math.floor((h - th) / 2))})
             if desc then newTxt({Parent=row,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(0,labW,0,dh),Pos=UDim2.new(0,16,0,10 + th + 3)}) end
             local sep = Instance.new("Frame"); sep.Size = UDim2.new(1,-32,0,1); sep.Position = UDim2.new(0,16,1,-1); sep.BackgroundColor3 = C.divLine; sep.BackgroundTransparency = 0.6; sep.BorderSizePixel = 0; sep.Parent = row
