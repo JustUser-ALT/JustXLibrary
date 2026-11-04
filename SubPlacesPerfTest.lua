@@ -1,6 +1,6 @@
 --==================================================
 -- JUSTLIB SUB-PLACES PERFORMANCE TEST
--- Verifies that Sub-Places UI opens before background thumbnail requests begin.
+-- Verifies that Sub-Places opens without executor-based thumbnail downloads.
 --==================================================
 
 local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/JustLib.lua"
@@ -26,5 +26,5 @@ Window:HomeTab({
 })
 
 print("[Sub-Places Perf Test] Ready.")
-print("[Sub-Places Perf Test] Open Home > Sub-Places. The window should appear before thumbnails load.")
-print("[Sub-Places Perf Test] Send all [JustLib Perf] Sub-Places lines and report whether the window still freezes.")
+print("[Sub-Places Perf Test] Open Home > Sub-Places. The window should appear without waiting for thumbnail downloads.")
+print("[Sub-Places Perf Test] Place icons use gradient initials; no thumbnail HTTP downloads should run. Send all [JustLib Perf] lines and report any freeze.")
