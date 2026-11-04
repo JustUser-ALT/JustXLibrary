@@ -664,6 +664,109 @@ function JL._cfgFlush()
 end
 -- ===== Preview UI bridge (PreviewUI.lua берёт отсюда темы, конфиг и хуки Unload) =====
 JL._extraRoots = {}; JL._themeHooks = {}; JL._unloadHooks = {}
+JL._streamerMode = false
+local streamerRecords = setmetatable({}, {__mode = "k"})
+local streamerConnections = {}
+local function streamerNames()
+    local names = {}
+    for _,name in ipairs({LP.Name, LP.DisplayName}) do
+        if type(name) == "string" and name ~= "" and not names[name] then
+            names[name] = true
+        end
+    end
+    return names
+end
+local function streamerMaskText(value)
+    if type(value) ~= "string" or value == "" then return value end
+    local names = streamerNames()
+    for name in pairs(names) do
+        local replacement = string.rep("#", (utf8 and utf8.len and utf8.len(name)) or #name)
+        local parts, position = {}, 1
+        while true do
+            local first,last = string.find(value, name, position, true)
+            if not first then
+                parts[#parts + 1] = string.sub(value, position)
+                break
+            end
+            parts[#parts + 1] = string.sub(value, position, first - 1)
+            parts[#parts + 1] = replacement
+            position = last + 1
+        end
+        value = table.concat(parts)
+    end
+    return value
+end
+local function streamerWatch(obj)
+    if not JL._streamerMode or not obj or streamerRecords[obj] then return end
+    local isText = false
+    pcall(function()
+        isText = obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")
+    end)
+    if not isText then return end
+    local record = {original = obj.Text, masked = nil, writing = false}
+    streamerRecords[obj] = record
+    local function apply()
+        if record.writing then return end
+        local current
+        local ok = pcall(function() current = obj.Text end)
+        if not ok then return end
+        record.original = current
+        local masked = streamerMaskText(current)
+        record.masked = masked
+        if masked ~= current then
+            record.writing = true
+            pcall(function() obj.Text = masked end)
+            record.writing = false
+        end
+    end
+    local ok,connection = pcall(function()
+        return obj:GetPropertyChangedSignal("Text"):Connect(apply)
+    end)
+    if ok and connection then record.connection = connection end
+    apply()
+end
+local function streamerStop()
+    for _,connection in ipairs(streamerConnections) do
+        pcall(function() connection:Disconnect() end)
+    end
+    table.clear(streamerConnections)
+    for obj,record in pairs(streamerRecords) do
+        if record.connection then pcall(function() record.connection:Disconnect() end) end
+        pcall(function()
+            if obj.Parent and record.masked ~= nil and obj.Text == record.masked then
+                obj.Text = record.original
+            end
+        end)
+        streamerRecords[obj] = nil
+    end
+end
+function JL:SetStreamerMode(enabled)
+    enabled = enabled == true
+    if JL._streamerMode == enabled then return true end
+    JL._streamerMode = enabled
+    if not enabled then
+        streamerStop()
+        return true
+    end
+    local ok,descendants = pcall(function() return game:GetDescendants() end)
+    if ok then
+        for _,obj in ipairs(descendants) do streamerWatch(obj) end
+    end
+    local added
+    pcall(function()
+        added = game.DescendantAdded:Connect(streamerWatch)
+    end)
+    if added then streamerConnections[#streamerConnections + 1] = added end
+    return true
+end
+function JL:GetStreamerMode()
+    return JL._streamerMode == true
+end
+table.insert(JL._unloadHooks, function()
+    JL._streamerMode = false
+    streamerStop()
+end)
+
 JL._remoteAttach = function() end -- заменяется, когда создаётся окно (Remote)
 JL._bridge = {
     C = C, ACCENTS = ACCENTS, cfgGet = cfgGet, cfgSet = cfgSet, cfgHas = cfgHas,
@@ -5745,6 +5848,11 @@ function JL:Window(opts)
             end)
             resetters[#resetters + 1] = function() seg.Set("Right", true); cfgSet("_tooltip_side","Right") end
         end
+        local pPrivacy = newPage("Privacy", "Hide your identity on your screen while recording")
+        addSwitch(pPrivacy, "Streamer Mode", "Locally masks your username and display name in visible UI text, including the hub, player list and overhead labels", "_streamer_mode", false, function(v)
+            JL:SetStreamerMode(v)
+        end)
+        JL:SetStreamerMode(cfgGet("_streamer_mode", false) == true)
         local pN = newPage("Notifications", "What shows, where, and for how long")
         addSwitch(pN, "Show Regular", "Info / success notifications", "_notify_show_regular", true, function() end)
         addSwitch(pN, "Show Warnings", "Yellow warning notifications", "_notify_show_warning", true, function() end)
