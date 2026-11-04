@@ -2685,7 +2685,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         if settings then make("settings","Settings",function() openMetaPanel((definition.Name or "Control") .. " · Settings",definition.Settings,true) end) end
         if info then make("info","More information",function() openMetaPanel((definition.Name or "Control") .. " · Info",definition.Info,false) end) end
         local reserve = ((settings and 1 or 0) + (info and 1 or 0)) * 22 + 4
-        for _,child in ipairs(row:GetChildren()) do
+        for _,child in ipairs(row:GetDescendants()) do
             if child:IsA("GuiObject") and child.ZIndex < 55 then
                 if child.Size.X.Scale == 1 then child.Size = UDim2.new(1,child.Size.X.Offset-reserve,child.Size.Y.Scale,child.Size.Y.Offset) end
                 if child.Position.X.Scale == 1 then child.Position = UDim2.new(1,child.Position.X.Offset-reserve,child.Position.Y.Scale,child.Position.Y.Offset) end
@@ -3586,6 +3586,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if d.meta then
                     local metaRow = Instance.new("Frame"); metaRow.Size = UDim2.new(1,0,0,rowH); metaRow.Position = UDim2.new(0,0,0,y); metaRow.BackgroundTransparency = 1; metaRow.ZIndex = 45; metaRow.Parent = panel
                     addMetaButtons(metaRow,d.meta)
+                    if d.meta.Tooltip then tip(metaRow,d.meta.Tooltip) end
                 end
             end
             if groupMode[nm] then
