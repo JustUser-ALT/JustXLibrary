@@ -2961,6 +2961,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             else for k in pairs(selected) do pcall(o.Callback, k) end end
         end
         ret = {
+            _searchTargetRows = searchTargetRows,
             Open = function()
                 if not dropOpen then
                     dropOpen = true; container.Visible = true
@@ -3271,8 +3272,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             refreshLabel()
         end
         local ret
+        local searchTargetRows = {}
         local function openPanel(nm)
             for _,c in ipairs(panel:GetChildren()) do c:Destroy() end
+            for k in pairs(searchTargetRows) do searchTargetRows[k] = nil end
             local dims = dimsOf[nm]; local nDims = #dims
             mode = "value"; activeValue = nm; token = token + 1
             if isMulti[nm] and type(selected[nm]) ~= "table" then selected[nm] = defaultValue(nm) end
@@ -3303,6 +3306,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     targetRow.BorderSizePixel = 0
                     targetRow.ZIndex = 1
                     targetRow.Parent = panel
+                    searchTargetRows[i] = targetRow
                     searchEntry.TargetRow = targetRow
                 end
                 if d.type == "Slider" then
@@ -3927,6 +3931,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                                             Kind = definition.Type or "Control", ParentName = tostring(valueName),
                                             Row = result.Row, Control = result, OpenValue = tostring(valueName),
                                             NestedIndex = index,
+                                            TargetResolver = function()
+                                                local targets = result._searchTargetRows
+                                                return targets and targets[index] or nil
+                                            end,
                                         })
                                     end
                                 end
@@ -4901,9 +4909,12 @@ function JL:Window(opts)
                     local navRow = entry.Control and entry.Control.Row or entry.Row
                     if navRow and navRow.Parent then
                         GUIDE.nav(navRow)
-                        local pulseRow = entry.TargetRow
-                        if not (pulseRow and pulseRow.Parent) then pulseRow = navRow end
-                        GUIDE.pulse(pulseRow,2.6)
+                        local pulseRow = entry.TargetResolver and entry.TargetResolver() or entry.TargetRow
+                        if entry.NestedIndex then
+                            if pulseRow and pulseRow.Parent then GUIDE.pulse(pulseRow,2.6) end
+                        else
+                            GUIDE.pulse(pulseRow and pulseRow.Parent and pulseRow or navRow,2.6)
+                        end
                     end
                 end)
             end)
