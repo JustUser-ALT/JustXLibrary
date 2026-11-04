@@ -5990,7 +5990,7 @@ function JL:Window(opts)
             corner(10,playerCard)
             stroke(C.border,1,playerCard)
 
-            local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = playerInfo
+            local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = playerCard
             avatar:SetAttribute("JLNoRepaint", true)
             corner(32,avatar)
             trackedSpawn(function()
@@ -5998,8 +5998,8 @@ function JL:Window(opts)
                 if ok then avatar.Image = content end
             end)
             newTxt({Parent=playerCard,Text="Welcome back,",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,16)})
-            newTxt({Parent=playerInfo,Text=LP.DisplayName,Font=GB,Size=17,Sz=UDim2.new(0,260,0,22),Pos=UDim2.new(0,90,0,30)})
-            newTxt({Parent=playerInfo,Text="@" .. LP.Name,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,54)})
+            newTxt({Parent=playerCard,Text=LP.DisplayName,Font=GB,Size=17,Sz=UDim2.new(0,260,0,22),Pos=UDim2.new(0,90,0,30)})
+            newTxt({Parent=playerCard,Text="@" .. LP.Name,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,54)})
 
             local changelogFrame = Instance.new("Frame")
             changelogFrame.Name = "ChangelogFrame"
