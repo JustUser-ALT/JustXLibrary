@@ -703,31 +703,36 @@ local function streamerMaskText(value)
     end
     return value
 end
+local STREAMER_BACON_IMAGE = "rbxthumb://type=Asset&id=136315238993032&w=420&h=420"
 local function streamerWatch(obj)
     if not JL._streamerMode or not obj or streamerRecords[obj] then return end
-    local isText = false
+    local isText, isImage = false, false
     pcall(function()
         isText = obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")
+        isImage = (obj:IsA("ImageLabel") or obj:IsA("ImageButton"))
+            and (obj:GetAttribute("JLStreamerAvatar") == true
+                or tonumber(obj:GetAttribute("JLStreamerUserId")) == LP.UserId)
     end)
-    if not isText then return end
-    local record = {original = obj.Text, masked = nil, writing = false}
+    if not isText and not isImage then return end
+    local property = isText and "Text" or "Image"
+    local record = {original = obj[property], masked = nil, writing = false, property = property}
     streamerRecords[obj] = record
     local function apply()
         if record.writing then return end
         local current
-        local ok = pcall(function() current = obj.Text end)
+        local ok = pcall(function() current = obj[property] end)
         if not ok then return end
         record.original = current
-        local masked = streamerMaskText(current)
+        local masked = isText and streamerMaskText(current) or STREAMER_BACON_IMAGE
         record.masked = masked
         if masked ~= current then
             record.writing = true
-            pcall(function() obj.Text = masked end)
+            pcall(function() obj[property] = masked end)
             record.writing = false
         end
     end
     local ok,connection = pcall(function()
-        return obj:GetPropertyChangedSignal("Text"):Connect(apply)
+        return obj:GetPropertyChangedSignal(property):Connect(apply)
     end)
     if ok and connection then record.connection = connection end
     apply()
@@ -740,8 +745,8 @@ local function streamerStop()
     for obj,record in pairs(streamerRecords) do
         if record.connection then pcall(function() record.connection:Disconnect() end) end
         pcall(function()
-            if obj.Parent and record.masked ~= nil and obj.Text == record.masked then
-                obj.Text = record.original
+            if obj.Parent and record.masked ~= nil and obj[record.property] == record.masked then
+                obj[record.property] = record.original
             end
         end)
         streamerRecords[obj] = nil
@@ -1636,8 +1641,9 @@ function JL:KeySystem(kopts)
         else JL:Notify({Title = "Get a Key", Desc = kopts.GetKeyURL, Type = "Info", Duration = 6}) end
     end)
     local statusY = btnY + 52
-    local avatarBox = Instance.new("ImageLabel"); avatarBox.Size = UDim2.new(0,34,0,34); avatarBox.Position = UDim2.new(0,0,0,statusY); avatarBox.BackgroundColor3 = C.pHdr; avatarBox.BorderSizePixel = 0; avatarBox.Parent = left; corner(17,avatarBox)
+    local avatarBox = Instance.new("ImageLabel"); avatarBox.Size = UDim2.new(0,34,0,34); avatarBox.Position = UDim2.new(0,0,0,statusY); avatarBox.BackgroundColor3 = C.pHdr; avatarBox.BorderSizePixel = 0; avatarBox:SetAttribute("JLStreamerAvatar", true); avatarBox.Parent = left; corner(17,avatarBox)
     avatarBox:SetAttribute("JLNoRepaint", true)
+    streamerWatch(avatarBox)
     trackedSpawn(function()
         local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
         if ok then avatarBox.Image = content end
@@ -2785,7 +2791,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             img.BackgroundColor3 = C.pHdr
             img.BorderSizePixel = 0
             img.ScaleType = Enum.ScaleType.Crop
+            img:SetAttribute("JLStreamerUserId", player.UserId)
             img.Parent = parent
+            streamerWatch(img)
             corner(10,img)
             img:SetAttribute("JLNoRepaint", true)
             trackedSpawn(function()
@@ -3596,6 +3604,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             trackedSpawn(function()
                 local userId = (typeof(plr) == "Instance") and plr.UserId or tonumber(plr)
                 if not userId then status.Text = "invalid player"; return end
+                img:SetAttribute("JLStreamerUserId", userId)
+                streamerWatch(img)
                 local ok,content = pcall(function()
                     return game:GetService("Players"):GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, o.ThumbSize or Enum.ThumbnailSize.Size180x180)
                 end)
@@ -6137,8 +6147,10 @@ function JL:Window(opts)
             avatar.Position = UDim2.new(0,14,0,48)
             avatar.BackgroundColor3 = C.pHdr
             avatar.BorderSizePixel = 0
+            avatar:SetAttribute("JLStreamerAvatar", true)
             avatar.Parent = playerCard
             avatar:SetAttribute("JLNoRepaint", true)
+            streamerWatch(avatar)
             corner(32,avatar)
             trackedSpawn(function()
                 local ok,content = pcall(function()
