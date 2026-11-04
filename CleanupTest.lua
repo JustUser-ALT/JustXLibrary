@@ -6,12 +6,15 @@
 local Players = game:GetService("Players")
 
 local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/JustLib.lua"
+local _libraryLoadStarted = os.clock()
 local JL = loadstring(game:HttpGet(LibraryURL))()
+print("[JustLib Perf] Library fetch + compile: " .. string.format("%.3f s", os.clock() - _libraryLoadStarted))
 
 local Window = JL:Window({
     Name = "JustLib Cleanup Test",
     Config = "JustLib_CleanupTest",
     Settings = true,
+    DebugPerformance = true,
 })
 
 if not Window then
