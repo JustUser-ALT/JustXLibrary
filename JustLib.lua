@@ -196,14 +196,22 @@ local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
 local function iconAsset(name)
     local pack = JL._iconPack
     if not pack then return nil end
+    local asset
     if type(pack.GetAsset) == "function" then
-        local ok,asset = pcall(pack.GetAsset, name)
-        if ok and asset and tostring(asset) ~= "" then return tostring(asset) end
+        local ok,value = pcall(pack.GetAsset, name)
+        if ok then asset = value end
     end
-    if type(pack.GetIcon) == "function" then
-        local ok,asset = pcall(pack.GetIcon, name)
-        if ok and asset and tostring(asset) ~= "" then return tostring(asset) end
+    if asset == nil and type(pack.GetIcon) == "function" then
+        local ok,value = pcall(pack.GetIcon, name)
+        if ok then asset = value end
     end
+    if type(asset) == "table" then
+        asset = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
+            or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
+    elseif typeof(asset) == "Instance" and asset:IsA("ImageLabel") then
+        asset = asset.Image
+    end
+    if asset ~= nil and tostring(asset) ~= "" then return tostring(asset) end
     return nil
 end
 local function refreshIconTextNodes()
