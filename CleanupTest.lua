@@ -35,6 +35,76 @@ local PrivacySection = Tab:Section({
     Column = 2,
 })
 
+-- Global Search Update tests: ordinary controls, dropdowns, nested controls and hidden MultiSection pages.
+local SearchSection = Tab:Section({
+    Title = "Search Update",
+    Column = 2,
+})
+
+SearchSection:Toggle({
+    Name = "Search Test Toggle",
+    Default = false,
+})
+
+SearchSection:Slider({
+    Name = "Search Test Slider",
+    Min = 0,
+    Max = 100,
+    Default = 35,
+})
+
+SearchSection:Button({
+    Name = "Search Test Button",
+    Callback = function()
+        print("[Cleanup Test] Search result button selected.")
+    end,
+})
+
+SearchSection:Dropdown({
+    Name = "Search Test Dropdown",
+    Options = {"Alpha", "Beta", "Gamma"},
+})
+
+SearchSection:ValueDropdown({
+    Name = "Search Test Value Dropdown",
+    Options = {"Advanced"},
+    Values = {
+        Advanced = {
+            {Type = "Toggle", Name = "Nested Search Toggle", Default = false},
+            {Type = "Slider", Name = "Nested Search Slider", Min = 0, Max = 10, Default = 5},
+            {Type = "Button", Name = "Nested Search Button", Callback = function()
+                print("[Cleanup Test] Nested ValueDropdown button selected.")
+            end},
+        },
+    },
+})
+
+local SearchPages = Tab:MultiSection({
+    Title = "Search Page Navigation",
+    Pages = {"First", "Second"},
+    Layout = "Segmented",
+    Column = 2,
+})
+
+SearchPages:Page("Second"):Toggle({
+    Name = "Hidden Page Search Toggle",
+    Default = false,
+})
+
+SearchSection:Button({
+    Name = "Test Nested Global Search",
+    Callback = function()
+        Window:Search("Nested Search Toggle")
+    end,
+})
+
+SearchSection:Button({
+    Name = "Test Hidden Page Search",
+    Callback = function()
+        Window:Search("Hidden Page Search Toggle")
+    end,
+})
+
 local function makePrivacyLabel(name,text)
     local gui = Instance.new("ScreenGui")
     gui.Name = name
@@ -273,6 +343,17 @@ local HomeTab = Window:HomeTab({
         "This list is configured from the test script, not inside JustLib.lua.",
     },
 })
+
+task.delay(1, function()
+    local root = JL._activeWin
+    local searchButton = root and root:FindFirstChild("JLGlobalSearchButton", true)
+    local searchPanel = root and root:FindFirstChild("JLGlobalSearchPanel", true)
+    print("[Cleanup Test] Global Search button exists outside Home:", searchButton ~= nil and searchButton.Parent == root)
+    print("[Cleanup Test] Global Search panel exists:", searchPanel ~= nil)
+    if not searchButton or not searchPanel then
+        warn("[Cleanup Test] Global Search UI was not created.")
+    end
+end)
 
 task.delay(1, function()
     local homeFrame = HomeTab and HomeTab.Frame
