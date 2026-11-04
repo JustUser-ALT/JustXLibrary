@@ -4658,22 +4658,24 @@ function JL:Window(opts)
     JL._searchEntries = searchEntries
     local searchButton = Instance.new("TextButton")
     searchButton.Name = "JLGlobalSearchButton"
-    searchButton.Size = UDim2.new(0,92,0,28)
-    searchButton.Position = UDim2.new(1,-(PADIN + 92),0,PADIN + 3)
-    searchButton.BackgroundColor3 = C.btnBg
+    searchButton.Size = UDim2.new(0,36,0,30)
+    searchButton.Position = UDim2.new(1,-(PADIN + 36),0,PADIN + 3)
+    searchButton.BackgroundColor3 = C.panel
     searchButton.BorderSizePixel = 0
     searchButton.AutoButtonColor = false
-    searchButton.Text = "⌕  Search"
-    searchButton.Font = GB
-    searchButton.TextSize = 11
-    searchButton.TextColor3 = C.txt
+    searchButton.Text = ""
     searchButton.Parent = win
     searchButton.ZIndex = 80
-    corner(7,searchButton); stroke(C.border,1,searchButton)
+    corner(9,searchButton); stroke(C.border,1,searchButton)
+    local searchButtonIcon = mkIcon(searchButton,"search",16,81)
+    searchButtonIcon.AnchorPoint = Vector2.new(.5,.5)
+    searchButtonIcon.Position = UDim2.new(.5,0,.5,0)
+    searchButtonIcon.Size = UDim2.new(0,16,0,16)
+    if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.txt end
     local searchWidth = math.max(180,CWW - 2 * PADIN)
     local searchPanel = Instance.new("Frame")
     searchPanel.Name = "JLGlobalSearchPanel"
-    searchPanel.Size = UDim2.new(0,searchWidth,0,204)
+    searchPanel.Size = UDim2.new(0,searchWidth,0,238)
     searchPanel.Position = UDim2.new(0,SBW + GAP + PADIN,0,PADIN + 35)
     searchPanel.BackgroundColor3 = C.panel
     searchPanel.BorderSizePixel = 0
@@ -4681,40 +4683,67 @@ function JL:Window(opts)
     searchPanel.ClipsDescendants = true
     searchPanel.Parent = win
     searchPanel.ZIndex = 81
-    corner(9,searchPanel); stroke(C.border,1,searchPanel)
-    local searchBox = Instance.new("TextBox")
-    searchBox.Name = "JLGlobalSearchInput"
-    searchBox.Size = UDim2.new(1,-42,0,30)
-    searchBox.Position = UDim2.new(0,8,0,8)
-    searchBox.BackgroundColor3 = C.input
-    searchBox.BorderSizePixel = 0
-    searchBox.PlaceholderText = "Search controls..."
-    searchBox.PlaceholderColor3 = C.dim
-    searchBox.ClearTextOnFocus = false
-    searchBox.Font = GB
-    searchBox.TextSize = 11
-    searchBox.TextColor3 = C.txt
-    searchBox.TextXAlignment = Enum.TextXAlignment.Left
-    searchBox.Text = ""
-    searchBox.Parent = searchPanel
-    searchBox.ZIndex = 82
-    corner(6,searchBox); stroke(C.border,1,searchBox); pad(9,8,0,0,searchBox)
+    corner(12,searchPanel); stroke(C.border,1,searchPanel)
+    local searchHeader = Instance.new("Frame")
+    searchHeader.Size = UDim2.new(1,0,0,42)
+    searchHeader.BackgroundColor3 = C.pHdr
+    searchHeader.BorderSizePixel = 0
+    searchHeader.Parent = searchPanel
+    searchHeader.ZIndex = 82
+    corner(12,searchHeader)
+    local searchHeaderFix = Instance.new("Frame")
+    searchHeaderFix.Size = UDim2.new(1,0,0,12)
+    searchHeaderFix.Position = UDim2.new(0,0,1,-12)
+    searchHeaderFix.BackgroundColor3 = C.pHdr
+    searchHeaderFix.BorderSizePixel = 0
+    searchHeaderFix.Parent = searchHeader
+    searchHeaderFix.ZIndex = 82
+    newTxt({Parent=searchHeader,Text="Search",Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-58,1,0),Pos=UDim2.new(0,14,0,0),Z=83})
     local searchClose = Instance.new("TextButton")
     searchClose.Size = UDim2.new(0,26,0,26)
-    searchClose.Position = UDim2.new(1,-34,0,10)
+    searchClose.Position = UDim2.new(1,-34,0,8)
     searchClose.BackgroundColor3 = C.btnBg
     searchClose.BorderSizePixel = 0
     searchClose.Text = "×"
     searchClose.Font = GB
     searchClose.TextSize = 16
     searchClose.TextColor3 = C.dim
-    searchClose.Parent = searchPanel
-    searchClose.ZIndex = 82
-    corner(6,searchClose)
+    searchClose.Parent = searchHeader
+    searchClose.ZIndex = 84
+    corner(7,searchClose)
+    local searchInputFrame = Instance.new("Frame")
+    searchInputFrame.Size = UDim2.new(1,-20,0,36)
+    searchInputFrame.Position = UDim2.new(0,10,0,50)
+    searchInputFrame.BackgroundColor3 = C.input
+    searchInputFrame.BorderSizePixel = 0
+    searchInputFrame.Parent = searchPanel
+    searchInputFrame.ZIndex = 82
+    corner(8,searchInputFrame); stroke(C.border,1,searchInputFrame)
+    local searchInputIcon = mkIcon(searchInputFrame,"search",15,84)
+    searchInputIcon.Position = UDim2.new(0,10,0.5,-7)
+    searchInputIcon.Size = UDim2.new(0,15,0,15)
+    if searchInputIcon:IsA("TextLabel") then searchInputIcon.TextColor3 = C.dim end
+    local searchBox = Instance.new("TextBox")
+    searchBox.Name = "JLGlobalSearchInput"
+    searchBox.Size = UDim2.new(1,-42,1,0)
+    searchBox.Position = UDim2.new(0,34,0,0)
+    searchBox.BackgroundTransparency = 1
+    searchBox.BorderSizePixel = 0
+    searchBox.PlaceholderText = "Find a control..."
+    searchBox.PlaceholderColor3 = C.dim
+    searchBox.ClearTextOnFocus = false
+    searchBox.Font = GB
+    searchBox.TextSize = 12
+    searchBox.TextColor3 = C.txt
+    searchBox.TextXAlignment = Enum.TextXAlignment.Left
+    searchBox.Text = ""
+    searchBox.Parent = searchInputFrame
+    searchBox.ZIndex = 84
+    newTxt({Parent=searchPanel,Text="Search across tabs, sections and controls",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-24,0,13),Pos=UDim2.new(0,12,0,91),Z=83})
     local searchResults = Instance.new("ScrollingFrame")
     searchResults.Name = "JLGlobalSearchResults"
-    searchResults.Size = UDim2.new(1,-16,1,-48)
-    searchResults.Position = UDim2.new(0,8,0,42)
+    searchResults.Size = UDim2.new(1,-20,1,-116)
+    searchResults.Position = UDim2.new(0,10,0,108)
     searchResults.BackgroundTransparency = 1
     searchResults.BorderSizePixel = 0
     searchResults.ScrollBarThickness = 3
@@ -4863,7 +4892,7 @@ function JL:Window(opts)
     local function openSearch()
         searchPanel.Visible = true
         searchPanel.Size = UDim2.new(0,searchWidth,0,0)
-        tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,204)},.18)
+        tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,238)},.18)
         searchButton.Visible = false
         refreshSearch()
         trackedDefer(function() pcall(function() searchBox:CaptureFocus() end) end)
