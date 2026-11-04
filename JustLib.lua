@@ -329,6 +329,7 @@ function JL:GetBackground(kind) return JL._bgs[kind] end
 function JL:ClearBackground(kind) JL:SetBackground(kind, nil) end
 local GUIDE = {pulses = {}, active = nil}
 JL._secPanels = setmetatable({}, {__mode = "k"})
+JL._searchPageTargets = {}
 function GUIDE.targetOf(n)
     if n.Target then return n.Target end
     if n.Flag then return JL._registry[n.Flag] end
@@ -4080,6 +4081,13 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     function MS:Shared() return sharedSec end -- общий блок напрямую: MS:Shared():Toggle({...})
     function MS:SetPage(name) if contents[name] and name ~= activePage then activePage = name; switcher.Set(name, true); repaint() end end
     function MS:GetPage() return activePage end
+    for pageName,pageFrame in pairs(contents) do
+        JL._searchPageTargets[pageFrame] = function()
+            if activePage == pageName then return false end
+            MS:SetPage(pageName)
+            return true
+        end
+    end
     local msLock = attachLockHidden(panel, sopts)
     MS.SetLocked = msLock.SetLocked; MS.SetHidden = msLock.SetHidden
     MS.IsLocked = msLock.IsLocked; MS.IsHidden = msLock.IsHidden
@@ -4613,6 +4621,8 @@ function JL:Window(opts)
         if tabId and tabId ~= activeTabId then switchToTab(tabId); task.wait(.35) end
         local q, expanded = row.Parent, false
         while q and q ~= win do
+            local pageSelect = JL._searchPageTargets[q]
+            if pageSelect and pageSelect() then expanded = true end
             local sec = JL._secPanels[q]
             if sec and sec:IsCollapsed() then sec:SetCollapsed(false); expanded = true end
             q = q.Parent
