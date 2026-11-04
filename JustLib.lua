@@ -5972,32 +5972,43 @@ function JL:Window(opts)
             newTxt({Parent=row,Text="Welcome to " .. (hopts.WelcomeTitle or opts.Title or "the Hub") .. "!",Font=GB,Size=17,Sz=UDim2.new(1,0,1,0),Pos=UDim2.new(0,2,0,0)})
         end
         do
-            local h = 96
+            local h = 180
             local card = newCard(h)
-            local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = card
+
+            local playerInfo = Instance.new("Frame")
+            playerInfo.Name = "PlayerInfo"
+            playerInfo.Size = UDim2.new(1,-194,0,96)
+            playerInfo.Position = UDim2.new(0,0,0.5,-48)
+            playerInfo.BackgroundTransparency = 1
+            playerInfo.Parent = card
+
+            local avatar = Instance.new("ImageLabel"); avatar.Size = UDim2.new(0,64,0,64); avatar.Position = UDim2.new(0,14,0.5,-32); avatar.BackgroundColor3 = C.pHdr; avatar.BorderSizePixel = 0; avatar.Parent = playerInfo
             avatar:SetAttribute("JLNoRepaint", true)
             corner(32,avatar)
             trackedSpawn(function()
                 local ok,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(LP.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
                 if ok then avatar.Image = content end
             end)
+            newTxt({Parent=playerInfo,Text="Welcome back,",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,16)})
+            newTxt({Parent=playerInfo,Text=LP.DisplayName,Font=GB,Size=17,Sz=UDim2.new(0,260,0,22),Pos=UDim2.new(0,90,0,30)})
+            newTxt({Parent=playerInfo,Text="@" .. LP.Name,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0,220,0,14),Pos=UDim2.new(0,90,0,54)})
 
             local changelogFrame = Instance.new("Frame")
             changelogFrame.Name = "ChangelogFrame"
-            changelogFrame.Size = UDim2.new(1,-100,1,-16)
-            changelogFrame.Position = UDim2.new(0,90,0,8)
+            changelogFrame.Size = UDim2.new(0,180,0,180)
+            changelogFrame.Position = UDim2.new(1,-180,0,0)
             changelogFrame.BackgroundColor3 = C.pHdr
             changelogFrame.BorderSizePixel = 0
             changelogFrame.ClipsDescendants = true
             changelogFrame.Parent = card
-            corner(7,changelogFrame)
+            corner(9,changelogFrame)
             stroke(C.border,1,changelogFrame)
 
-            local changelogTitle = newTxt({Parent=changelogFrame,Text="Changelog",Font=GB,Size=11,Sz=UDim2.new(1,-16,0,14),Pos=UDim2.new(0,8,0,5)})
+            newTxt({Parent=changelogFrame,Text="Changelog",Font=GB,Size=11,Sz=UDim2.new(1,-16,0,14),Pos=UDim2.new(0,8,0,7)})
             local changelogScroll = Instance.new("ScrollingFrame")
             changelogScroll.Name = "ChangelogList"
-            changelogScroll.Size = UDim2.new(1,-12,1,-27)
-            changelogScroll.Position = UDim2.new(0,6,0,22)
+            changelogScroll.Size = UDim2.new(1,-12,1,-31)
+            changelogScroll.Position = UDim2.new(0,6,0,25)
             changelogScroll.BackgroundTransparency = 1
             changelogScroll.BorderSizePixel = 0
             changelogScroll.ScrollBarThickness = 2
@@ -6031,7 +6042,7 @@ function JL:Window(opts)
                 local content = heading and heading ~= "" and (description ~= "" and (heading .. "  —  " .. description) or heading) or description
                 if content ~= "" then
                     entryCount = entryCount + 1
-                    local label = newTxt({Parent=changelogScroll,Text=content,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-4,0,fitH(content,10,GM,math.max(40,IW - 128),13,2)),Pos=UDim2.new(0,2,0,0)})
+                    local label = newTxt({Parent=changelogScroll,Text=content,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-4,0,fitH(content,10,GM,148,13,2)),Pos=UDim2.new(0,2,0,0)})
                     label.LayoutOrder = index
                     label.TextYAlignment = Enum.TextYAlignment.Top
                 end
@@ -6042,13 +6053,12 @@ function JL:Window(opts)
             refreshChangelogCanvas()
 
             if hopts.Tier or #SUB.order > 0 then
-                changelogTitle.Size = UDim2.new(1,-100,0,14)
                 local chip = Instance.new("TextButton"); chip.AutoButtonColor = false; chip.Text = ""; chip.BackgroundColor3 = C.badgeHi; chip.BorderSizePixel = 0; chip.Parent = changelogFrame; corner(7,chip)
                 local chipStroke = stroke(ACCENTS[1],1,chip)
                 local chipTxt = newTxt({Parent=chip,Text="",Font=GB,Size=12,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center})
                 local timeTxt = newTxt({Parent=changelogFrame,Text="",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,120,0,10),Pos=UDim2.new(1,-128,0,29)})
                 changelogScroll.Position = UDim2.new(0,6,0,42)
-                changelogScroll.Size = UDim2.new(1,-12,1,-47)
+                changelogScroll.Size = UDim2.new(1,-12,1,-48)
                 local function refreshChip()
                     local info = JL:GetSubscriptionInfo()
                     local label = info.Subscribed and info.Name or (hopts.Tier or info.Name)
