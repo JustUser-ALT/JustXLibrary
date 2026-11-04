@@ -229,7 +229,6 @@ local HomeTab = Window:HomeTab({
         "Updated the Home executor label.",
         "This list is configured from the test script, not inside JustLib.lua.",
     },
-    Announcement = "Use the Cleanup tab to test resource registration and unload.",
 })
 
 task.delay(1, function()
@@ -239,10 +238,22 @@ task.delay(1, function()
     local changelogList = changelogFrame and changelogFrame:FindFirstChild("ChangelogList", true)
     local playerStatus = playerCard and playerCard:FindFirstChild("PlayerStatus", true)
     local changelogEntries = 0
+    local clickableEntries = 0
     if changelogList then
         for _, child in ipairs(changelogList:GetChildren()) do
             if child.Name == "ChangelogEntry" then
                 changelogEntries = changelogEntries + 1
+                if child:FindFirstChild("OpenChangelogEntry") then
+                    clickableEntries = clickableEntries + 1
+                end
+            end
+        end
+    end
+    local duplicateExecutorCard = false
+    if homeFrame then
+        for _, child in ipairs(homeFrame:GetDescendants()) do
+            if child:IsA("TextLabel") and child.Text == "Detected: " then
+                duplicateExecutorCard = true
             end
         end
     end
@@ -251,8 +262,11 @@ task.delay(1, function()
     print("[Cleanup Test] Home Changelog frame created:", changelogFrame ~= nil)
     print("[Cleanup Test] Home Changelog list created:", changelogList ~= nil)
     print("[Cleanup Test] Changelog entries rendered (expected 3):", changelogEntries)
+    print("[Cleanup Test] Changelog entries clickable (expected 3):", clickableEntries)
+    print("[Cleanup Test] Duplicate Executor card absent:", not duplicateExecutorCard)
     if changelogList then
         print("[Cleanup Test] Changelog content height:", changelogList.CanvasSize.Y.Offset)
+        print("[Cleanup Test] Changelog scrolling enabled:", changelogList.Active and changelogList.ScrollingDirection == Enum.ScrollingDirection.Y)
     end
 end)
 
