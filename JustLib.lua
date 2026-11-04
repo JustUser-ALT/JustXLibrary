@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.6"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.0.7"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -6031,7 +6031,7 @@ function JL:Window(opts)
                 local content = heading and heading ~= "" and (description ~= "" and (heading .. "  —  " .. description) or heading) or description
                 if content ~= "" then
                     entryCount = entryCount + 1
-                    local label = newTxt({Parent=changelogScroll,Text=content,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-4,0,fitH(content,10,GM,math.max(40,changelogFrame.AbsoluteSize.X - 28),13,2)),Pos=UDim2.new(0,2,0,0)})
+                    local label = newTxt({Parent=changelogScroll,Text=content,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-4,0,fitH(content,10,GM,math.max(40,IW - 128),13,2)),Pos=UDim2.new(0,2,0,0)})
                     label.LayoutOrder = index
                     label.TextYAlignment = Enum.TextYAlignment.Top
                 end
