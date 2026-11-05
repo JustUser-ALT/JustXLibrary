@@ -2770,20 +2770,42 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
 
-        -- Give the control a little more vertical room instead of compressing its content.
-        row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + 6)
+        -- Add a slim integrated header, moving the control body down instead of shrinking it.
+        local headerHeight = 18
+        local surface = BG.face(row)
+        row:SetAttribute("JLMetaHeaderHeight",headerHeight)
+        row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
+        for _,child in ipairs(surface:GetChildren()) do
+            if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
+                local pos = child.Position
+                child.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
+                if child.Size.Y.Scale == 1 then
+                    local size = child.Size
+                    child.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
+                end
+            end
+        end
 
-        -- Integrated action capsule: no separate side column and no width reduction.
+        -- Integrated action capsule sits in the control's own header.
         local capsule = Instance.new("Frame")
         capsule.Name = "JLMetaActions"
-        capsule.Size = UDim2.new(0, (settings and info) and 38 or 19, 0, 17)
-        capsule.Position = UDim2.new(1,-4,0,2)
+        capsule.Size = UDim2.new(0, (settings and info) and 38 or 19, 0, 16)
+        capsule.Position = UDim2.new(1,-4,0,1)
         capsule.AnchorPoint = Vector2.new(1,0)
         capsule.BackgroundColor3 = C.pHdr
         capsule.BorderSizePixel = 0
         capsule.ZIndex = 56
-        capsule.Parent = row
+        capsule.Parent = surface
         corner(7,capsule)
+        local separator = Instance.new("Frame")
+        separator.Name = "JLMetaSeparator"
+        separator.Size = UDim2.new(1,0,0,1)
+        separator.Position = UDim2.new(0,0,0,headerHeight-1)
+        separator.BackgroundColor3 = C.border
+        separator.BackgroundTransparency = 0.45
+        separator.BorderSizePixel = 0
+        separator.ZIndex = 55
+        separator.Parent = surface
         local function make(iconName,help,order,action)
             local button = Instance.new("TextButton")
             button.Name = iconName == "settings" and "JLSettingsAction" or "JLInfoAction"
@@ -3171,7 +3193,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         if o.Search then total = total + 28 end
         local TOTAL = math.min(total, 180); local dropOpen = false
-        local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4); container.BackgroundColor3 = C.pHdr
+        local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4 + (row:GetAttribute("JLMetaHeaderHeight") or 0)); container.BackgroundColor3 = C.pHdr
         container.BorderSizePixel = 0; container.Visible = false; container.ClipsDescendants = true; container.ScrollBarThickness = 3; container.ScrollBarImageColor3 = C.border
         container.CanvasSize = UDim2.new(0,0,0,0); container.Parent = row; corner(7,container); stroke(C.border,1,container)
         local cStack = Instance.new("UIListLayout"); cStack.SortOrder = Enum.SortOrder.LayoutOrder; cStack.Padding = UDim.new(0,2); cStack.Parent = container; pad(4,4,4,4,container)
@@ -3194,7 +3216,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local t = labelText(); lbl.Text = t
             bgH = fitH(t, 12, GB, labW, 32, 14)
             bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4)
-            row.Size = UDim2.new(1,0,0,dropOpen and (bgH + 4 + TOTAL) or bgH)
+            row.Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))
         end
         local function mark(ref,on) ref.mark.Visible = on; ref.label.TextColor3 = on and ac or C.txt end
         local rules = multi and groupRules(o) or nil
@@ -3279,7 +3301,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         bg.MouseButton1Click:Connect(function()
             dropOpen = not dropOpen; container.Visible = true
             tw(container,{Size = UDim2.new(1,0,0,dropOpen and TOTAL or 0)},.2)
-            tw(row,{Size = UDim2.new(1,0,0,dropOpen and (bgH + 4 + TOTAL) or bgH)},.2)
+            tw(row,{Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))},.2)
             darr.Text = dropOpen and "▲" or "▼"
             if not dropOpen then trackedDelay(.21, function() if not dropOpen then container.Visible = false end end) end
         end)
@@ -3294,7 +3316,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if not dropOpen then
                     dropOpen = true; container.Visible = true
                     tw(container,{Size = UDim2.new(1,0,0,TOTAL)},.2)
-                    tw(row,{Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)},.2)
+                    tw(row,{Size = UDim2.new(1,0,0,bgH + 4 + TOTAL + (row:GetAttribute("JLMetaHeaderHeight") or 0))},.2)
                     darr.Text = "▲"
                 end
             end,
@@ -3317,7 +3339,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     dropOpen = true
                     container.Visible = true
                     container.Size = UDim2.new(1,0,0,TOTAL)
-                    row.Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)
+                    row.Size = UDim2.new(1,0,0,bgH + 4 + TOTAL + (row:GetAttribute("JLMetaHeaderHeight") or 0))
                     darr.Text = "▲"
                 end
                 if state.CanvasPosition then
