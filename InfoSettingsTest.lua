@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.4.5 INFO & SETTINGS TEST
+-- JUSTLIB 4.4.6 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.4.5 · Info & Settings",
+    Name = "JustLib 4.4.6 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -139,4 +139,4 @@ safeAdd("Dropdown / Info and Settings", function()
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check touch-sized Info/Settings targets, single-column mobile Grid, and the Loot Filter Dropdown Info + Settings actions.")
+print("[Info & Settings Test] Loaded. Check Info/Settings actions and the Loot Filter Dropdown Info + Settings panels. Original JustLib Grid and control layout are preserved.")
