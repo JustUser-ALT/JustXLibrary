@@ -5824,6 +5824,10 @@ function JL:Window(opts)
         end
         RM.gui, RM.built, RM.items, RM.available = nil, false, {}, {}
         RM.editMode = false
+        JL._remoteEditActive = false
+        for _,button in ipairs(JL._metaButtons or {}) do
+            if button and button.Parent then button.Visible = true end
+        end
         JL._remote = nil
     end
     -- Remote = true разрешает игроку закреплять функцию, но не добавляет её автоматически.
