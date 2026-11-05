@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.4.4 INFO & SETTINGS TEST
+-- JUSTLIB 4.4.5 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.4.4 · Info & Settings",
+    Name = "JustLib 4.4.5 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -119,7 +119,7 @@ end)
 
 safeAdd("Dropdown / Info and Settings", function()
     return Section:Dropdown({
-        Name = "Loot Filter",
+        Name = "Loot Filter · Info + Settings",
         Flag = "Test_LootFilter",
         Remote = true,
         Options = {"Sword", "Shield", "Potion"},
@@ -127,9 +127,9 @@ safeAdd("Dropdown / Info and Settings", function()
         Default = {"Sword"},
         Tooltip = "Краткая подсказка для списка.",
         Info = {
-            Title = "Loot Filter",
-            Description = "Фильтрует предметы, которые отображаются в списке.",
-            Details = "Настройки фильтра находятся в отдельной панели.",
+            Title = "Dropdown Information",
+            Description = "Это отдельная информационная панель именно для Dropdown. Она открывается через значок Info над самим списком.",
+            Details = "Настройки фильтра находятся в отдельной панели Settings рядом со значком Info.",
         },
         Settings = {
             {Type = "Toggle", Name = "Enable Loot Filter", Flag = "Test_LootFilter_Enabled", Default = true},
@@ -139,4 +139,4 @@ safeAdd("Dropdown / Info and Settings", function()
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check control boundaries, icon combinations, compact Info/Settings panels, Remote Edit icon hiding and Dropdown metadata.")
+print("[Info & Settings Test] Loaded. Check touch-sized Info/Settings targets, single-column mobile Grid, and the Loot Filter Dropdown Info + Settings actions.")
