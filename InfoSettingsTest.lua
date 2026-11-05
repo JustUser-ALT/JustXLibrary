@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.4.7 INFO & SETTINGS TEST
+-- JUSTLIB 4.4.8 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.4.7 · Info & Settings",
+    Name = "JustLib 4.4.8 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -122,7 +122,26 @@ safeAdd("Dropdown / Info and Settings", function()
         Name = "Loot Filter · Info + Settings",
         Flag = "Test_LootFilter",
         Remote = true,
-        Options = {"Sword", "Shield", "Potion"},
+        Options = {
+            {
+                Name = "Sword", Value = "Sword",
+                Info = {
+                    Title = "Sword",
+                    Description = "Оружие ближнего боя. Информация относится именно к этому пункту списка.",
+                    Details = "Это не общая панель Dropdown, а метаданные Sword.",
+                },
+                Settings = {
+                    {Type = "Toggle", Name = "Auto Use", Flag = "Test_Sword_AutoUse", Default = false},
+                    {Type = "Slider", Name = "Priority", Flag = "Test_Sword_Priority", Min = 1, Max = 10, Default = 5},
+                },
+            },
+            {
+                Name = "Shield", Value = "Shield",
+                Info = {Title = "Shield", Description = "Собственная информация для Shield."},
+            },
+            {Divider = "Consumables"},
+            "Potion",
+        },
         MultiSelect = true,
         Default = {"Sword"},
         Tooltip = "Краткая подсказка для списка.",
@@ -139,4 +158,4 @@ safeAdd("Dropdown / Info and Settings", function()
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check the Info/Settings icons directly above each supported control, especially Loot Filter Dropdown. Open both Dropdown panels and verify the nested controls. Original JustLib Grid and control layout are preserved.")
+print("[Info & Settings Test] Loaded. Open Loot Filter and use Info/Settings on Sword and Info on Shield. Potion remains a legacy string option. Verify selection, multi-select, divider, and nested settings.")
