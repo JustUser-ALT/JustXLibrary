@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.3 INFO & SETTINGS TEST
+-- JUSTLIB 4.4 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.3 · Info & Settings",
+    Name = "JustLib 4.4 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -44,6 +44,7 @@ safeAdd("Toggle / all three extras", function()
     return Section:Toggle({
         Name = "Player ESP",
         Flag = "Test_PlayerESP",
+        Remote = true,
         Default = true,
         Tooltip = "Short hover/touch hint. This remains independent from Info.",
         Info = {
@@ -71,6 +72,7 @@ end)
 safeAdd("Button / Info only", function()
     return Section:Button({
         Name = "Information Only",
+        Remote = true,
         Info = "Это пример контрола только с расширенной информацией. Окно настроек для него не создаётся.",
         Callback = function()
             print("[Info & Settings Test] Info-only button clicked.")
@@ -119,6 +121,7 @@ safeAdd("Dropdown / Info and Settings", function()
     return Section:Dropdown({
         Name = "Loot Filter",
         Flag = "Test_LootFilter",
+        Remote = true,
         Options = {"Sword", "Shield", "Potion"},
         MultiSelect = true,
         Default = {"Sword"},
@@ -136,4 +139,4 @@ safeAdd("Dropdown / Info and Settings", function()
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check icon combinations, modal panels, settings controls and Dropdown metadata.")
+print("[Info & Settings Test] Loaded. Check icon combinations, compact Info/Settings panels, Remote Edit icon hiding and Dropdown metadata.")
