@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.4.6 INFO & SETTINGS TEST
+-- JUSTLIB 4.4.7 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.4.6 · Info & Settings",
+    Name = "JustLib 4.4.7 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -139,4 +139,4 @@ safeAdd("Dropdown / Info and Settings", function()
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check Info/Settings actions and the Loot Filter Dropdown Info + Settings panels. Original JustLib Grid and control layout are preserved.")
+print("[Info & Settings Test] Loaded. Check the Info/Settings icons directly above each supported control, especially Loot Filter Dropdown. Open both Dropdown panels and verify the nested controls. Original JustLib Grid and control layout are preserved.")
