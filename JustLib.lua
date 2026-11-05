@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.3.0"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.0"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2629,68 +2629,197 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         return ICONW
     end
     local function tip(guiObject,text) if attachTip then attachTip(guiObject, text) end end
+    JL._metaButtons = JL._metaButtons or {}
     local function openMetaPanel(title, meta, settingsMode)
         local overlay = Instance.new("Frame")
-        overlay.Size = UDim2.new(1,0,1,0); overlay.BackgroundColor3 = Color3.new(0,0,0); overlay.BackgroundTransparency = 0.42
-        overlay.BorderSizePixel = 0; overlay.ZIndex = 90; overlay.Parent = parentSg
+        overlay.Name = "JLMetaOverlay"
+        overlay.Size = UDim2.new(1,0,1,0)
+        overlay.BackgroundColor3 = Color3.new(0,0,0)
+        overlay.BackgroundTransparency = 0.48
+        overlay.BorderSizePixel = 0
+        overlay.ZIndex = 90
+        overlay.Parent = parentSg
+
         local panel = Instance.new("Frame")
-        panel.Size = UDim2.new(0.86,0,0.76,0); panel.Position = UDim2.new(0.5,0,0.5,0); panel.AnchorPoint = Vector2.new(0.5,0.5)
-        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ClipsDescendants = true; panel.ZIndex = 91; panel.Parent = overlay
-        corner(10,panel); stroke(C.border,1,panel)
-        local head = Instance.new("Frame"); head.Size = UDim2.new(1,0,0,46); head.BackgroundColor3 = C.pHdr; head.BorderSizePixel = 0; head.ZIndex = 92; head.Parent = panel; corner(10,head)
-        local fix = Instance.new("Frame"); fix.Size = UDim2.new(1,0,0,12); fix.Position = UDim2.new(0,0,1,-12); fix.BackgroundColor3 = C.pHdr; fix.BorderSizePixel = 0; fix.ZIndex = 92; fix.Parent = head
-        newTxt({Parent=head,Text=title,Font=GB,Size=13,Sz=UDim2.new(1,-58,1,0),Pos=UDim2.new(0,14,0,0),Z=93})
-        local close = Instance.new("TextButton"); close.Size = UDim2.new(0,28,0,28); close.Position = UDim2.new(1,-38,0,9); close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.AutoButtonColor = false; close.Text = "×"; close.Font = GB; close.TextSize = 19; close.TextColor3 = C.txt; close.ZIndex = 94; close.Parent = head; corner(7,close)
+        panel.Name = "JLMetaPanel"
+        panel.Size = UDim2.new(0.76,0,0.66,0)
+        panel.Position = UDim2.new(0.5,0,0.5,0)
+        panel.AnchorPoint = Vector2.new(0.5,0.5)
+        panel.BackgroundColor3 = C.panel
+        panel.BorderSizePixel = 0
+        panel.ClipsDescendants = true
+        panel.ZIndex = 91
+        panel.Parent = overlay
+        corner(9,panel)
+        stroke(C.border,1,panel)
+        local limit = Instance.new("UISizeConstraint")
+        limit.MinSize = Vector2.new(270,210)
+        limit.MaxSize = Vector2.new(470,500)
+        limit.Parent = panel
+
+        local head = Instance.new("Frame")
+        head.Size = UDim2.new(1,0,0,38)
+        head.BackgroundColor3 = C.pHdr
+        head.BorderSizePixel = 0
+        head.ZIndex = 92
+        head.Parent = panel
+        corner(9,head)
+        local fix = Instance.new("Frame")
+        fix.Size = UDim2.new(1,0,0,10)
+        fix.Position = UDim2.new(0,0,1,-10)
+        fix.BackgroundColor3 = C.pHdr
+        fix.BorderSizePixel = 0
+        fix.ZIndex = 92
+        fix.Parent = head
+        newTxt({Parent=head,Text=title,Font=GB,Size=12,Sz=UDim2.new(1,-54,1,0),Pos=UDim2.new(0,12,0,0),Z=93})
+        local close = Instance.new("TextButton")
+        close.Size = UDim2.new(0,24,0,24)
+        close.Position = UDim2.new(1,-31,0,7)
+        close.BackgroundColor3 = C.btnBg
+        close.BorderSizePixel = 0
+        close.AutoButtonColor = false
+        close.Text = "×"
+        close.Font = GB
+        close.TextSize = 17
+        close.TextColor3 = C.txt
+        close.ZIndex = 94
+        close.Parent = head
+        corner(6,close)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
-        local body = Instance.new("ScrollingFrame"); body.Size = UDim2.new(1,-20,1,-56); body.Position = UDim2.new(0,10,0,50); body.BackgroundTransparency = 1; body.BorderSizePixel = 0; body.ScrollBarThickness = 3; body.ScrollBarImageColor3 = ac; body.ScrollingDirection = Enum.ScrollingDirection.Y; body.Active = true; body.AutomaticCanvasSize = Enum.AutomaticSize.Y; body.CanvasSize = UDim2.new(0,0,0,0); body.ZIndex = 92; body.Parent = panel
+
+        local body = Instance.new("ScrollingFrame")
+        body.Size = UDim2.new(1,-16,1,-46)
+        body.Position = UDim2.new(0,8,0,42)
+        body.BackgroundTransparency = 1
+        body.BorderSizePixel = 0
+        body.ScrollBarThickness = 2
+        body.ScrollBarImageColor3 = ac
+        body.ScrollingDirection = Enum.ScrollingDirection.Y
+        body.Active = true
+        body.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        body.CanvasSize = UDim2.new(0,0,0,0)
+        body.ZIndex = 92
+        body.Parent = panel
+
         if settingsMode then
-            local layout = Instance.new("UIListLayout"); layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,6); layout.Parent = body; pad(2,2,2,8,body)
+            local layout = Instance.new("UIListLayout")
+            layout.SortOrder = Enum.SortOrder.LayoutOrder
+            layout.Padding = UDim.new(0,5)
+            layout.Parent = body
+            pad(2,2,2,6,body)
             local nested = attachWidgets(body,286,ac,uiScale,parentSg,attachTip)
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
                 if type(definition) == "table" then
-                    local kind = tostring(definition.Type or "Toggle"); if kind == "Textbox" or kind == "TextBox" then kind = "Input" end
+                    local kind = tostring(definition.Type or "Toggle")
+                    if kind == "Textbox" or kind == "TextBox" then kind = "Input" end
                     local create = nested[kind]
                     if type(create) == "function" then
-                        local config = {}; for k,v in pairs(definition) do config[k] = v end
+                        local config = {}
+                        for k,v in pairs(definition) do config[k] = v end
                         config.Flag = config.Flag or ("JLMeta_" .. tostring(title) .. "_" .. tostring(config.Name or kind))
                         create(nested,config)
-                    else newTxt({Parent=body,Text="Unsupported setting: " .. kind,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Z=93}) end
+                    else
+                        newTxt({Parent=body,Text="Unsupported setting: " .. kind,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Z=93})
+                    end
                 end
             end
         else
             local info = type(meta) == "table" and meta or {Description=tostring(meta or "")}
-            local blocks = {{Title=info.Title or title,Text=info.Description or info.Desc or info.Text},{Title=info.DetailsTitle or "Details",Text=info.Details},{Title=info.Warning and "Note" or nil,Text=info.Warning}}
-            local y = 4
-            for _,block in ipairs(blocks) do
-                if block.Text and tostring(block.Text) ~= "" then
-                    if block.Title and block.Title ~= "" then local h=fitH(block.Title,11,GB,278,16,2); local l=newTxt({Parent=body,Text=block.Title,Font=GB,Size=11,Color=ac,Wrap=true,Sz=UDim2.new(1,-8,0,h),Pos=UDim2.new(0,4,0,y),Z=93}); l.TextYAlignment=Enum.TextYAlignment.Top; y=y+h+4 end
-                    local h=fitH(tostring(block.Text),11,GM,278,18,8); local l=newTxt({Parent=body,Text=tostring(block.Text),Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,h),Pos=UDim2.new(0,4,0,y),Z=93}); l.TextYAlignment=Enum.TextYAlignment.Top; y=y+h+12
+            local blocks = {
+                {Title=info.Title or title,Text=info.Description or info.Desc or info.Text,Kind="main"},
+                {Title=info.DetailsTitle or "Details",Text=info.Details,Kind="detail"},
+                {Title=info.Warning and (info.WarningTitle or "Heads up") or nil,Text=info.Warning,Kind="warning"},
+            }
+            local y = 2
+            for _,item in ipairs(blocks) do
+                if item.Text and tostring(item.Text) ~= "" then
+                    local heading = item.Title and tostring(item.Title) or ""
+                    local titleHeight = heading ~= "" and fitH(heading,10,GB,260,14,2) or 0
+                    local descHeight = fitH(tostring(item.Text),10,GM,260,16,8)
+                    local card = Instance.new("Frame")
+                    card.Size = UDim2.new(1,-6,0,titleHeight + descHeight + (titleHeight > 0 and 5 or 0) + 28)
+                    card.Position = UDim2.new(0,3,0,y)
+                    card.BackgroundColor3 = item.Kind == "warning" and C.pHdr or C.btnBg
+                    card.BorderSizePixel = 0
+                    card.ZIndex = 93
+                    card.Parent = body
+                    corner(6,card)
+                    local content = Instance.new("Frame")
+                    content.Size = UDim2.new(1,-16,1,-14)
+                    content.Position = UDim2.new(0,8,0,7)
+                    content.BackgroundTransparency = 1
+                    content.ZIndex = 94
+                    content.Parent = card
+                    if titleHeight > 0 then
+                        newTxt({Parent=content,Text=heading,Font=GB,Size=10,Color=ac,Wrap=true,Sz=UDim2.new(1,0,0,titleHeight),Z=95})
+                    end
+                    local desc = newTxt({Parent=content,Text=tostring(item.Text),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,0,0,descHeight),Pos=UDim2.new(0,0,0,titleHeight > 0 and titleHeight + 5 or 0),Z=95})
+                    desc.TextYAlignment = Enum.TextYAlignment.Top
+                    y = y + card.Size.Y.Offset + 6
                 end
             end
-            if y == 4 then newTxt({Parent=body,Text="No additional information.",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-8,0,20),Pos=UDim2.new(0,4,0,4),Z=93}) end
+            if y == 2 then
+                newTxt({Parent=body,Text="No additional information.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Pos=UDim2.new(0,4,0,4),Z=93})
+            end
+            body.CanvasSize = UDim2.new(0,0,0,y + 4)
         end
     end
     local function addMetaButtons(row, definition)
-        if type(definition) ~= "table" then return end
+        if type(definition) ~= "table" or not row then return end
         local settings = type(definition.Settings) == "table" and #definition.Settings > 0
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
-        local offset = -5
-        local function make(iconName,tipText,action)
-            local b=Instance.new("TextButton"); b.Size=UDim2.new(0,18,0,18); b.Position=UDim2.new(1,offset,0,2); b.AnchorPoint=Vector2.new(1,0); b.BackgroundColor3=C.pHdr; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Text=""; b.ZIndex=55; b.Parent=row; corner(5,b)
-            local st=stroke(C.border,1,b); local ic=mkIcon(b,iconName,11,56); ic.AnchorPoint=Vector2.new(0.5,0.5); ic.Position=UDim2.new(0.5,0,0.5,0); ic.Size=UDim2.new(0,11,0,11); if ic:IsA("TextLabel") then ic.TextColor3=ac else ic.ImageColor3=ac end
-            b.MouseEnter:Connect(function() if touchLast() then return end; tw(b,{BackgroundColor3=C.btnHov},.1); st.Color=ac end); b.MouseLeave:Connect(function() tw(b,{BackgroundColor3=C.pHdr},.1); st.Color=C.border end)
-            tip(b,tipText); b.MouseButton1Click:Connect(action); offset=offset-22
+
+        -- Integrated action capsule: no separate side column and no width reduction.
+        local capsule = Instance.new("Frame")
+        capsule.Name = "JLMetaActions"
+        capsule.Size = UDim2.new(0, (settings and info) and 38 or 19, 0, 17)
+        capsule.Position = UDim2.new(1,-4,0,2)
+        capsule.AnchorPoint = Vector2.new(1,0)
+        capsule.BackgroundColor3 = C.pHdr
+        capsule.BorderSizePixel = 0
+        capsule.ZIndex = 56
+        capsule.Parent = row
+        corner(7,capsule)
+        local function make(iconName,help,order,action)
+            local button = Instance.new("TextButton")
+            button.Name = iconName == "settings" and "JLSettingsAction" or "JLInfoAction"
+            button.Size = UDim2.new(0,17,0,17)
+            button.Position = UDim2.new(0,(order-1)*19,0,0)
+            button.BackgroundTransparency = 1
+            button.BorderSizePixel = 0
+            button.AutoButtonColor = false
+            button.Text = ""
+            button.ZIndex = 57
+            button.Parent = capsule
+            local icon = mkIcon(button,iconName,11,58)
+            icon.AnchorPoint = Vector2.new(0.5,0.5)
+            icon.Position = UDim2.new(0.5,0,0.5,0)
+            icon.Size = UDim2.new(0,11,0,11)
+            if icon:IsA("TextLabel") then icon.TextColor3 = ac else icon.ImageColor3 = ac end
+            button.MouseEnter:Connect(function()
+                if touchLast() then return end
+                tw(capsule,{BackgroundColor3=C.btnHov},0.1)
+            end)
+            button.MouseLeave:Connect(function()
+                tw(capsule,{BackgroundColor3=C.pHdr},0.1)
+            end)
+            tip(button,help)
+            button.MouseButton1Click:Connect(action)
+            JL._metaButtons[#JL._metaButtons + 1] = button
+            button.Visible = not JL._remoteEditActive
         end
-        if settings then make("settings","Settings",function() openMetaPanel((definition.Name or "Control") .. " · Settings",definition.Settings,true) end) end
-        if info then make("info","More information",function() openMetaPanel((definition.Name or "Control") .. " · Info",definition.Info,false) end) end
-        local reserve = ((settings and 1 or 0) + (info and 1 or 0)) * 22 + 4
-        for _,child in ipairs(row:GetChildren()) do
-            if child:IsA("GuiObject") and child.ZIndex < 55 then
-                if child.Size.X.Scale == 1 then child.Size = UDim2.new(1,child.Size.X.Offset-reserve,child.Size.Y.Scale,child.Size.Y.Offset) end
-                if child.Position.X.Scale == 1 then child.Position = UDim2.new(1,child.Position.X.Offset-reserve,child.Position.Y.Scale,child.Position.Y.Offset) end
-                if child:IsA("TextLabel") and child.Size.X.Scale == 0 then child.Size = UDim2.new(0,math.max(0,child.Size.X.Offset-reserve),child.Size.Y.Scale,child.Size.Y.Offset) end
-            end
+        local order = 1
+        if settings then
+            make("settings","Settings",order,function()
+                openMetaPanel((definition.Name or "Control") .. " · Settings",definition.Settings,true)
+            end)
+            order = order + 1
+        end
+        if info then
+            make("info","More information",order,function()
+                openMetaPanel((definition.Name or "Control") .. " · Info",definition.Info,false)
+            end)
         end
     end
     local function newRow(h2)
@@ -5638,6 +5767,10 @@ function JL:Window(opts)
     end
     function RM.setEditMode(enabled)
         RM.editMode = enabled == true
+        JL._remoteEditActive = RM.editMode
+        for _,button in ipairs(JL._metaButtons or {}) do
+            if button and button.Parent then button.Visible = not RM.editMode end
+        end
         for _,entry in ipairs(RM.available) do
             if entry.setEditLayout then entry.setEditLayout(RM.editMode) end
             if entry.pinButton then
