@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.2.0"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.3.0"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -3251,456 +3251,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         return mergeLock(ret, row, o)
     end
     Sec.NumberTextSlider = Sec.TextSlider
-    function Sec:ValueDropdown(o)
-        o = o or {}
-        local options = o.Options or {}
-        local multi = o.MultiSelect
-        local maxSel = o.MaxSelect or (multi and math.max(#options,1) or 1)
-        local cfgs = o.Values or {}
-        local dimsOf, isMulti, groupMode = {}, {}, {}
-        for nm,cf in pairs(cfgs) do
-            if type(cf) == "table" and type(cf[1]) == "table" then
-                local dims = {}
-                for i,d in ipairs(cf) do
-                    local t = d.Type or "Slider"
-                    if t == "Slider" then
-                        local steps = buildSteps(d)
-                        local defIdx = 1
-                        if d.Default ~= nil then for si,s in ipairs(steps) do if s.value == d.Default then defIdx = si; break end end end
-                        dims[i] = {type = "Slider", name = d.Name, key = d.Name or ("v" .. i), steps = steps, defaultIndex = defIdx, meta = d}
-                    elseif t == "Toggle" then
-                        dims[i] = {type = "Toggle", name = d.Name or "Toggle", key = d.Name or ("v" .. i), default = d.Default or false, callback = d.Callback, master = d.Master == true, meta = d}
-                    elseif t == "ColorPicker" then
-                        dims[i] = {type = "ColorPicker", name = d.Name or "Color", key = d.Name or ("v" .. i), default = d.Default or Color3.fromRGB(255,255,255), callback = d.Callback, meta = d}
-                    elseif t == "Button" then
-                        dims[i] = {type = "Button", name = d.Name or "Button", key = d.Name or ("v" .. i), callback = d.Callback, meta = d}
-                    end
-                end
-                dimsOf[nm] = dims; isMulti[nm] = true
-                groupMode[nm] = (cf.Mode == "Move") and "Move" or ((cf.Mode == "Lock") and "Lock" or nil)
-            else
-                local steps = buildSteps(cf)
-                local defIdx = 1
-                if cf.Default ~= nil then for si,s in ipairs(steps) do if s.value == cf.Default then defIdx = si; break end end end
-                dimsOf[nm] = {{type = "Slider", name = nil, key = "_single", steps = steps, defaultIndex = defIdx}}; isMulti[nm] = false
-            end
-        end
-        local selected = {}
-        local had = cfgHas(o.Flag)
-        local function defaultValue(nm)
-            local dims = dimsOf[nm]; if not dims then return true end
-            if isMulti[nm] then
-                local m = {}
-                for _,d in ipairs(dims) do
-                    if d.type == "Slider" then m[d.key] = d.steps[d.defaultIndex].value
-                    elseif d.type == "Toggle" then m[d.key] = d.default
-                    elseif d.type == "ColorPicker" then m[d.key] = d.default end
-                end
-                return m
-            end
-            return dims[1].steps[dims[1].defaultIndex].value
-        end
-        local function loadMap(m)
-            selected = {}
-            if type(m) ~= "table" then return end
-            for k,v in pairs(m) do
-                if type(k) == "number" then
-                    if table.find(options, v) then selected[v] = defaultValue(v) end
-                elseif table.find(options, k) and v then
-                    if not dimsOf[k] then selected[k] = true
-                    elseif isMulti[k] then selected[k] = (type(v) == "table") and v or defaultValue(k)
-                    else
-                        local ok2 = false
-                        for _,s in ipairs(dimsOf[k][1].steps) do if s.value == v then ok2 = true; break end end
-                        selected[k] = ok2 and v or defaultValue(k)
-                    end
-                end
-            end
-        end
-        local function encodeMap(m)
-            local out = {}
-            for k,v in pairs(m) do
-                if type(v) == "table" then
-                    local t = {}
-                    for kk,vv in pairs(v) do
-                        if typeof(vv) == "Color3" then t[kk] = {__color = {math.round(vv.R * 255), math.round(vv.G * 255), math.round(vv.B * 255)}} else t[kk] = vv end
-                    end
-                    out[k] = t
-                else out[k] = v end
-            end
-            return out
-        end
-        local function decodeMap(m)
-            if type(m) ~= "table" then return m end
-            local out = {}
-            for k,v in pairs(m) do
-                if type(v) == "table" then
-                    local t = {}
-                    for kk,vv in pairs(v) do
-                        if type(vv) == "table" and vv.__color then t[kk] = Color3.fromRGB(vv.__color[1], vv.__color[2], vv.__color[3]) else t[kk] = vv end
-                    end
-                    out[k] = t
-                else out[k] = v end
-            end
-            return out
-        end
-        local function snapshot() local m = {}; for k,v in pairs(selected) do m[k] = v end; return m end
-        loadMap(decodeMap(cfgGet(o.Flag, o.Default)))
-        local function valueLabel(nm)
-            local dims = dimsOf[nm]; local v = selected[nm]
-            if not dims or v == nil or v == true then return nil end
-            if isMulti[nm] then
-                local parts = {}
-                for _,d in ipairs(dims) do
-                    if d.type == "Slider" then
-                        local dv = type(v) == "table" and v[d.key] or nil; local lbl = tostring(dv)
-                        for _,s in ipairs(d.steps) do if s.value == dv then lbl = s.label; break end end
-                        parts[#parts + 1] = lbl
-                    elseif d.type == "Toggle" then
-                        local dv = type(v) == "table" and v[d.key]
-                        parts[#parts + 1] = dv and "On" or "Off"
-                    end
-                end
-                if #parts == 0 then return nil end
-                return table.concat(parts, "/")
-            end
-            for _,s in ipairs(dims[1].steps) do if s.value == v then return s.label end end
-            return tostring(v)
-        end
-        local baseName = o.Name or "Value Dropdown"; local iconW = o.Icon and ICONW or 0; local labW = INNER - 10 - 30 - iconW
-        local function labelText()
-            if o.Static then return baseName end
-            local picked = {}
-            for _,nm in ipairs(options) do
-                if not isDividerOpt(nm) and selected[nm] ~= nil then
-                    local vl = valueLabel(nm)
-                    picked[#picked + 1] = vl and (tostring(nm) .. " (" .. vl .. ")") or tostring(nm)
-                end
-            end
-            if #picked == 0 then return baseName end
-            return baseName .. ": " .. table.concat(picked, ", ")
-        end
-        local bgH = fitH(labelText(), 12, GB, labW, 32, 14)
-        local row = newRow(bgH)
-        local bg = Instance.new("TextButton"); bg.Size = UDim2.new(1,0,0,bgH); bg.BackgroundColor3 = C.btnBg; bg.Text = ""; bg.AutoButtonColor = false; bg.BorderSizePixel = 0; bg.Parent = row
-        corner(7,bg); stroke(C.border,1,bg); hover(bg, C.btnBg, C.btnHov); tip(bg, o.Tooltip)
-        iconSlot(bg, o.Icon)
-        local lbl = newTxt({Parent=bg,Text=labelText(),Font=GB,Size=12,Wrap=true,Sz=UDim2.new(0,labW,1,0),Pos=UDim2.new(0,10 + iconW,0,0)})
-        local darr = newTxt({Parent=bg,Text="▼",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,28,1,0),Pos=UDim2.new(1,-28,0,0)})
-        local optW = INNER - 8 - 16 - 44
-        local heights = {}; local total = 8
-        for i,nm in ipairs(options) do
-            heights[i] = isDividerOpt(nm) and dividerHeight(nm) or fitH(tostring(nm), 11, GB, optW, 26, 10)
-            total = total + heights[i] + 2
-        end
-        if o.Search then total = total + 28 end
-        local TOTAL = math.min(total, 170)
-        local PANEL_H = 100
-        local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4); container.BackgroundColor3 = C.pHdr
-        container.BorderSizePixel = 0; container.Visible = false; container.ClipsDescendants = true; container.ScrollBarThickness = 3; container.ScrollBarImageColor3 = C.border
-        container.CanvasSize = UDim2.new(0,0,0,0); container.Parent = row; corner(7,container); stroke(C.border,1,container)
-        local cStack = Instance.new("UIListLayout"); cStack.SortOrder = Enum.SortOrder.LayoutOrder; cStack.Padding = UDim.new(0,2); cStack.Parent = container; pad(4,4,4,4,container)
-        cStack:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() container.CanvasSize = UDim2.new(0,0,0,unscale(cStack.AbsoluteContentSize.Y) + 8) end)
-        local panel = Instance.new("Frame"); panel.Size = UDim2.new(1,0,0,PANEL_H); panel.Position = UDim2.new(0,0,0,bgH + 4); panel.BackgroundColor3 = C.pHdr; panel.BorderSizePixel = 0; panel.Visible = false; panel.Parent = row
-        corner(7,panel); stroke(C.border,1,panel)
-        local mode = "closed"
-        local function relayout()
-            local extra = (mode == "list" and (4 + TOTAL)) or (mode == "value" and (4 + PANEL_H)) or 0
-            bg.Size = UDim2.new(1,0,0,bgH)
-            container.Position = UDim2.new(0,0,0,bgH + 4); panel.Position = UDim2.new(0,0,0,bgH + 4)
-            darr.Text = (mode == "closed") and "▼" or "▲"
-            if mode == "list" then
-                container.Visible = true; tw(container,{Size = UDim2.new(1,0,0,TOTAL)},.18)
-            else
-                tw(container,{Size = UDim2.new(1,0,0,0)},.15)
-                trackedDelay(.16, function() if mode ~= "list" then container.Visible = false end end)
-            end
-            panel.Visible = (mode == "value")
-            tw(row,{Size = UDim2.new(1,0,0,bgH + extra)},.18)
-        end
-        local function refreshLabel()
-            lbl.Text = labelText()
-            bgH = fitH(lbl.Text, 12, GB, labW, 32, 14)
-            relayout()
-        end
-        local optRefs = {}
-        local sBox
-        local activeValue
-        local rules = multi and groupRules(o) or nil
-        local function masterOn()
-            if not rules then return false end
-            for _,m in ipairs(rules.list) do if selected[m] ~= nil then return true end end
-            return false
-        end
-        local function normalizeSel()
-            if rules and rules.clear and masterOn() then
-                for k in pairs(selected) do if not rules.set[k] then selected[k] = nil end end
-            end
-        end
-        normalizeSel()
-        local function refreshOptions()
-            local lock = rules and (not rules.move) and masterOn()
-            for nm,ref in pairs(optRefs) do
-                local on = selected[nm] ~= nil
-                ref.mark.Visible = on; ref.label.TextColor3 = on and ac or C.txt
-                ref.label.TextTransparency = (lock and not rules.set[nm]) and 0.6 or 0
-                ref.val.Text = valueLabel(nm) or ""
-            end
-        end
-        if o.Search then
-            local sHold = Instance.new("Frame"); sHold.Size = UDim2.new(1,0,0,24); sHold.BackgroundTransparency = 1; sHold.LayoutOrder = 0; sHold.Parent = container
-            sBox = Instance.new("TextBox"); sBox.Size = UDim2.new(1,0,1,0); sBox.BackgroundColor3 = C.input; sBox.BorderSizePixel = 0
-            sBox.PlaceholderText = "Search..."; sBox.PlaceholderColor3 = C.dim; sBox.Font = GB; sBox.TextSize = 11; sBox.TextColor3 = C.txt
-            sBox.ClearTextOnFocus = false; sBox.Text = ""; sBox.Parent = sHold; corner(5,sBox); stroke(C.border,1,sBox)
-            sBox:GetPropertyChangedSignal("Text"):Connect(function()
-                local q = sBox.Text:lower()
-                for nm,ref in pairs(optRefs) do ref.opt.Visible = (q == "") or tostring(nm):lower():find(q,1,true) ~= nil end
-            end)
-        end
-        local token = 0
-        local function persist() local snap = snapshot(); cfgSet(o.Flag, snap, encodeMap(snap)) end
-        local function fire() if o.Callback then pcall(o.Callback, snapshot()) end end
-        local function commit() persist(); fire(); refreshOptions(); refreshLabel() end
-        local function finish()
-            persist(); fire(); refreshOptions()
-            activeValue = nil
-            mode = multi and "list" or "closed"
-            refreshLabel()
-        end
-        local ret
-        local searchTargetRows = {}
-        local function openPanel(nm)
-            for _,c in ipairs(panel:GetChildren()) do c:Destroy() end
-            for k in pairs(searchTargetRows) do searchTargetRows[k] = nil end
-            local dims = dimsOf[nm]; local nDims = #dims
-            mode = "value"; activeValue = nm; token = token + 1
-            if isMulti[nm] and type(selected[nm]) ~= "table" then selected[nm] = defaultValue(nm) end
-            local rowH = 44
-            PANEL_H = 10 + nDims * rowH + 40
-            panel.Size = UDim2.new(1,0,0,PANEL_H)
-            local togs = {}
-            local function setTog(t,v)
-                t.val = v; t.sw.Set(v); selected[nm][t.key] = v
-                if t.callback then pcall(t.callback, v) end
-            end
-            local function refreshTogs()
-                local gm = groupMode[nm]; if not gm then return end
-                local lock = false
-                if gm == "Lock" then for _,t in pairs(togs) do if t.master and t.val then lock = true end end end
-                for _,t in pairs(togs) do t.label.TextTransparency = (lock and not t.master) and 0.6 or 0 end
-            end
-            for i,d in ipairs(dims) do
-                local y = 6 + (i - 1) * rowH
-                local searchEntriesForValue = ret and ret._searchNestedEntries and ret._searchNestedEntries[tostring(nm)]
-                local searchEntry = searchEntriesForValue and searchEntriesForValue[i]
-                if searchEntry then
-                    local targetRow = Instance.new("Frame")
-                    targetRow.Name = "JLNestedSearchTarget"
-                    targetRow.Size = UDim2.new(1,0,0,rowH)
-                    targetRow.Position = UDim2.new(0,0,0,y)
-                    targetRow.BackgroundTransparency = 1
-                    targetRow.BorderSizePixel = 0
-                    targetRow.ClipsDescendants = true
-                    targetRow.ZIndex = 40
-                    targetRow.Parent = panel
-                    searchTargetRows[i] = targetRow
-                    searchEntry.TargetRow = targetRow
-                end
-                if d.type == "Slider" then
-                    local dimVal = isMulti[nm] and selected[nm][d.key] or selected[nm]
-                    local curIdx = 1
-                    for si,s in ipairs(d.steps) do if s.value == dimVal then curIdx = si; break end end
-                    local sliderY = y
-                    if d.name then
-                        newTxt({Parent=panel,Text=d.name,Font=GB,Size=11,Sz=UDim2.new(1,-100,0,15),Pos=UDim2.new(0,10,0,y)})
-                        sliderY = y + 19
-                    end
-                    local valL = newTxt({Parent=panel,Text=d.steps[curIdx].label,Font=GB,Size=11,Color=ac,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,90,0,15),Pos=UDim2.new(1,-100,0,y)})
-                    local d2 = d
-                    mkSliderBar(panel, UDim2.new(0,14,0,sliderY + 8), UDim2.new(1,-28,0,6), ac, 1, math.max(#d2.steps,1), 1, curIdx, function(v)
-                        token = token + 1
-                        local nv = d2.steps[v].value
-                        if isMulti[nm] then selected[nm][d2.key] = nv else selected[nm] = nv end
-                        valL.Text = d2.steps[v].label
-                        refreshOptions()
-                    end, function()
-                        commit()
-                        if o.AutoClose ~= true then return end
-                        local t0 = token
-                        trackedDelay(.7, function() if mode == "value" and token == t0 then finish() end end)
-                    end)
-                elseif d.type == "Toggle" then
-                    local dv = isMulti[nm] and selected[nm][d.key] or false
-                    local tlabel = newTxt({Parent=panel,Text=d.name,Font=GB,Size=11,Sz=UDim2.new(1,-50,0,rowH),Pos=UDim2.new(0,10,0,y)})
-                    local sw = mkSwitch(panel, UDim2.new(1,-44,0,y + (rowH - 18) / 2), dv, ac)
-                    local hit = Instance.new("TextButton"); hit.Size = UDim2.new(1,0,0,rowH); hit.Position = UDim2.new(0,0,0,y); hit.BackgroundTransparency = 1; hit.Text = ""; hit.Parent = panel
-                    local d2 = d
-                    local tref = {sw = sw, val = dv, master = d2.master, key = d2.key, name = d2.name, label = tlabel, callback = d2.callback}
-                    togs[d2.key] = tref
-                    hit.MouseButton1Click:Connect(function()
-                        local nxt = not tref.val
-                        local gm = groupMode[nm]
-                        if gm and nxt then
-                            if gm == "Lock" and not tref.master then
-                                local names, blocked = {}, false
-                                for _,t in pairs(togs) do if t.master then names[#names + 1] = t.name; if t.val then blocked = true end end end
-                                if blocked then
-                                    JL:Notify({Title = "Locked", Desc = "Turn off " .. table.concat(names, " / ") .. " first", Type = "Warn", Duration = 2.5})
-                                    return
-                                end
-                            end
-                            if tref.master then
-                                for _,t in pairs(togs) do if t ~= tref and not t.master and t.val then setTog(t,false) end end
-                            elseif gm == "Move" then
-                                for _,t in pairs(togs) do if t.master and t.val then setTog(t,false) end end
-                            end
-                        end
-                        tref.val = nxt; sw.Set(nxt)
-                        if isMulti[nm] then selected[nm][d2.key] = nxt end
-                        if d2.callback then pcall(d2.callback, nxt) end
-                        refreshTogs()
-                        commit()
-                    end)
-                elseif d.type == "ColorPicker" then
-                    local cur = (isMulti[nm] and selected[nm][d.key]) or d.default
-                    newTxt({Parent=panel,Text=d.name,Font=GB,Size=11,Sz=UDim2.new(1,-50,0,rowH),Pos=UDim2.new(0,10,0,y)})
-                    local sw = Instance.new("TextButton"); sw.Size = UDim2.new(0,30,0,20); sw.Position = UDim2.new(1,-40,0,y + (rowH - 20) / 2); sw.BackgroundColor3 = cur; sw.AutoButtonColor = false; sw.Text = ""; sw.BorderSizePixel = 0; sw.Parent = panel
-                    corner(6,sw); stroke(C.border,1,sw)
-                    local d2 = d
-                    sw.MouseButton1Click:Connect(function()
-                        openColorPicker(parentSg, cur, function(col)
-                            cur = col; sw.BackgroundColor3 = col
-                            if isMulti[nm] then selected[nm][d2.key] = col end
-                            if d2.callback then pcall(d2.callback, col) end
-                            commit()
-                        end)
-                    end)
-                elseif d.type == "Button" then
-                    local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1,-20,0,32); btn.Position = UDim2.new(0,10,0,y + (rowH - 32) / 2); btn.BackgroundColor3 = C.btnBg; btn.BorderSizePixel = 0; btn.AutoButtonColor = false
-                    btn.Text = d.name; btn.Font = GB; btn.TextSize = 11; btn.TextColor3 = C.txt; btn.Parent = panel; corner(7,btn); stroke(C.border,1,btn)
-                    btn.MouseEnter:Connect(function() if touchLast() then return end tw(btn,{BackgroundColor3 = C.btnHov},.1) end)
-                    btn.MouseLeave:Connect(function() tw(btn,{BackgroundColor3 = C.btnBg},.1) end)
-                    local d2 = d
-                    btn.MouseButton1Click:Connect(function() if d2.callback then pcall(d2.callback) end end)
-                end
-                if d.meta then
-                    local metaRow = Instance.new("Frame"); metaRow.Size = UDim2.new(1,0,0,rowH); metaRow.Position = UDim2.new(0,0,0,y); metaRow.BackgroundTransparency = 1; metaRow.ZIndex = 45; metaRow.Parent = panel
-                    addMetaButtons(metaRow,d.meta)
-                    if d.meta.Tooltip then tip(metaRow,d.meta.Tooltip) end
-                end
-            end
-            if groupMode[nm] then
-                local mOn = false
-                for _,t in pairs(togs) do if t.master and t.val then mOn = true end end
-                if mOn then for _,t in pairs(togs) do if not t.master and t.val then setTog(t,false) end end end
-                refreshTogs()
-            end
-            local rem = Instance.new("TextButton"); rem.Size = UDim2.new(0.5,-14,0,26); rem.Position = UDim2.new(0,10,1,-34); rem.BackgroundColor3 = C.btnBg; rem.BorderSizePixel = 0
-            rem.Text = "Remove"; rem.Font = GB; rem.TextSize = 11; rem.TextColor3 = C.txt; rem.Parent = panel; corner(6,rem); stroke(C.border,1,rem)
-            rem.MouseButton1Click:Connect(function() selected[nm] = nil; finish() end)
-            local okb = Instance.new("TextButton"); okb.Size = UDim2.new(0.5,-14,0,26); okb.Position = UDim2.new(0.5,4,1,-34); okb.BackgroundColor3 = ac; okb.BorderSizePixel = 0
-            okb.Text = "OK"; okb.Font = GB; okb.TextSize = 11; okb.TextColor3 = Color3.new(1,1,1); okb.Parent = panel; corner(6,okb)
-            okb.MouseButton1Click:Connect(function() finish() end)
-            relayout()
-        end
-        local function onOption(nm)
-            local hasVal = dimsOf[nm] ~= nil
-            if multi then
-                if selected[nm] ~= nil then
-                    if hasVal then openPanel(nm) else selected[nm] = nil; finish() end
-                else
-                    if rules and not rules.move and not rules.set[nm] and masterOn() then
-                        JL:Notify({Title = "Locked", Desc = "Turn off " .. table.concat(rules.list, " / ") .. " first", Type = "Warn", Duration = 2.5})
-                        return
-                    end
-                    local drop = {}
-                    if rules then
-                        if rules.set[nm] then
-                            if rules.clear then for k in pairs(selected) do if not rules.set[k] then drop[#drop + 1] = k end end end
-                        elseif rules.move then
-                            for _,m in ipairs(rules.list) do if selected[m] ~= nil then drop[#drop + 1] = m end end
-                        end
-                    end
-                    local cnt = 0; for _ in pairs(selected) do cnt = cnt + 1 end
-                    if cnt - #drop >= maxSel then return end
-                    for _,k in ipairs(drop) do selected[k] = nil end
-                    selected[nm] = defaultValue(nm); refreshOptions()
-                    if hasVal then openPanel(nm) else finish() end
-                end
-            else
-                local prev = selected[nm]
-                selected = {}; selected[nm] = (prev ~= nil) and prev or defaultValue(nm); refreshOptions()
-                if hasVal then openPanel(nm) else finish() end
-            end
-        end
-        for i,nm in ipairs(options) do
-            if isDividerOpt(nm) then
-                mkOptDivider(container, i, nm, heights[i])
-            else
-            local opt = Instance.new("TextButton"); opt.Size = UDim2.new(1,0,0,heights[i]); opt.BackgroundColor3 = C.btnBg; opt.BorderSizePixel = 0; opt.AutoButtonColor = false
-            opt.Text = ""; opt.LayoutOrder = i; opt.Parent = container; corner(5,opt)
-            local optIconW = addDropdownOptionIcon(opt,nm,o,heights[i])
-            local optLbl = newTxt({Parent=opt,Text=tostring(nm),Font=GB,Size=11,Wrap=true,Sz=UDim2.new(1,-56 - optIconW,1,0),Pos=UDim2.new(0,10 + optIconW,0,0)})
-            local valLbl = newTxt({Parent=opt,Text="",Font=GB,Size=10,Color=ac,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,44,1,0),Pos=UDim2.new(1,-48,0,0)})
-            local mk = Instance.new("Frame"); mk.Size = UDim2.new(0,3,0.6,0); mk.Position = UDim2.new(0,2,0.2,0); mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = opt; corner(2,mk)
-            optRefs[nm] = {opt = opt, mark = mk, label = optLbl, val = valLbl}
-            hover(opt, C.btnBg, C.btnHov)
-            if o.OptionTooltips then tip(opt, o.OptionTooltips[nm]) end
-            if o.OptionLocked or o.OptionHidden or o.OptionRequires or o.OptionHiddenUntil then
-                attachLockHidden(opt, {Locked = o.OptionLocked and o.OptionLocked[nm], Hidden = o.OptionHidden and o.OptionHidden[nm], Requires = o.OptionRequires and o.OptionRequires[nm], HiddenUntil = o.OptionHiddenUntil and o.OptionHiddenUntil[nm], LockedMessage = o.LockedMessage, LockedTitle = o.LockedTitle})
-            end
-            opt.MouseButton1Click:Connect(function() onOption(nm) end)
-            end
-        end
-        refreshOptions()
-        bg.MouseButton1Click:Connect(function()
-            if mode == "closed" then mode = "list"; relayout()
-            elseif mode == "list" then mode = "closed"; relayout()
-            else finish(); mode = "closed"; refreshLabel() end
-        end)
-        if o.Callback and had then pcall(o.Callback, snapshot()) end
-        ret = {
-            _searchTargetRows = searchTargetRows,
-            _searchOptionRows = optRefs,
-            Open = function()
-                if mode == "closed" then mode = "list"; relayout() end
-            end,
-            OpenValue = function(_,nm)
-                if not dimsOf[nm] then return false end
-                if selected[nm] == nil then selected[nm] = defaultValue(nm); refreshOptions() end
-                openPanel(nm)
-                return true
-            end,
-            Get = snapshot,
-            GetValue = function(_,nm) return selected[nm] end,
-            Set = function(_,m) loadMap(decodeMap(m)); normalizeSel(); refreshOptions(); refreshLabel(); persist() end,
-            GetDynamicState = function()
-                return {Mode = mode, ActiveValue = activeValue, Search = sBox and sBox.Text or nil, CanvasPosition = container.CanvasPosition}
-            end,
-            RestoreDynamicState = function(_,state)
-                if type(state) ~= "table" then return end
-                if sBox and state.Search ~= nil then sBox.Text = state.Search end
-                if state.Mode == "value" then
-                    if state.ActiveValue and selected[state.ActiveValue] ~= nil then
-                        openPanel(state.ActiveValue)
-                    else
-                        mode = "list"
-                        relayout()
-                    end
-                elseif state.Mode == "list" then
-                    mode = "list"
-                    relayout()
-                end
-                if state.CanvasPosition then
-                    trackedDefer(function()
-                        if container.Parent then container.CanvasPosition = state.CanvasPosition end
-                    end)
-                end
-            end,
-        }
-        regFlag(o.Flag, ret, o.NoSave)
-        return mergeLock(ret, row, o)
-    end
     function Sec:ColorPicker(o)
         o = o or {}
         local had = cfgHas(o.Flag)
@@ -3927,7 +3477,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         if setupFn then setupFn(f) end
         return f
     end
-    for _,kind in ipairs({"Toggle","Slider","Button","Input","Dropdown","TextSlider","ValueDropdown","Segmented","Keybind","ColorPicker","Group","Screen"}) do
+    for _,kind in ipairs({"Toggle","Slider","Button","Input","Dropdown","TextSlider","Segmented","Keybind","ColorPicker","Group","Screen"}) do
         local orig = Sec[kind]
         if orig then
             Sec[kind] = function(self,o)
@@ -3937,7 +3487,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local rows = JL._newRows
                 for i = from + 1, #rows do
                     BG.register(kind, BG.face(rows[i]), 7, own, true)
-                    if type(o) == "table" and (kind == "Toggle" or kind == "Slider" or kind == "Button" or kind == "Input" or kind == "Dropdown" or kind == "ValueDropdown") then addMetaButtons(rows[i],o) end
+                    if type(o) == "table" and (kind == "Toggle" or kind == "Slider" or kind == "Button" or kind == "Input" or kind == "Dropdown") then addMetaButtons(rows[i],o) end
                 end
                 if from == 0 then JL._newRows = {} end
                 return ret
@@ -3987,21 +3537,14 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         if type(source) == "table" then return source end
         return {}
     end
-    for _,kind in ipairs({"Dropdown","ValueDropdown"}) do
-        local controlKind = kind
-        local create = Sec[controlKind]
-        Sec[controlKind] = function(self,o)
+    do
+        local create = Sec.Dropdown
+        Sec.Dropdown = function(self,o)
             o = o or {}
-            if controlKind == "Dropdown" and o.Value == true then
-                return self:ValueDropdown(o)
-            end
             local optionsSource = o.Options
-            local valuesSource = o.Values
             local lastOptions = cloneDropdownData(resolveDropdownOptions(optionsSource,{}))
-            local lastValues = cloneDropdownData(resolveDropdownOptions(valuesSource,{}))
             local buildOpts = copyDropdownOptions(o)
             buildOpts.Options = lastOptions
-            if controlKind == "ValueDropdown" then buildOpts.Values = lastValues end
             local stable = create(self,buildOpts)
             if type(stable) ~= "table" then return stable end
             local refreshing = false
@@ -4013,8 +3556,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if not oldRow or not oldRow.Parent then return false end
                 refreshing = true
                 local nextOptions = cloneDropdownData(resolveDropdownOptions(overrideOptions or optionsSource,lastOptions))
-                local nextValues = cloneDropdownData(resolveDropdownOptions(valuesSource,lastValues))
-                if sameDropdownData(lastOptions,nextOptions) and sameDropdownData(lastValues,nextValues) then
+                if sameDropdownData(lastOptions,nextOptions) then
                     refreshing = false
                     return true
                 end
@@ -4030,7 +3572,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 end
                 local nextOpts = copyDropdownOptions(o)
                 nextOpts.Options = nextOptions
-                if controlKind == "ValueDropdown" then nextOpts.Values = nextValues end
                 nextOpts._DynamicState = uiState
                 nextOpts.Callback = nil
                 local oldLayout = oldRow.LayoutOrder
@@ -4041,32 +3582,29 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     refreshing = false
                     return false
                 end
-                if controlKind == "Dropdown" then
-                    local selectedList = {}
-                    if type(previous) == "table" then
-                        for _,item in ipairs(nextOptions) do
-                            if not isDividerOpt(item) and previous[item] then
-                                selectedList[#selectedList + 1] = item
-                            end
-                        end
-                    end
-                    if not o.MultiSelect and #selectedList > 1 then
-                        selectedList = {selectedList[1]}
-                    end
-                    if newControl.Set then
-                        pcall(newControl.Set,newControl,o.MultiSelect and selectedList or selectedList[1])
-                    end
-                    if o.Flag then
-                        cfgSet(o.Flag,o.MultiSelect and selectedList or selectedList[1])
-                    end
-                elseif type(previous) == "table" and newControl.Set then
-                    local filtered = {}
+                local selectedList = {}
+                if type(previous) == "table" then
                     for _,item in ipairs(nextOptions) do
-                        if not isDividerOpt(item) and previous[item] ~= nil then
-                            filtered[item] = previous[item]
+                        if not isDividerOpt(item) and previous[item] then
+                            selectedList[#selectedList + 1] = item
                         end
                     end
-                    pcall(newControl.Set,newControl,filtered)
+                elseif previous ~= nil then
+                    for _,item in ipairs(nextOptions) do
+                        if not isDividerOpt(item) and item == previous then
+                            selectedList[1] = item
+                            break
+                        end
+                    end
+                end
+                if not o.MultiSelect and #selectedList > 1 then
+                    selectedList = {selectedList[1]}
+                end
+                if newControl.Set then
+                    pcall(newControl.Set,newControl,o.MultiSelect and selectedList or selectedList[1])
+                end
+                if o.Flag then
+                    cfgSet(o.Flag,o.MultiSelect and selectedList or selectedList[1])
                 end
                 if uiState and newControl.RestoreDynamicState then
                     pcall(newControl.RestoreDynamicState,newControl,uiState)
@@ -4078,7 +3616,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 for k in pairs(stable) do stable[k] = nil end
                 for k,v in pairs(newControl) do stable[k] = v end
                 lastOptions = nextOptions
-                lastValues = nextValues
                 stable.Refresh = refreshFn
                 stable.SetOptions = function(_,list)
                     if type(list) ~= "table" then return false end
@@ -4115,7 +3652,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     local searchMethods = {
         Toggle = true, ToggleGroup = true, Slider = true, Button = true, Input = true,
-        Dropdown = true, TextSlider = true, NumberTextSlider = true, ValueDropdown = true, ColorPicker = true,
+        Dropdown = true, TextSlider = true, NumberTextSlider = true, ColorPicker = true,
         Keybind = true, Segmented = true, Group = true, Text = true, Screen = true,
         Label = true, PreviewButton = true, PreviewToggle = true, PreviewDropdown = true,
     }
@@ -4126,7 +3663,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local result = original(self, o, ...)
                 if type(result) == "table" and result.Row and type(o) == "table" and JL._searchRegister then
                     JL._searchRegister({Name = o.Name or methodName, Kind = methodName, Row = result.Row, Control = result})
-                    if (methodName == "Dropdown" or methodName == "ValueDropdown") and type(o.Options) == "table" then
+                    if methodName == "Dropdown" and type(o.Options) == "table" then
                         for _, optionName in ipairs(o.Options) do
                             if not isDividerOpt(optionName) then
                                 local optionKey = optionName
@@ -4141,30 +3678,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                                 })
                             end
                         end
-                    end
-                    if methodName == "ValueDropdown" and type(o.Values) == "table" then
-                        local nestedEntries = {}
-                        for valueName, definitions in pairs(o.Values) do
-                            if type(definitions) == "table" and type(definitions[1]) == "table" then
-                                nestedEntries[tostring(valueName)] = {}
-                                for index, definition in ipairs(definitions) do
-                                    if type(definition) == "table" then
-                                        local nestedIndex = index
-                                        nestedEntries[tostring(valueName)][nestedIndex] = JL._searchRegister({
-                                            Name = definition.Name or definition.Type or "Nested control",
-                                            Kind = definition.Type or "Control", ParentName = tostring(valueName),
-                                            Row = result.Row, Control = result, OpenValue = tostring(valueName),
-                                            NestedIndex = nestedIndex,
-                                            TargetResolver = function()
-                                                local targets = result._searchTargetRows
-                                                return targets and targets[nestedIndex] or nil
-                                            end,
-                                        })
-                                    end
-                                end
-                            end
-                        end
-                        result._searchNestedEntries = nestedEntries
                     end
                 end
                 return result
