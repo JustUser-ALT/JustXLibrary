@@ -3215,7 +3215,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local function refreshLabel()
             local t = labelText(); lbl.Text = t
             bgH = fitH(t, 12, GB, labW, 32, 14)
-            bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4)
+            bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4 + (row:GetAttribute("JLMetaHeaderHeight") or 0))
             row.Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))
         end
         local function mark(ref,on) ref.mark.Visible = on; ref.label.TextColor3 = on and ac or C.txt end
@@ -5866,7 +5866,7 @@ function JL:Window(opts)
         end
         local pin = Instance.new("TextButton")
         pin.Name = "JLRemotePin"; pin.Size = UDim2.new(0,22,0,22); pin.AnchorPoint = Vector2.new(1,0.5)
-        pin.Position = UDim2.new(1,-4,0.5,0); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
+        pin.Position = UDim2.new(1,-4,0.5,(ret.Row:GetAttribute("JLMetaHeaderHeight") or 0) / 2); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
         pin.AutoButtonColor = false; pin.Text = RM.isPinned(id) and "✓" or "+"; pin.Font = GB; pin.TextSize = 15
         pin.TextColor3 = Color3.new(1,1,1); pin.Visible = RM.editMode; pin.ZIndex = 20; pin.Parent = ret.Row
         if entry.setEditLayout then entry.setEditLayout(RM.editMode) end
