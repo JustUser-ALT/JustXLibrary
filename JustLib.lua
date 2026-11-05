@@ -1,7 +1,8 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.4"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.5"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
+local TOUCH_UI    = UIS.TouchEnabled
 local HTTP        = game:GetService("HttpService")
 local TextService = game:GetService("TextService")
 local RunSvc      = game:GetService("RunService")
@@ -2789,9 +2790,13 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         row.Position = UDim2.new(0,0,0,18)
         row.Size = originalSize
 
+        local actionSize = TOUCH_UI and 30 or 16
+        local actionWidth = TOUCH_UI and 34 or 19
+        local headerHeight = TOUCH_UI and 34 or 18
+        row.Position = UDim2.new(0,0,0,headerHeight)
         local capsule = Instance.new("Frame")
         capsule.Name = "JLMetaActions"
-        capsule.Size = UDim2.new(0,(settings and info) and 38 or 19,0,16)
+        capsule.Size = UDim2.new(0,(settings and info) and (TOUCH_UI and 68 or 38) or (TOUCH_UI and 34 or 19),0,actionSize)
         capsule.Position = UDim2.new(1,-4,0,1)
         capsule.AnchorPoint = Vector2.new(1,0)
         capsule.BackgroundColor3 = C.pHdr
@@ -2803,8 +2808,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local function make(iconName,help,order,action)
             local button = Instance.new("TextButton")
             button.Name = iconName == "settings" and "JLSettingsAction" or "JLInfoAction"
-            button.Size = UDim2.new(0,17,0,16)
-            button.Position = UDim2.new(0,(order-1)*19,0,0)
+            button.Size = UDim2.new(0,actionWidth,0,actionSize)
+            button.Position = UDim2.new(0,(order-1)*actionWidth,0,0)
             button.BackgroundTransparency = 1
             button.BorderSizePixel = 0
             button.AutoButtonColor = false
@@ -2814,7 +2819,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local icon = mkIcon(button,iconName,11,58)
             icon.AnchorPoint = Vector2.new(0.5,0.5)
             icon.Position = UDim2.new(0.5,0,0.5,0)
-            icon.Size = UDim2.new(0,11,0,11)
+            icon.Size = UDim2.new(0,TOUCH_UI and 17 or 11,0,TOUCH_UI and 17 or 11)
             if icon:IsA("TextLabel") then icon.TextColor3 = ac else icon.ImageColor3 = ac end
             button.MouseEnter:Connect(function()
                 if touchLast() then return end
@@ -3183,11 +3188,11 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local darr = newTxt({Parent=bg,Text="▼",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,28,1,0),Pos=UDim2.new(1,-28,0,0)})
         local optW = INNER - 8 - 16; local heights = {}; local total = 8
         for i,optName in ipairs(options) do
-            heights[i] = isDividerOpt(optName) and dividerHeight(optName) or fitH(tostring(optName), 11, GB, optW, 26, 10)
+            heights[i] = isDividerOpt(optName) and dividerHeight(optName) or math.max(TOUCH_UI and 34 or 26, fitH(tostring(optName), 11, GB, optW, 26, 10))
             total = total + heights[i] + 2
         end
         if o.Search then total = total + 28 end
-        local TOTAL = math.min(total, 180); local dropOpen = false
+        local TOTAL = math.min(total, TOUCH_UI and 240 or 180); local dropOpen = false
         local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4); container.BackgroundColor3 = C.pHdr
         container.BorderSizePixel = 0; container.Visible = false; container.ClipsDescendants = true; container.ScrollBarThickness = 3; container.ScrollBarImageColor3 = C.border
         container.CanvasSize = UDim2.new(0,0,0,0); container.Parent = row; corner(7,container); stroke(C.border,1,container)
@@ -3840,7 +3845,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     local ac = nxAc()
     local iconW = so.Icon and 22 or 0
     local INNER = colW - 16
-    local HH = math.max(34, fitH(title, 13, GB, colW - 54 - iconW, 0, 0) + 16)
+    local HH = math.max(TOUCH_UI and 44 or 34, fitH(title, 13, GB, colW - 54 - iconW, 0, 0) + (TOUCH_UI and 22 or 16))
     local function unscale(px)
         local s = (uiScale and uiScale.Scale) or 1
         if not s or s <= 0 then s = 1 end
@@ -3861,7 +3866,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     if attachTip and so.Tooltip then attachTip(hdr, so.Tooltip) end
     local hline = Instance.new("Frame"); hline.Size = UDim2.new(1,0,0,1); hline.Position = UDim2.new(0,0,0,HH); hline.BackgroundColor3 = ac; hline.BackgroundTransparency = 0.55; hline.BorderSizePixel = 0; hline.Parent = panel
     local content = Instance.new("Frame"); content.Size = UDim2.new(1,0,0,0); content.Position = UDim2.new(0,0,0,HH + 1); content.BackgroundTransparency = 1; content.ClipsDescendants = true; content.Parent = panel
-    local list = Instance.new("UIListLayout"); list.FillDirection = Enum.FillDirection.Vertical; list.Padding = UDim.new(0,6); list.SortOrder = Enum.SortOrder.LayoutOrder; list.Parent = content
+    local list = Instance.new("UIListLayout"); list.FillDirection = Enum.FillDirection.Vertical; list.Padding = UDim.new(0,TOUCH_UI and 9 or 6); list.SortOrder = Enum.SortOrder.LayoutOrder; list.Parent = content
     pad(8,8,8,8,content)
     local collapsed = so.Collapsed or false; local storedH = 0; local animating = false
     local function fullH() return HH + 1 + storedH end
@@ -4196,7 +4201,7 @@ function JL:Window(opts)
     local WH  = math.clamp(opts.Height or 420, 240, math.max(240, vp.Y - 30))
     local WW  = SBW + GAP + CWW
     local IW  = CWW - 2 * PADIN
-    local VIS = math.clamp(opts.Columns or 3, 1, 6)
+    local VIS = TOUCH_UI and 1 or math.clamp(opts.Columns or 3, 1, 6)
     local usable = IW - 8
     while VIS > 1 and (usable - (VIS - 1) * COLGAP) / VIS < 150 do VIS = VIS - 1 end
     local colW = math.floor((usable - (VIS - 1) * COLGAP) / VIS)
