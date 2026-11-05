@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.3"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.4"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2770,46 +2770,36 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
 
-        -- Give metadata actions their own row header. Keep the control surface
-        -- at its original height and place it entirely below the header.
-        local headerHeight = 18
-        local surface = BG.face(row)
-        row:SetAttribute("JLMetaHeaderHeight",headerHeight)
-        row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
-        if surface ~= row then
-            local pos = surface.Position
-            surface.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
-            local size = surface.Size
-            if size.Y.Scale > 0 then
-                surface.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
-            elseif size.Y.Offset > 0 then
-                surface.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset)
-            end
-        else
-            for _,child in ipairs(surface:GetChildren()) do
-                if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
-                    local pos = child.Position
-                    child.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
-                    local size = child.Size
-                    if size.Y.Scale > 0 then
-                        child.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
-                    end
-                end
-            end
-        end
+        -- Metadata actions use a separate wrapper. The control row and its
+        -- internal GUI hierarchy are not resized or repositioned.
+        local parent = row.Parent
+        if not parent then return end
+        local wrapper = Instance.new("Frame")
+        wrapper.Name = "JLMetaRow"
+        wrapper.Size = UDim2.new(1,0,0,0)
+        wrapper.AutomaticSize = Enum.AutomaticSize.Y
+        wrapper.BackgroundTransparency = 1
+        wrapper.BorderSizePixel = 0
+        wrapper.ClipsDescendants = false
+        wrapper.LayoutOrder = row.LayoutOrder
+        wrapper.Parent = parent
 
-        -- The action capsule lives in the reserved header, not on the control
-        -- surface. No divider is drawn across the control content.
+        local originalSize = row.Size
+        row.Parent = wrapper
+        row.Position = UDim2.new(0,0,0,18)
+        row.Size = originalSize
+
         local capsule = Instance.new("Frame")
         capsule.Name = "JLMetaActions"
-        capsule.Size = UDim2.new(0, (settings and info) and 38 or 19, 0, 16)
+        capsule.Size = UDim2.new(0,(settings and info) and 38 or 19,0,16)
         capsule.Position = UDim2.new(1,-4,0,1)
         capsule.AnchorPoint = Vector2.new(1,0)
         capsule.BackgroundColor3 = C.pHdr
         capsule.BorderSizePixel = 0
         capsule.ZIndex = 56
-        capsule.Parent = row
+        capsule.Parent = wrapper
         corner(7,capsule)
+
         local function make(iconName,help,order,action)
             local button = Instance.new("TextButton")
             button.Name = iconName == "settings" and "JLSettingsAction" or "JLInfoAction"
@@ -2838,6 +2828,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             JL._metaButtons[#JL._metaButtons + 1] = button
             button.Visible = not JL._remoteEditActive
         end
+
         local order = 1
         if settings then
             make("settings","Settings",order,function()
@@ -3220,7 +3211,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local t = labelText(); lbl.Text = t
             bgH = fitH(t, 12, GB, labW, 32, 14)
             bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4)
-            row.Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))
+            row.Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH))
         end
         local function mark(ref,on) ref.mark.Visible = on; ref.label.TextColor3 = on and ac or C.txt end
         local rules = multi and groupRules(o) or nil
@@ -3305,7 +3296,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         bg.MouseButton1Click:Connect(function()
             dropOpen = not dropOpen; container.Visible = true
             tw(container,{Size = UDim2.new(1,0,0,dropOpen and TOTAL or 0)},.2)
-            tw(row,{Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))},.2)
+            tw(row,{Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH))},.2)
             darr.Text = dropOpen and "▲" or "▼"
             if not dropOpen then trackedDelay(.21, function() if not dropOpen then container.Visible = false end end) end
         end)
@@ -3320,7 +3311,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if not dropOpen then
                     dropOpen = true; container.Visible = true
                     tw(container,{Size = UDim2.new(1,0,0,TOTAL)},.2)
-                    tw(row,{Size = UDim2.new(1,0,0,bgH + 4 + TOTAL + (row:GetAttribute("JLMetaHeaderHeight") or 0))},.2)
+                    tw(row,{Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)},.2)
                     darr.Text = "▲"
                 end
             end,
@@ -3343,7 +3334,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     dropOpen = true
                     container.Visible = true
                     container.Size = UDim2.new(1,0,0,TOTAL)
-                    row.Size = UDim2.new(1,0,0,bgH + 4 + TOTAL + (row:GetAttribute("JLMetaHeaderHeight") or 0))
+                    row.Size = UDim2.new(1,0,0,bgH + 4 + TOTAL)
                     darr.Text = "▲"
                 end
                 if state.CanvasPosition then
@@ -5870,7 +5861,7 @@ function JL:Window(opts)
         end
         local pin = Instance.new("TextButton")
         pin.Name = "JLRemotePin"; pin.Size = UDim2.new(0,22,0,22); pin.AnchorPoint = Vector2.new(1,0.5)
-        pin.Position = UDim2.new(1,-4,0.5,(ret.Row:GetAttribute("JLMetaHeaderHeight") or 0) / 2); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
+        pin.Position = UDim2.new(1,-4,0.5,0); pin.BackgroundColor3 = C.btnBg; pin.BorderSizePixel = 0
         pin.AutoButtonColor = false; pin.Text = RM.isPinned(id) and "✓" or "+"; pin.Font = GB; pin.TextSize = 15
         pin.TextColor3 = Color3.new(1,1,1); pin.Visible = RM.editMode; pin.ZIndex = 20; pin.Parent = ret.Row
         if entry.setEditLayout then entry.setEditLayout(RM.editMode) end
