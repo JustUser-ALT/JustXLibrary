@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.7"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.8"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2632,94 +2632,55 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     JL._metaButtons = JL._metaButtons or {}
     local function openMetaPanel(title, meta, settingsMode)
         local overlay = Instance.new("Frame")
-        overlay.Name = "JLMetaOverlay"
-        overlay.Size = UDim2.new(1,0,1,0)
-        overlay.BackgroundColor3 = Color3.new(0,0,0)
-        overlay.BackgroundTransparency = 0.48
-        overlay.BorderSizePixel = 0
-        overlay.ZIndex = 90
-        overlay.Parent = parentSg
-
+        overlay.Name = "JLMetaOverlay"; overlay.Size = UDim2.new(1,0,1,0)
+        overlay.BackgroundColor3 = C.backdrop; overlay.BackgroundTransparency = 0.28
+        overlay.BorderSizePixel = 0; overlay.ZIndex = 90; overlay.Parent = parentSg
         local panel = Instance.new("Frame")
-        panel.Name = "JLMetaPanel"
-        panel.Size = UDim2.new(0.84,0,0.76,0)
-        panel.Position = UDim2.new(0.5,0,0.5,0)
-        panel.AnchorPoint = Vector2.new(0.5,0.5)
-        panel.BackgroundColor3 = C.panel
-        panel.BorderSizePixel = 0
-        panel.ClipsDescendants = true
-        panel.ZIndex = 91
-        panel.Parent = overlay
-        corner(9,panel)
-        stroke(C.border,1,panel)
+        panel.Name = "JLMetaPanel"; panel.Size = UDim2.new(0.88,0,0.82,0)
+        panel.Position = UDim2.new(0.5,0,0.5,0); panel.AnchorPoint = Vector2.new(0.5,0.5)
+        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0
+        panel.ClipsDescendants = true; panel.ZIndex = 91; panel.Parent = overlay
+        corner(12,panel); stroke(C.border,1,panel)
         local limit = Instance.new("UISizeConstraint")
-        limit.MinSize = Vector2.new(250,220)
-        limit.MaxSize = Vector2.new(560,620)
-        limit.Parent = panel
-
+        limit.MinSize = Vector2.new(260,240); limit.MaxSize = Vector2.new(620,700); limit.Parent = panel
+        local accentBar = Instance.new("Frame")
+        accentBar.Size = UDim2.new(1,0,0,3); accentBar.BackgroundColor3 = ac
+        accentBar.BorderSizePixel = 0; accentBar.ZIndex = 94; accentBar.Parent = panel
         local head = Instance.new("Frame")
-        head.Size = UDim2.new(1,0,0,48)
-        head.BackgroundColor3 = C.pHdr
-        head.BorderSizePixel = 0
-        head.ZIndex = 92
-        head.Parent = panel
-        corner(9,head)
-        local fix = Instance.new("Frame")
-        fix.Size = UDim2.new(1,0,0,10)
-        fix.Position = UDim2.new(0,0,1,-10)
-        fix.BackgroundColor3 = C.pHdr
-        fix.BorderSizePixel = 0
-        fix.ZIndex = 92
-        fix.Parent = head
-        local titleIcon = Instance.new("Frame")
-        titleIcon.Size = UDim2.new(0,30,0,30)
-        titleIcon.Position = UDim2.new(0,10,0.5,-15)
-        titleIcon.BackgroundColor3 = C.btnBg
-        titleIcon.BorderSizePixel = 0
-        titleIcon.ZIndex = 93
-        titleIcon.Parent = head
-        corner(8,titleIcon)
-        local titleGlyph = newTxt({Parent=titleIcon,Text=settingsMode and "⚙" or "ⓘ",Font=GB,Size=15,Color=ac,XAlign=Enum.TextXAlignment.Center,YAlign=Enum.TextYAlignment.Center,Sz=UDim2.new(1,0,1,0),Z=94})
-        newTxt({Parent=head,Text=title,Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-68,1,0),Pos=UDim2.new(0,48,0,0),Z=93})
+        head.Size = UDim2.new(1,0,0,68); head.Position = UDim2.new(0,0,0,3)
+        head.BackgroundColor3 = C.pHdr; head.BorderSizePixel = 0; head.ZIndex = 92; head.Parent = panel
+        local iconTile = Instance.new("Frame")
+        iconTile.Size = UDim2.new(0,40,0,40); iconTile.Position = UDim2.new(0,14,0,13)
+        iconTile.BackgroundColor3 = C.badgeHi; iconTile.BorderSizePixel = 0; iconTile.ZIndex = 93; iconTile.Parent = head
+        corner(10,iconTile)
+        newTxt({Parent=iconTile,Text=settingsMode and "⚙" or "ⓘ",Font=GB,Size=19,Color=ac,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0),Z=94})
+        newTxt({Parent=head,Text=tostring(title or (settingsMode and "Settings" or "Information")),Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-100,0,22),Pos=UDim2.new(0,64,0,13),Z=94})
+        newTxt({Parent=head,Text=settingsMode and "Customize this item" or "Item information and details",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-100,0,16),Pos=UDim2.new(0,64,0,36),Z=94})
         local close = Instance.new("TextButton")
-        close.Size = UDim2.new(0,30,0,30)
-        close.Position = UDim2.new(1,-38,0,9)
-        close.BackgroundColor3 = C.btnBg
-        close.BorderSizePixel = 0
-        close.AutoButtonColor = false
-        close.Text = "×"
-        close.Font = GB
-        close.TextSize = 17
-        close.TextColor3 = C.txt
-        close.ZIndex = 94
-        close.Parent = head
-        corner(6,close)
+        close.Size = UDim2.new(0,32,0,32); close.Position = UDim2.new(1,-44,0,18)
+        close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.AutoButtonColor = false
+        close.Text = "×"; close.Font = GB; close.TextSize = 18; close.TextColor3 = C.txt
+        close.ZIndex = 95; close.Parent = head; corner(9,close); stroke(C.border,1,close)
+        close.MouseEnter:Connect(function() if not touchLast() then tw(close,{BackgroundColor3=C.btnHov},0.1) end end)
+        close.MouseLeave:Connect(function() tw(close,{BackgroundColor3=C.btnBg},0.1) end)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
-
         local body = Instance.new("ScrollingFrame")
-        body.Size = UDim2.new(1,-24,1,-62)
-        body.Position = UDim2.new(0,12,0,56)
-        body.BackgroundTransparency = 1
-        body.BorderSizePixel = 0
-        body.ScrollBarThickness = 2
-        body.ScrollBarImageColor3 = ac
-        body.ScrollingDirection = Enum.ScrollingDirection.Y
-        body.Active = true
-        body.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        body.CanvasSize = UDim2.new(0,0,0,0)
-        body.ZIndex = 92
-        body.Parent = panel
-
+        body.Size = UDim2.new(1,-24,1,-84); body.Position = UDim2.new(0,12,0,78)
+        body.BackgroundTransparency = 1; body.BorderSizePixel = 0
+        body.ScrollBarThickness = 3; body.ScrollBarImageColor3 = ac
+        body.ScrollingDirection = Enum.ScrollingDirection.Y; body.Active = true
+        body.AutomaticCanvasSize = Enum.AutomaticSize.Y; body.CanvasSize = UDim2.new(0,0,0,0)
+        body.ZIndex = 92; body.Parent = panel
         if settingsMode then
             local layout = Instance.new("UIListLayout")
-            layout.SortOrder = Enum.SortOrder.LayoutOrder
-            layout.Padding = UDim.new(0,9)
-            layout.Parent = body
-            pad(2,2,2,6,body)
-            local innerWidth = math.max(220, math.min(500, panel.AbsoluteSize.X - 44))
+            layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,10); layout.Parent = body
+            pad(3,3,4,8,body)
+            local innerWidth = math.max(220, math.min(560, panel.AbsoluteSize.X - 48))
             local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip)
+            local count = 0
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
                 if type(definition) == "table" then
+                    count = count + 1
                     local kind = tostring(definition.Type or "Toggle")
                     if kind == "Textbox" or kind == "TextBox" then kind = "Input" end
                     local create = nested[kind]
@@ -2729,50 +2690,49 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                         config.Flag = config.Flag or ("JLMeta_" .. tostring(title) .. "_" .. tostring(config.Name or kind))
                         create(nested,config)
                     else
-                        newTxt({Parent=body,Text="Unsupported setting: " .. kind,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Z=93})
+                        newTxt({Parent=body,Text="Unsupported setting: " .. kind,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,20),Z=93})
                     end
                 end
             end
+            if count == 0 then newTxt({Parent=body,Text="No settings are available for this item.",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-8,0,24),Pos=UDim2.new(0,4,0,4),Z=93}) end
         else
             local info = type(meta) == "table" and meta or {Description=tostring(meta or "")}
             local blocks = {
-                {Title=info.Title or title,Text=info.Description or info.Desc or info.Text,Kind="main"},
-                {Title=info.DetailsTitle or "Details",Text=info.Details,Kind="detail"},
-                {Title=info.Warning and (info.WarningTitle or "Heads up") or nil,Text=info.Warning,Kind="warning"},
+                {Title=info.Title or "Overview",Text=info.Description or info.Desc or info.Text,Kind="main"},
+                {Title=info.DetailsTitle or "Additional details",Text=info.Details,Kind="detail"},
+                {Title=info.Warning and (info.WarningTitle or "Important") or nil,Text=info.Warning,Kind="warning"},
             }
-            local y = 2
+            local y, count = 4, 0
             for _,item in ipairs(blocks) do
                 if item.Text and tostring(item.Text) ~= "" then
-                    local heading = item.Title and tostring(item.Title) or ""
-                    local cardWidth = math.max(190, panel.AbsoluteSize.X - 52)
-                    local titleHeight = heading ~= "" and fitH(heading,12,GB,cardWidth,18,4) or 0
-                    local descHeight = fitH(tostring(item.Text),11,GM,cardWidth,18,10)
+                    count = count + 1
+                    local headingText = item.Title and tostring(item.Title) or ""
+                    local cardWidth = math.max(190,panel.AbsoluteSize.X - 58)
+                    local titleHeight = headingText ~= "" and fitH(headingText,12,GB,cardWidth,18,5) or 0
+                    local descHeight = fitH(tostring(item.Text),11,GM,cardWidth,22,12)
                     local card = Instance.new("Frame")
-                    card.Size = UDim2.new(1,-6,0,titleHeight + descHeight + (titleHeight > 0 and 7 or 0) + 30)
+                    card.Size = UDim2.new(1,-6,0,titleHeight + descHeight + (titleHeight > 0 and 8 or 0) + 28)
                     card.Position = UDim2.new(0,3,0,y)
                     card.BackgroundColor3 = item.Kind == "warning" and C.pHdr or C.btnBg
-                    card.BorderSizePixel = 0
-                    card.ZIndex = 93
-                    card.Parent = body
-                    corner(6,card)
+                    card.BorderSizePixel = 0; card.ZIndex = 93; card.Parent = body
+                    corner(9,card)
+                    local accent = Instance.new("Frame")
+                    accent.Size = UDim2.new(0,3,1,-18); accent.Position = UDim2.new(0,0,0,9)
+                    accent.BackgroundColor3 = item.Kind == "warning" and C.danger or ac
+                    accent.BorderSizePixel = 0; accent.ZIndex = 94; accent.Parent = card; corner(2,accent)
                     local content = Instance.new("Frame")
-                    content.Size = UDim2.new(1,-20,1,-16)
-                    content.Position = UDim2.new(0,10,0,8)
-                    content.BackgroundTransparency = 1
-                    content.ZIndex = 94
-                    content.Parent = card
+                    content.Size = UDim2.new(1,-28,1,-16); content.Position = UDim2.new(0,16,0,8)
+                    content.BackgroundTransparency = 1; content.ZIndex = 94; content.Parent = card
                     if titleHeight > 0 then
-                        newTxt({Parent=content,Text=heading,Font=GB,Size=12,Color=ac,Wrap=true,Sz=UDim2.new(1,0,0,titleHeight),Z=95})
+                        newTxt({Parent=content,Text=headingText,Font=GB,Size=12,Color=item.Kind == "warning" and C.danger or ac,Wrap=true,Sz=UDim2.new(1,0,0,titleHeight),Z=95})
                     end
-                    local desc = newTxt({Parent=content,Text=tostring(item.Text),Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,0,0,descHeight),Pos=UDim2.new(0,0,0,titleHeight > 0 and titleHeight + 7 or 0),Z=95})
+                    local desc = newTxt({Parent=content,Text=tostring(item.Text),Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,0,0,descHeight),Pos=UDim2.new(0,0,0,titleHeight > 0 and titleHeight + 8 or 0),Z=95})
                     desc.TextYAlignment = Enum.TextYAlignment.Top
-                    y = y + card.Size.Y.Offset + 6
+                    y = y + card.Size.Y.Offset + 9
                 end
             end
-            if y == 2 then
-                newTxt({Parent=body,Text="No additional information.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Pos=UDim2.new(0,4,0,4),Z=93})
-            end
-            body.CanvasSize = UDim2.new(0,0,0,y + 4)
+            if count == 0 then newTxt({Parent=body,Text="No additional information has been provided.",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-8,0,24),Pos=UDim2.new(0,4,0,4),Z=93}) end
+            body.CanvasSize = UDim2.new(0,0,0,y + 6)
         end
     end
     local function addMetaButtons(row, definition)
@@ -3169,7 +3129,17 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     function Sec:Dropdown(o)
         o = o or {}
-        local options = o.Options or {}; local multi = o.MultiSelect; local maxSel = o.MaxSelect or (multi and math.max(#options,1) or 1)
+        local rawOptions = o.Options or {}
+        local options, optionMeta, optionLabels = {}, {}, {}
+        for _,entry in ipairs(rawOptions) do
+            if isDividerOpt(entry) then options[#options + 1] = entry
+            elseif type(entry) == "table" then
+                local value = entry.Value
+                if value == nil then value = entry.Name end
+                if value ~= nil then options[#options + 1] = value; optionMeta[value] = entry; optionLabels[value] = tostring(entry.Name or value) end
+            else options[#options + 1] = entry; optionLabels[entry] = tostring(entry) end
+        end
+        local multi = o.MultiSelect; local maxSel = o.MaxSelect or (multi and math.max(#options,1) or 1)
         local selected = {}
         local had = cfgHas(o.Flag)
         local saved = cfgGet(o.Flag, o.Default)
@@ -3181,7 +3151,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local function labelText()
             if o.Static then return baseName end
             local picked = {}
-            for _,opt in ipairs(options) do if not isDividerOpt(opt) and selected[opt] then picked[#picked + 1] = tostring(opt) end end
+            for _,opt in ipairs(options) do if not isDividerOpt(opt) and selected[opt] then picked[#picked + 1] = optionLabels[opt] or tostring(opt) end end
             if #picked == 0 then return baseName end
             return baseName .. ": " .. table.concat(picked, ", ")
         end
@@ -3194,7 +3164,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local darr = newTxt({Parent=bg,Text="▼",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,28,1,0),Pos=UDim2.new(1,-28,0,0)})
         local optW = INNER - 8 - 16; local heights = {}; local total = 8
         for i,optName in ipairs(options) do
-            heights[i] = isDividerOpt(optName) and dividerHeight(optName) or fitH(tostring(optName), 11, GB, optW, 26, 10)
+            local meta = optionMeta[optName]
+            local label = optionLabels[optName] or tostring(optName)
+            local actionsWidth = meta and ((meta.Info and 22 or 0) + (type(meta.Settings) == "table" and #meta.Settings > 0 and 22 or 0)) or 0
+            heights[i] = isDividerOpt(optName) and dividerHeight(optName) or fitH(label, 11, GB, optW - actionsWidth, 30, 12)
             total = total + heights[i] + 2
         end
         if o.Search then total = total + 28 end
@@ -3246,14 +3219,50 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             if isDividerOpt(optName) then
                 mkOptDivider(container, i, optName, heights[i])
             else
-            local opt = Instance.new("TextButton"); opt.Size = UDim2.new(1,0,0,heights[i]); opt.BackgroundColor3 = C.btnBg; opt.BorderSizePixel = 0; opt.AutoButtonColor = false
-            opt.Text = ""; opt.Font = GB; opt.TextSize = 11; opt.TextColor3 = C.txt; opt.LayoutOrder = i; opt.Parent = container; corner(5,opt)
-            local optIconW = addDropdownOptionIcon(opt,optName,o,heights[i])
-            local optLbl = newTxt({Parent=opt,Text=tostring(optName),Font=GB,Size=11,Wrap=true,Sz=UDim2.new(1,-16-optIconW,1,0),Pos=UDim2.new(0,10+optIconW,0,0)})
-            local mk = Instance.new("Frame"); mk.Size = UDim2.new(0,3,0.6,0); mk.Position = UDim2.new(0,2,0.2,0); mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = opt; corner(2,mk)
-            optRefs[optName] = {opt = opt, mark = mk, label = optLbl}; mark(optRefs[optName], selected[optName] or false)
+            local meta = optionMeta[optName]
+            local labelText = optionLabels[optName] or tostring(optName)
+            local actionCount = meta and ((meta.Info and 1 or 0) + (type(meta.Settings) == "table" and #meta.Settings > 0 and 1 or 0)) or 0
+            local actionWidth = actionCount * 25
+            local opt = Instance.new("Frame"); opt.Size = UDim2.new(1,0,0,heights[i]); opt.BackgroundColor3 = C.btnBg
+            opt.BorderSizePixel = 0; opt.LayoutOrder = i; opt.Parent = container; corner(6,opt)
+            local selectButton = Instance.new("TextButton")
+            selectButton.Name = "JLDropdownOptionSelect"; selectButton.Size = UDim2.new(1,-actionWidth,1,0)
+            selectButton.BackgroundTransparency = 1; selectButton.BorderSizePixel = 0
+            selectButton.AutoButtonColor = false; selectButton.Text = ""; selectButton.Parent = opt
+            local optIconW = addDropdownOptionIcon(selectButton,optName,o,heights[i])
+            local optLbl = newTxt({Parent=selectButton,Text=labelText,Font=GB,Size=11,Wrap=true,Sz=UDim2.new(1,-16-optIconW,1,0),Pos=UDim2.new(0,10+optIconW,0,0)})
+            local mk = Instance.new("Frame"); mk.Size = UDim2.new(0,3,0.6,0); mk.Position = UDim2.new(0,2,0.2,0)
+            mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = selectButton; corner(2,mk)
+            optRefs[optName] = {opt = opt, button = selectButton, mark = mk, label = optLbl}
+            mark(optRefs[optName], selected[optName] or false)
             hover(opt, C.btnBg, C.btnHov)
-            if o.OptionTooltips then tip(opt, o.OptionTooltips[optName]) end
+            if o.OptionTooltips then tip(selectButton, o.OptionTooltips[optName]) end
+            if meta then
+                local actionIndex = 0
+                local function addOptionAction(iconName,caption,callback)
+                    actionIndex = actionIndex + 1
+                    local button = Instance.new("TextButton")
+                    button.Name = iconName == "info" and "JLOptionInfo" or "JLOptionSettings"
+                    button.Size = UDim2.new(0,22,0,22); button.Position = UDim2.new(1,-(actionIndex * 25) + 1,0.5,-11)
+                    button.BackgroundColor3 = C.pHdr; button.BorderSizePixel = 0
+                    button.AutoButtonColor = false; button.Text = ""; button.ZIndex = 16; button.Parent = opt
+                    corner(6,button)
+                    local glyph = mkIcon(button,iconName,12,17)
+                    glyph.AnchorPoint = Vector2.new(0.5,0.5); glyph.Position = UDim2.new(0.5,0,0.5,0)
+                    glyph.Size = UDim2.new(0,12,0,12)
+                    if glyph:IsA("TextLabel") then glyph.TextColor3 = ac else glyph.ImageColor3 = ac end
+                    tip(button,caption)
+                    button.MouseButton1Click:Connect(callback)
+                    JL._metaButtons[#JL._metaButtons + 1] = button
+                    button.Visible = not JL._remoteEditActive
+                end
+                if type(meta.Settings) == "table" and #meta.Settings > 0 then
+                    addOptionAction("settings","Item settings",function() openMetaPanel(labelText .. " · Settings",meta.Settings,true) end)
+                end
+                if meta.Info then
+                    addOptionAction("info","Item information",function() openMetaPanel(labelText .. " · Info",meta.Info,false) end)
+                end
+            end
             if o.OptionLocked or o.OptionHidden or o.OptionRequires or o.OptionHiddenUntil then
                 attachLockHidden(opt, {
                     Locked = o.OptionLocked and o.OptionLocked[optName],
@@ -3263,7 +3272,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     LockedMessage = o.LockedMessage, LockedTitle = o.LockedTitle,
                 })
             end
-            opt.MouseButton1Click:Connect(function()
+            selectButton.MouseButton1Click:Connect(function()
                 if multi then
                     local willSelect = not selected[optName]
                     if rules and willSelect and not rules.move and not rules.set[optName] and masterOn() then
@@ -3747,15 +3756,16 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local selectedList = {}
                 if type(previous) == "table" then
                     for _,item in ipairs(nextOptions) do
-                        if not isDividerOpt(item) and previous[item] then
-                            selectedList[#selectedList + 1] = item
+                        if not isDividerOpt(item) then
+                            local value = type(item) == "table" and (item.Value or item.Name) or item
+                            if value ~= nil and previous[value] then selectedList[#selectedList + 1] = value end
                         end
                     end
                 elseif previous ~= nil then
                     for _,item in ipairs(nextOptions) do
-                        if not isDividerOpt(item) and item == previous then
-                            selectedList[1] = item
-                            break
+                        if not isDividerOpt(item) then
+                            local value = type(item) == "table" and (item.Value or item.Name) or item
+                            if value == previous then selectedList[1] = value; break end
                         end
                     end
                 end
@@ -3828,7 +3838,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     if methodName == "Dropdown" and type(o.Options) == "table" then
                         for _, optionName in ipairs(o.Options) do
                             if not isDividerOpt(optionName) then
-                                local optionKey = optionName
+                                local optionKey = type(optionName) == "table" and (optionName.Value or optionName.Name) or optionName
                                 JL._searchRegister({
                                     Name = tostring(optionKey), Kind = "Option",
                                     ParentName = o.Name or methodName, Row = result.Row, Control = result,
