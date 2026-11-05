@@ -145,16 +145,6 @@ safeAdd("Dropdown / Info and Settings", function()
         MultiSelect = true,
         Default = {"Sword"},
         Tooltip = "Краткая подсказка для списка.",
-        Info = {
-            Title = "Dropdown Information",
-            Description = "Это отдельная информационная панель именно для Dropdown. Она открывается через значок Info над самим списком.",
-            Details = "Настройки фильтра находятся в отдельной панели Settings рядом со значком Info.",
-        },
-        Settings = {
-            {Type = "Toggle", Name = "Enable Loot Filter", Flag = "Test_LootFilter_Enabled", Default = true},
-            {Type = "Slider", Name = "Max Distance", Flag = "Test_LootFilter_Range", Min = 50, Max = 2000, Default = 750},
-            {Type = "Dropdown", Name = "Sort By", Flag = "Test_LootFilter_Sort", Options = {"Name", "Distance", "Rarity"}, Default = "Rarity"},
-        },
     })
 end)
 
