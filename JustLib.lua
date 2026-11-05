@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.9"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.10"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2636,28 +2636,28 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         overlay.BackgroundColor3 = C.backdrop; overlay.BackgroundTransparency = 0.28
         overlay.BorderSizePixel = 0; overlay.ZIndex = 90; overlay.Parent = parentSg
         local panel = Instance.new("Frame")
-        panel.Name = "JLMetaPanel"; panel.Size = UDim2.new(0.76,0,0.64,0)
+        panel.Name = "JLMetaPanel"; panel.Size = UDim2.new(0.68,0,0.52,0)
         panel.Position = UDim2.new(0.5,0,0.5,0); panel.AnchorPoint = Vector2.new(0.5,0.5)
         panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0
         panel.ClipsDescendants = true; panel.ZIndex = 91; panel.Parent = overlay
         corner(12,panel); stroke(C.border,1,panel)
         local limit = Instance.new("UISizeConstraint")
-        limit.MinSize = Vector2.new(220,180); limit.MaxSize = Vector2.new(420,480); limit.Parent = panel
+        limit.MinSize = Vector2.new(190,150); limit.MaxSize = Vector2.new(300,340); limit.Parent = panel
         local accentBar = Instance.new("Frame")
         accentBar.Size = UDim2.new(1,0,0,3); accentBar.BackgroundColor3 = ac
         accentBar.BorderSizePixel = 0; accentBar.ZIndex = 94; accentBar.Parent = panel
         local head = Instance.new("Frame")
-        head.Size = UDim2.new(1,0,0,52); head.Position = UDim2.new(0,0,0,3)
+        head.Size = UDim2.new(1,0,0,42); head.Position = UDim2.new(0,0,0,3)
         head.BackgroundColor3 = C.pHdr; head.BorderSizePixel = 0; head.ZIndex = 92; head.Parent = panel
         local iconTile = Instance.new("Frame")
-        iconTile.Size = UDim2.new(0,30,0,30); iconTile.Position = UDim2.new(0,12,0,10)
+        iconTile.Size = UDim2.new(0,25,0,25); iconTile.Position = UDim2.new(0,10,0,8)
         iconTile.BackgroundColor3 = C.badgeHi; iconTile.BorderSizePixel = 0; iconTile.ZIndex = 93; iconTile.Parent = head
         corner(10,iconTile)
-        newTxt({Parent=iconTile,Text=settingsMode and "⚙" or "ⓘ",Font=GB,Size=15,Color=ac,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0),Z=94})
-        newTxt({Parent=head,Text=tostring(title or (settingsMode and "Settings" or "Information")),Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-86,0,18),Pos=UDim2.new(0,50,0,9),Z=94})
-        newTxt({Parent=head,Text=settingsMode and "Customize this item" or "Item information and details",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-86,0,14),Pos=UDim2.new(0,50,0,27),Z=94})
+        newTxt({Parent=iconTile,Text=settingsMode and "⚙" or "ⓘ",Font=GB,Size=13,Color=ac,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0),Z=94})
+        newTxt({Parent=head,Text=tostring(title or (settingsMode and "Settings" or "Information")),Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-76,0,16),Pos=UDim2.new(0,43,0,6),Z=94})
+        newTxt({Parent=head,Text=settingsMode and "Customize this item" or "Item information and details",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-76,0,12),Pos=UDim2.new(0,43,0,22),Z=94})
         local close = Instance.new("TextButton")
-        close.Size = UDim2.new(0,26,0,26); close.Position = UDim2.new(1,-36,0,12)
+        close.Size = UDim2.new(0,22,0,22); close.Position = UDim2.new(1,-30,0,8)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.AutoButtonColor = false
         close.Text = "×"; close.Font = GB; close.TextSize = 18; close.TextColor3 = C.txt
         close.ZIndex = 95; close.Parent = head; corner(9,close); stroke(C.border,1,close)
@@ -2665,7 +2665,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         close.MouseLeave:Connect(function() tw(close,{BackgroundColor3=C.btnBg},0.1) end)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
         local body = Instance.new("ScrollingFrame")
-        body.Size = UDim2.new(1,-18,1,-62); body.Position = UDim2.new(0,9,0,60)
+        body.Size = UDim2.new(1,-14,1,-51); body.Position = UDim2.new(0,7,0,48)
         body.BackgroundTransparency = 1; body.BorderSizePixel = 0
         body.ScrollBarThickness = 3; body.ScrollBarImageColor3 = ac
         body.ScrollingDirection = Enum.ScrollingDirection.Y; body.Active = true
@@ -2675,7 +2675,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local layout = Instance.new("UIListLayout")
             layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,6); layout.Parent = body
             pad(2,2,3,6,body)
-            local innerWidth = math.max(190, math.min(380, panel.AbsoluteSize.X - 36))
+            local innerWidth = math.max(170, math.min(264, panel.AbsoluteSize.X - 28))
             local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip)
             local count = 0
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
@@ -2707,7 +2707,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if item.Text and tostring(item.Text) ~= "" then
                     count = count + 1
                     local headingText = item.Title and tostring(item.Title) or ""
-                    local cardWidth = math.max(160,panel.AbsoluteSize.X - 44)
+                    local cardWidth = math.max(140,panel.AbsoluteSize.X - 36)
                     local titleHeight = headingText ~= "" and fitH(headingText,11,GB,cardWidth,16,4) or 0
                     local descHeight = fitH(tostring(item.Text),10,GM,cardWidth,18,9)
                     local card = Instance.new("Frame")
