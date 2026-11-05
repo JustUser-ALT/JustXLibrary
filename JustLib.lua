@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.1"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.2"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2774,13 +2774,15 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         -- Keep the original control height; never resize its internal widgets.
         local headerHeight = 18
         local surface = BG.face(row)
-        local surfaceHeight = surface ~= row and surface.AbsoluteSize.Y or 0
         row:SetAttribute("JLMetaHeaderHeight",headerHeight)
         row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
         if surface ~= row then
             local pos = surface.Position
             surface.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
-            surface.Size = UDim2.new(surface.Size.X.Scale,surface.Size.X.Offset,0,surfaceHeight)
+            local size = surface.Size
+            if size.Y.Scale > 0 then
+                surface.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
+            end
         else
             for _,child in ipairs(surface:GetChildren()) do
                 if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
