@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.2"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.3"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2770,11 +2770,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
 
-        -- Reserve a separate header band and move the whole control surface below it.
-        -- Keep the original control height; never resize its internal widgets.
+        -- Give metadata actions their own row header. Keep the control surface
+        -- at its original height and place it entirely below the header.
         local headerHeight = 18
         local surface = BG.face(row)
         row:SetAttribute("JLMetaHeaderHeight",headerHeight)
+        local originalHeight = row.Size.Y.Offset
         row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
         if surface ~= row then
             local pos = surface.Position
@@ -2782,6 +2783,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             local size = surface.Size
             if size.Y.Scale > 0 then
                 surface.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
+            elseif size.Y.Offset > 0 then
+                surface.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset)
             end
         else
             for _,child in ipairs(surface:GetChildren()) do
@@ -2792,7 +2795,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             end
         end
 
-        -- Integrated action capsule sits in the control's own header.
+        -- The action capsule lives in the reserved header, not on the control
+        -- surface. No divider is drawn across the control content.
         local capsule = Instance.new("Frame")
         capsule.Name = "JLMetaActions"
         capsule.Size = UDim2.new(0, (settings and info) and 38 or 19, 0, 16)
@@ -2801,21 +2805,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         capsule.BackgroundColor3 = C.pHdr
         capsule.BorderSizePixel = 0
         capsule.ZIndex = 56
-        capsule.Parent = surface
+        capsule.Parent = row
         corner(7,capsule)
-        local separator = Instance.new("Frame")
-        separator.Name = "JLMetaSeparator"
-        separator.Size = UDim2.new(1,0,0,1)
-        separator.Position = UDim2.new(0,0,0,headerHeight-1)
-        separator.BackgroundColor3 = C.border
-        separator.BackgroundTransparency = 0.45
-        separator.BorderSizePixel = 0
-        separator.ZIndex = 55
-        separator.Parent = surface
         local function make(iconName,help,order,action)
             local button = Instance.new("TextButton")
             button.Name = iconName == "settings" and "JLSettingsAction" or "JLInfoAction"
-            button.Size = UDim2.new(0,17,0,17)
+            button.Size = UDim2.new(0,17,0,16)
             button.Position = UDim2.new(0,(order-1)*19,0,0)
             button.BackgroundTransparency = 1
             button.BorderSizePixel = 0
