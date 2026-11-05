@@ -2775,7 +2775,6 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local headerHeight = 18
         local surface = BG.face(row)
         row:SetAttribute("JLMetaHeaderHeight",headerHeight)
-        local originalHeight = row.Size.Y.Offset
         row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
         if surface ~= row then
             local pos = surface.Position
@@ -2791,6 +2790,10 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
                     local pos = child.Position
                     child.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
+                    local size = child.Size
+                    if size.Y.Scale > 0 then
+                        child.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
+                    end
                 end
             end
         end
