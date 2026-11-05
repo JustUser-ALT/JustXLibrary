@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.2 INFO & SETTINGS TEST
+-- JUSTLIB 4.3 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.2 · Info & Settings",
+    Name = "JustLib 4.3 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
@@ -115,76 +115,25 @@ safeAdd("Input / Info and Tooltip", function()
     })
 end)
 
-safeAdd("ValueDropdown / top-level and nested extras", function()
-    return Section:ValueDropdown({
-        Name = "Loot Options",
-        Flag = "Test_LootOptions",
+safeAdd("Dropdown / Info and Settings", function()
+    return Section:Dropdown({
+        Name = "Loot Filter",
+        Flag = "Test_LootFilter",
         Options = {"Sword", "Shield", "Potion"},
         MultiSelect = true,
-        Tooltip = "Выбери предмет, затем открой его вложенные параметры.",
+        Default = {"Sword"},
+        Tooltip = "Краткая подсказка для списка.",
         Info = {
-            Description = "Настройки отдельных категорий лута.",
-            Details = "У каждого предмета могут быть собственные Info, Settings и Tooltip.",
+            Title = "Loot Filter",
+            Description = "Фильтрует предметы, которые отображаются в списке.",
+            Details = "Настройки фильтра находятся в отдельной панели.",
         },
         Settings = {
-            {Type = "Toggle", Name = "Enable Loot Filter", Flag = "Test_LootFilter", Default = true},
-            {Type = "Dropdown", Name = "Sort By", Flag = "Test_LootSort", Options = {"Name", "Distance", "Rarity"}, Default = "Rarity"},
+            {Type = "Toggle", Name = "Enable Loot Filter", Flag = "Test_LootFilter_Enabled", Default = true},
+            {Type = "Slider", Name = "Max Distance", Flag = "Test_LootFilter_Range", Min = 50, Max = 2000, Default = 750},
+            {Type = "Dropdown", Name = "Sort By", Flag = "Test_LootFilter_Sort", Options = {"Name", "Distance", "Rarity"}, Default = "Rarity"},
         },
-        Values = {
-            Sword = {
-                Mode = "Move",
-                {
-                    Type = "Toggle",
-                    Name = "Always",
-                    Master = true,
-                    Default = true,
-                    Tooltip = "Nested toggle tooltip.",
-                    Info = "Этот переключатель управляет режимом Always.",
-                    Settings = {
-                        {Type = "Toggle", Name = "Notify", Flag = "Test_Sword_AlwaysNotify", Default = true},
-                    },
-                },
-                {Type = "Toggle", Name = "Current"},
-                {
-                    Type = "Slider",
-                    Name = "Range",
-                    Min = 1,
-                    Max = 10,
-                    Default = 5,
-                    Info = {
-                        Description = "Дальность поиска меча.",
-                        Warning = "Проверь производительность на больших значениях.",
-                    },
-                    Settings = {
-                        {Type = "Slider", Name = "Minimum Range", Flag = "Test_Sword_MinRange", Min = 1, Max = 10, Default = 2},
-                    },
-                },
-                {
-                    Type = "Button",
-                    Name = "Nested Action",
-                    Info = "Проверка Info у вложенной кнопки.",
-                    Callback = function()
-                        print("[Info & Settings Test] Nested Sword action.")
-                    end,
-                },
-            },
-            Shield = {
-                {Type = "Toggle", Name = "Enabled", Default = true},
-                {
-                    Type = "ColorPicker",
-                    Name = "Shield Color",
-                    Default = Color3.fromRGB(72,198,138),
-                    Info = "Цвет щита.",
-                },
-            },
-            Potion = {
-                {Type = "Slider", Name = "Amount", Min = 1, Max = 5, Default = 2},
-            },
-        },
-        Callback = function(values)
-            print("[Info & Settings Test] Loot selection updated.")
-        end,
     })
 end)
 
-print("[Info & Settings Test] Loaded. Check icon combinations, modal panels, settings controls and nested ValueDropdown items.")
+print("[Info & Settings Test] Loaded. Check icon combinations, modal panels, settings controls and Dropdown metadata.")
