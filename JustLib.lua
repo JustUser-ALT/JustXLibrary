@@ -2770,6 +2770,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
 
+        -- Give the control a little more vertical room instead of compressing its content.
+        row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + 6)
+
         -- Integrated action capsule: no separate side column and no width reduction.
         local capsule = Instance.new("Frame")
         capsule.Name = "JLMetaActions"
