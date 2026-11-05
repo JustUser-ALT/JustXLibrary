@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.6"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.7"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2642,7 +2642,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
 
         local panel = Instance.new("Frame")
         panel.Name = "JLMetaPanel"
-        panel.Size = UDim2.new(0.76,0,0.66,0)
+        panel.Size = UDim2.new(0.84,0,0.76,0)
         panel.Position = UDim2.new(0.5,0,0.5,0)
         panel.AnchorPoint = Vector2.new(0.5,0.5)
         panel.BackgroundColor3 = C.panel
@@ -2653,12 +2653,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         corner(9,panel)
         stroke(C.border,1,panel)
         local limit = Instance.new("UISizeConstraint")
-        limit.MinSize = Vector2.new(270,210)
-        limit.MaxSize = Vector2.new(470,500)
+        limit.MinSize = Vector2.new(250,220)
+        limit.MaxSize = Vector2.new(560,620)
         limit.Parent = panel
 
         local head = Instance.new("Frame")
-        head.Size = UDim2.new(1,0,0,38)
+        head.Size = UDim2.new(1,0,0,48)
         head.BackgroundColor3 = C.pHdr
         head.BorderSizePixel = 0
         head.ZIndex = 92
@@ -2671,10 +2671,19 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         fix.BorderSizePixel = 0
         fix.ZIndex = 92
         fix.Parent = head
-        newTxt({Parent=head,Text=title,Font=GB,Size=12,Sz=UDim2.new(1,-54,1,0),Pos=UDim2.new(0,12,0,0),Z=93})
+        local titleIcon = Instance.new("Frame")
+        titleIcon.Size = UDim2.new(0,30,0,30)
+        titleIcon.Position = UDim2.new(0,10,0.5,-15)
+        titleIcon.BackgroundColor3 = C.btnBg
+        titleIcon.BorderSizePixel = 0
+        titleIcon.ZIndex = 93
+        titleIcon.Parent = head
+        corner(8,titleIcon)
+        local titleGlyph = newTxt({Parent=titleIcon,Text=settingsMode and "⚙" or "ⓘ",Font=GB,Size=15,Color=ac,XAlign=Enum.TextXAlignment.Center,YAlign=Enum.TextYAlignment.Center,Sz=UDim2.new(1,0,1,0),Z=94})
+        newTxt({Parent=head,Text=title,Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-68,1,0),Pos=UDim2.new(0,48,0,0),Z=93})
         local close = Instance.new("TextButton")
-        close.Size = UDim2.new(0,24,0,24)
-        close.Position = UDim2.new(1,-31,0,7)
+        close.Size = UDim2.new(0,30,0,30)
+        close.Position = UDim2.new(1,-38,0,9)
         close.BackgroundColor3 = C.btnBg
         close.BorderSizePixel = 0
         close.AutoButtonColor = false
@@ -2688,8 +2697,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
 
         local body = Instance.new("ScrollingFrame")
-        body.Size = UDim2.new(1,-16,1,-46)
-        body.Position = UDim2.new(0,8,0,42)
+        body.Size = UDim2.new(1,-24,1,-62)
+        body.Position = UDim2.new(0,12,0,56)
         body.BackgroundTransparency = 1
         body.BorderSizePixel = 0
         body.ScrollBarThickness = 2
@@ -2704,10 +2713,11 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         if settingsMode then
             local layout = Instance.new("UIListLayout")
             layout.SortOrder = Enum.SortOrder.LayoutOrder
-            layout.Padding = UDim.new(0,5)
+            layout.Padding = UDim.new(0,9)
             layout.Parent = body
             pad(2,2,2,6,body)
-            local nested = attachWidgets(body,286,ac,uiScale,parentSg,attachTip)
+            local innerWidth = math.max(220, math.min(500, panel.AbsoluteSize.X - 44))
+            local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip)
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
                 if type(definition) == "table" then
                     local kind = tostring(definition.Type or "Toggle")
@@ -2734,10 +2744,11 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             for _,item in ipairs(blocks) do
                 if item.Text and tostring(item.Text) ~= "" then
                     local heading = item.Title and tostring(item.Title) or ""
-                    local titleHeight = heading ~= "" and fitH(heading,10,GB,260,14,2) or 0
-                    local descHeight = fitH(tostring(item.Text),10,GM,260,16,8)
+                    local cardWidth = math.max(190, panel.AbsoluteSize.X - 52)
+                    local titleHeight = heading ~= "" and fitH(heading,12,GB,cardWidth,18,4) or 0
+                    local descHeight = fitH(tostring(item.Text),11,GM,cardWidth,18,10)
                     local card = Instance.new("Frame")
-                    card.Size = UDim2.new(1,-6,0,titleHeight + descHeight + (titleHeight > 0 and 5 or 0) + 28)
+                    card.Size = UDim2.new(1,-6,0,titleHeight + descHeight + (titleHeight > 0 and 7 or 0) + 30)
                     card.Position = UDim2.new(0,3,0,y)
                     card.BackgroundColor3 = item.Kind == "warning" and C.pHdr or C.btnBg
                     card.BorderSizePixel = 0
@@ -2745,15 +2756,15 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                     card.Parent = body
                     corner(6,card)
                     local content = Instance.new("Frame")
-                    content.Size = UDim2.new(1,-16,1,-14)
-                    content.Position = UDim2.new(0,8,0,7)
+                    content.Size = UDim2.new(1,-20,1,-16)
+                    content.Position = UDim2.new(0,10,0,8)
                     content.BackgroundTransparency = 1
                     content.ZIndex = 94
                     content.Parent = card
                     if titleHeight > 0 then
-                        newTxt({Parent=content,Text=heading,Font=GB,Size=10,Color=ac,Wrap=true,Sz=UDim2.new(1,0,0,titleHeight),Z=95})
+                        newTxt({Parent=content,Text=heading,Font=GB,Size=12,Color=ac,Wrap=true,Sz=UDim2.new(1,0,0,titleHeight),Z=95})
                     end
-                    local desc = newTxt({Parent=content,Text=tostring(item.Text),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,0,0,descHeight),Pos=UDim2.new(0,0,0,titleHeight > 0 and titleHeight + 5 or 0),Z=95})
+                    local desc = newTxt({Parent=content,Text=tostring(item.Text),Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,0,0,descHeight),Pos=UDim2.new(0,0,0,titleHeight > 0 and titleHeight + 7 or 0),Z=95})
                     desc.TextYAlignment = Enum.TextYAlignment.Top
                     y = y + card.Size.Y.Offset + 6
                 end
@@ -3345,7 +3356,9 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             end,
         }
         regFlag(o.Flag, ret, o.NoSave)
-        return mergeLock(ret, row, o)
+        local control = mergeLock(ret, row, o)
+        addMetaButtons(row,o)
+        return control
     end
     function Sec:TextSlider(o)
         o = o or {}
@@ -3636,7 +3649,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 local rows = JL._newRows
                 for i = from + 1, #rows do
                     BG.register(kind, BG.face(rows[i]), 7, own, true)
-                    if type(o) == "table" and (kind == "Toggle" or kind == "Slider" or kind == "Button" or kind == "Input" or kind == "Dropdown") then addMetaButtons(rows[i],o) end
+                    if type(o) == "table" and (kind == "Toggle" or kind == "Slider" or kind == "Button" or kind == "Input") then addMetaButtons(rows[i],o) end
                 end
                 if from == 0 then JL._newRows = {} end
                 return ret
