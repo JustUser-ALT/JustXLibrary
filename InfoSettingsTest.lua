@@ -1,5 +1,5 @@
 --==================================================
--- JUSTLIB 4.4.1 INFO & SETTINGS TEST
+-- JUSTLIB 4.4.2 INFO & SETTINGS TEST
 -- Tests optional Tooltip, Info and Settings independently.
 -- Run in a Roblox executor/local-script environment.
 --==================================================
@@ -8,7 +8,7 @@ local LibraryURL = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/
 local JL = loadstring(game:HttpGet(LibraryURL))()
 
 local Window = JL:Window({
-    Name = "JustLib 4.4.1 · Info & Settings",
+    Name = "JustLib 4.4.2 · Info & Settings",
     Config = "JustLib_InfoSettingsTest",
     Settings = true,
 })
