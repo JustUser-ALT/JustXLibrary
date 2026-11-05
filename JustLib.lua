@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.0"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.1"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -2770,18 +2770,22 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local info = definition.Info ~= nil and definition.Info ~= false and definition.Info ~= ""
         if not settings and not info then return end
 
-        -- Add a slim integrated header, moving the control body down instead of shrinking it.
+        -- Reserve a separate header band and move the whole control surface below it.
+        -- Keep the original control height; never resize its internal widgets.
         local headerHeight = 18
         local surface = BG.face(row)
+        local surfaceHeight = surface ~= row and surface.AbsoluteSize.Y or 0
         row:SetAttribute("JLMetaHeaderHeight",headerHeight)
         row.Size = UDim2.new(row.Size.X.Scale,row.Size.X.Offset,row.Size.Y.Scale,row.Size.Y.Offset + headerHeight)
-        for _,child in ipairs(surface:GetChildren()) do
-            if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
-                local pos = child.Position
-                child.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
-                if child.Size.Y.Scale == 1 then
-                    local size = child.Size
-                    child.Size = UDim2.new(size.X.Scale,size.X.Offset,size.Y.Scale,size.Y.Offset - headerHeight)
+        if surface ~= row then
+            local pos = surface.Position
+            surface.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
+            surface.Size = UDim2.new(surface.Size.X.Scale,surface.Size.X.Offset,0,surfaceHeight)
+        else
+            for _,child in ipairs(surface:GetChildren()) do
+                if child:IsA("GuiObject") and child.Name ~= "JLMetaActions" then
+                    local pos = child.Position
+                    child.Position = UDim2.new(pos.X.Scale,pos.X.Offset,pos.Y.Scale,pos.Y.Offset + headerHeight)
                 end
             end
         end
@@ -2908,7 +2912,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         -- the real label and switch instances instead of relying on out-of-scope locals.
         ret._remoteEditLayout = function(editing)
             local reserve = editing and 32 or 0
-            bg.Size = UDim2.new(1,-reserve,1,0)
+            bg.Size = UDim2.new(1,-reserve,bg.Size.Y.Scale,bg.Size.Y.Offset)
             bg.ClipsDescendants = true
             titleLabel.Size = UDim2.new(0,math.max(0,labW - reserve - (editing and 8 or 0)),1,0)
             titleLabel.ClipsDescendants = true
@@ -3193,7 +3197,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         end
         if o.Search then total = total + 28 end
         local TOTAL = math.min(total, 180); local dropOpen = false
-        local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4 + (row:GetAttribute("JLMetaHeaderHeight") or 0)); container.BackgroundColor3 = C.pHdr
+        local container = Instance.new("ScrollingFrame"); container.Size = UDim2.new(1,0,0,0); container.Position = UDim2.new(0,0,0,bgH + 4); container.BackgroundColor3 = C.pHdr
         container.BorderSizePixel = 0; container.Visible = false; container.ClipsDescendants = true; container.ScrollBarThickness = 3; container.ScrollBarImageColor3 = C.border
         container.CanvasSize = UDim2.new(0,0,0,0); container.Parent = row; corner(7,container); stroke(C.border,1,container)
         local cStack = Instance.new("UIListLayout"); cStack.SortOrder = Enum.SortOrder.LayoutOrder; cStack.Padding = UDim.new(0,2); cStack.Parent = container; pad(4,4,4,4,container)
@@ -3215,7 +3219,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         local function refreshLabel()
             local t = labelText(); lbl.Text = t
             bgH = fitH(t, 12, GB, labW, 32, 14)
-            bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4 + (row:GetAttribute("JLMetaHeaderHeight") or 0))
+            bg.Size = UDim2.new(1,0,0,bgH); container.Position = UDim2.new(0,0,0,bgH + 4)
             row.Size = UDim2.new(1,0,0,(dropOpen and (bgH + 4 + TOTAL) or bgH) + (row:GetAttribute("JLMetaHeaderHeight") or 0))
         end
         local function mark(ref,on) ref.mark.Visible = on; ref.label.TextColor3 = on and ac or C.txt end
