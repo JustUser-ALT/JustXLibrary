@@ -6628,7 +6628,9 @@ function JL:Window(opts)
                         end
                     end
                 end
-                return tostring(cfgGet("_jl_changelog_seen_version","") or "")
+                local configured = tostring(cfgGet("_jl_changelog_seen_version","") or "")
+                if configured ~= "" then return configured end
+                return tostring(shared._JLChangelogSeenVersion or "")
             end
             local function saveSeenVersion(version)
                 local saved = false
@@ -6637,6 +6639,7 @@ function JL:Window(opts)
                     local ok = pcall(function() writefile(path,HTTP:JSONEncode({Version=version})) end)
                     saved = ok
                 end
+                shared._JLChangelogSeenVersion = version
                 if not saved then cfgSet("_jl_changelog_seen_version",version) end
             end
             local function showLatestUpdate()
