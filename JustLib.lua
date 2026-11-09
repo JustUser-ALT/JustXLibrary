@@ -6502,22 +6502,37 @@ function JL:Window(opts)
 
             local entries = type(hopts.Changelog) == "table" and hopts.Changelog or {}
             local entryCount = 0
-            local function showChangelogDetails(heading,description)
+            local function entryText(entry)
+                local heading,description,version,changes
+                if type(entry) == "table" then
+                    heading = entry.Title or entry.Version or entry.Name
+                    version = entry.Version
+                    description = entry.Description or entry.Desc or entry.Text
+                    changes = type(entry.Changes) == "table" and entry.Changes or {}
+                else
+                    description = entry
+                    changes = {}
+                end
+                heading = heading ~= nil and tostring(heading) or nil
+                version = version ~= nil and tostring(version) or nil
+                description = description ~= nil and tostring(description) or ""
+                return heading,description,version,changes
+            end
+            local function showChangelogDetails(entry)
+                local heading,description,version,changes = entryText(entry)
                 local existing = root:FindFirstChild("ChangelogDetailOverlay")
                 if existing then existing:Destroy() end
-
                 local overlay = Instance.new("Frame")
                 overlay.Name = "ChangelogDetailOverlay"
                 overlay.Size = UDim2.new(1,0,1,0)
                 overlay.BackgroundColor3 = Color3.new(0,0,0)
-                overlay.BackgroundTransparency = 0.35
+                overlay.BackgroundTransparency = 0.38
                 overlay.BorderSizePixel = 0
                 overlay.ZIndex = 80
                 overlay.Parent = root
-
                 local panel = Instance.new("Frame")
                 panel.Name = "ChangelogDetailPanel"
-                panel.Size = UDim2.new(0.82,0,0.78,0)
+                panel.Size = UDim2.new(0.88,0,0.76,0)
                 panel.Position = UDim2.new(0.5,0,0.5,0)
                 panel.AnchorPoint = Vector2.new(0.5,0.5)
                 panel.BackgroundColor3 = C.panel
@@ -6527,7 +6542,6 @@ function JL:Window(opts)
                 panel.Parent = overlay
                 corner(10,panel)
                 stroke(C.border,1,panel)
-
                 local accent = Instance.new("Frame")
                 accent.Size = UDim2.new(1,-24,0,2)
                 accent.Position = UDim2.new(0,12,0,0)
@@ -6536,38 +6550,32 @@ function JL:Window(opts)
                 accent.ZIndex = 82
                 accent.Parent = panel
                 corner(1,accent)
-
-                newTxt({Parent=panel,Text="CHANGELOG",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-64,0,14),Pos=UDim2.new(0,14,0,12)})
+                newTxt({Parent=panel,Text="UPDATE HISTORY",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-64,0,13),Pos=UDim2.new(0,14,0,10),Z=82})
                 local close = Instance.new("TextButton")
                 close.Name = "CloseChangelog"
-                close.Size = UDim2.new(0,28,0,28)
-                close.Position = UDim2.new(1,-40,0,7)
+                close.Size = UDim2.new(0,26,0,26)
+                close.Position = UDim2.new(1,-36,0,6)
                 close.BackgroundColor3 = C.pHdr
                 close.BorderSizePixel = 0
                 close.AutoButtonColor = false
                 close.Text = "×"
                 close.Font = GB
-                close.TextSize = 20
+                close.TextSize = 19
                 close.TextColor3 = C.txt
                 close.ZIndex = 83
                 close.Parent = panel
                 corner(7,close)
                 close.MouseButton1Click:Connect(function() overlay:Destroy() end)
-
-                local title = newTxt({Parent=panel,Text=heading,Font=GB,Size=16,Sz=UDim2.new(1,-28,0,24),Pos=UDim2.new(0,14,0,38)})
-                title.ZIndex = 82
-                local divider = Instance.new("Frame")
-                divider.Size = UDim2.new(1,-28,0,1)
-                divider.Position = UDim2.new(0,14,0,70)
-                divider.BackgroundColor3 = C.border
-                divider.BorderSizePixel = 0
-                divider.ZIndex = 82
-                divider.Parent = panel
-
+                local titleText = heading and heading ~= "" and heading or "UPDATE"
+                local title = newTxt({Parent=panel,Text=titleText,Font=GB,Size=15,Sz=UDim2.new(1,-28,0,22),Pos=UDim2.new(0,14,0,34),Z=82})
+                title.TextTruncate = Enum.TextTruncate.AtEnd
+                if version and version ~= "" then
+                    newTxt({Parent=panel,Text="VERSION " .. version,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,58),Z=82})
+                end
                 local detailScroll = Instance.new("ScrollingFrame")
                 detailScroll.Name = "ChangelogFullText"
-                detailScroll.Size = UDim2.new(1,-28,1,-88)
-                detailScroll.Position = UDim2.new(0,14,0,80)
+                detailScroll.Size = UDim2.new(1,-28,1,-92)
+                detailScroll.Position = UDim2.new(0,14,0,76)
                 detailScroll.BackgroundTransparency = 1
                 detailScroll.BorderSizePixel = 0
                 detailScroll.ScrollBarThickness = 3
@@ -6578,24 +6586,164 @@ function JL:Window(opts)
                 detailScroll.CanvasSize = UDim2.new(0,0,0,0)
                 detailScroll.ZIndex = 82
                 detailScroll.Parent = panel
-
-                local fullDescription = description ~= "" and description or "No description provided."
-                local fullText = newTxt({Parent=detailScroll,Text=fullDescription,Font=GM,Size=12,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,0),Pos=UDim2.new(0,4,0,2)})
-                fullText.AutomaticSize = Enum.AutomaticSize.Y
-                fullText.TextYAlignment = Enum.TextYAlignment.Top
-                fullText.ZIndex = 83
+                local content = Instance.new("Frame")
+                content.Name = "ChangelogContent"
+                content.Size = UDim2.new(1,-8,0,0)
+                content.BackgroundTransparency = 1
+                content.AutomaticSize = Enum.AutomaticSize.Y
+                content.Parent = detailScroll
+                local layout = Instance.new("UIListLayout")
+                layout.Padding = UDim.new(0,7)
+                layout.SortOrder = Enum.SortOrder.LayoutOrder
+                layout.Parent = content
+                local desc = newTxt({Parent=content,Text=description ~= "" and description or "No description provided.",Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-4,0,0),Pos=UDim2.new(0,2,0,0),Z=83})
+                desc.AutomaticSize = Enum.AutomaticSize.Y
+                desc.TextYAlignment = Enum.TextYAlignment.Top
+                if #changes > 0 then
+                    local label = newTxt({Parent=content,Text="WHAT'S INCLUDED",Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-4,0,12),Z=83})
+                    label.LayoutOrder = 2
+                    for i,change in ipairs(changes) do
+                        local line = newTxt({Parent=content,Text="•  " .. tostring(change),Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-8,0,0),Pos=UDim2.new(0,4,0,0),Z=83})
+                        line.AutomaticSize = Enum.AutomaticSize.Y
+                        line.TextYAlignment = Enum.TextYAlignment.Top
+                        line.LayoutOrder = i + 2
+                    end
+                end
             end
 
-            for index,entry in ipairs(entries) do
-                local heading,description
-                if type(entry) == "table" then
-                    heading = entry.Title or entry.Version or entry.Name
-                    description = entry.Description or entry.Desc or entry.Text
-                else
-                    description = entry
+            local latestEntry,latestVersion
+            for _,entry in ipairs(entries) do
+                local _,_,version = entryText(entry)
+                if version and version ~= "" then latestEntry = entry; latestVersion = version; break end
+            end
+            local function readSeenVersion()
+                local path = "JustLib_UpdateState.json"
+                if isfile and readfile then
+                    local okExists,exists = pcall(isfile,path)
+                    if okExists and exists then
+                        local okRead,raw = pcall(readfile,path)
+                        if okRead and raw and raw ~= "" then
+                            local okDecode,data = pcall(HTTP.JSONDecode,HTTP,raw)
+                            if okDecode and type(data) == "table" and data.Version then return tostring(data.Version) end
+                        end
+                    end
                 end
-                heading = heading ~= nil and tostring(heading) or nil
-                description = description ~= nil and tostring(description) or ""
+                return tostring(cfgGet("_jl_changelog_seen_version","") or "")
+            end
+            local function saveSeenVersion(version)
+                local saved = false
+                local path = "JustLib_UpdateState.json"
+                if writefile then
+                    local ok = pcall(function() writefile(path,HTTP:JSONEncode({Version=version})) end)
+                    saved = ok
+                end
+                if not saved then cfgSet("_jl_changelog_seen_version",version) end
+            end
+            local function showLatestUpdate()
+                if not latestEntry or not latestVersion then return end
+                local heading,description,version,changes = entryText(latestEntry)
+                local existing = root:FindFirstChild("JustLibUpdateOverlay")
+                if existing then existing:Destroy() end
+                local overlay = Instance.new("Frame")
+                overlay.Name = "JustLibUpdateOverlay"
+                overlay.Size = UDim2.new(1,0,1,0)
+                overlay.BackgroundColor3 = Color3.new(0,0,0)
+                overlay.BackgroundTransparency = 0.3
+                overlay.BorderSizePixel = 0
+                overlay.ZIndex = 90
+                overlay.Parent = root
+                local panel = Instance.new("Frame")
+                panel.Name = "JustLibUpdatePanel"
+                panel.Size = UDim2.new(0.86,0,0,math.min(300,math.max(230,unscaleWin(300))))
+                panel.Position = UDim2.new(0.5,0,0.5,0)
+                panel.AnchorPoint = Vector2.new(0.5,0.5)
+                panel.BackgroundColor3 = C.panel
+                panel.BorderSizePixel = 0
+                panel.ClipsDescendants = true
+                panel.ZIndex = 91
+                panel.Parent = overlay
+                corner(11,panel)
+                stroke(C.border,1,panel)
+                local accent = Instance.new("Frame")
+                accent.Size = UDim2.new(1,-24,0,2)
+                accent.Position = UDim2.new(0,12,0,0)
+                accent.BackgroundColor3 = ACCENTS[1]
+                accent.BorderSizePixel = 0
+                accent.ZIndex = 92
+                accent.Parent = panel
+                corner(1,accent)
+                newTxt({Parent=panel,Text="JUSTLIB  /  UPDATE",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-60,0,13),Pos=UDim2.new(0,14,0,12),Z=92})
+                local close = Instance.new("TextButton")
+                close.Size = UDim2.new(0,25,0,25)
+                close.Position = UDim2.new(1,-36,0,6)
+                close.BackgroundColor3 = C.pHdr
+                close.BorderSizePixel = 0
+                close.AutoButtonColor = false
+                close.Text = "×"
+                close.Font = GB
+                close.TextSize = 18
+                close.TextColor3 = C.txt
+                close.ZIndex = 93
+                close.Parent = panel
+                corner(7,close)
+                local titleText = heading and heading ~= "" and heading or "New update"
+                newTxt({Parent=panel,Text=titleText,Font=GB,Size=16,Sz=UDim2.new(1,-28,0,22),Pos=UDim2.new(0,14,0,34),Z=92})
+                newTxt({Parent=panel,Text="VERSION  " .. version,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=92})
+                local descText = description ~= "" and description or "Here's what's new in this version."
+                local desc = newTxt({Parent=panel,Text=descText,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,0),Pos=UDim2.new(0,14,0,79),Z=92})
+                desc.AutomaticSize = Enum.AutomaticSize.Y
+                desc.TextYAlignment = Enum.TextYAlignment.Top
+                local listY = 104
+                if #changes > 0 then
+                    local changesLabel = newTxt({Parent=panel,Text="WHAT'S INCLUDED",Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,listY),Z=92})
+                    changesLabel.TextTruncate = Enum.TextTruncate.AtEnd
+                    listY = listY + 16
+                    local list = Instance.new("ScrollingFrame")
+                    list.Name = "UpdateChanges"
+                    list.Size = UDim2.new(1,-28,1,-(listY + 48))
+                    list.Position = UDim2.new(0,14,0,listY)
+                    list.BackgroundTransparency = 1
+                    list.BorderSizePixel = 0
+                    list.ScrollBarThickness = 2
+                    list.ScrollBarImageColor3 = ACCENTS[1]
+                    list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                    list.CanvasSize = UDim2.new(0,0,0,0)
+                    list.ScrollingDirection = Enum.ScrollingDirection.Y
+                    list.Active = true
+                    list.ZIndex = 92
+                    list.Parent = panel
+                    local ll = Instance.new("UIListLayout")
+                    ll.Padding = UDim.new(0,5)
+                    ll.Parent = list
+                    for _,change in ipairs(changes) do
+                        local line = newTxt({Parent=list,Text="•  " .. tostring(change),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-8,0,0),Pos=UDim2.new(0,2,0,0),Z=93})
+                        line.AutomaticSize = Enum.AutomaticSize.Y
+                        line.TextYAlignment = Enum.TextYAlignment.Top
+                    end
+                end
+                local continue = Instance.new("TextButton")
+                continue.Name = "ContinueUpdate"
+                continue.Size = UDim2.new(1,-28,0,30)
+                continue.Position = UDim2.new(0,14,1,-42)
+                continue.BackgroundColor3 = ACCENTS[1]
+                continue.BorderSizePixel = 0
+                continue.AutoButtonColor = false
+                continue.Text = "CONTINUE"
+                continue.Font = GB
+                continue.TextSize = 10
+                continue.TextColor3 = Color3.new(1,1,1)
+                continue.ZIndex = 94
+                continue.Parent = panel
+                corner(7,continue)
+                local function closeUpdate()
+                    saveSeenVersion(version)
+                    overlay:Destroy()
+                end
+                close.MouseButton1Click:Connect(closeUpdate)
+                continue.MouseButton1Click:Connect(closeUpdate)
+            end
+            for index,entry in ipairs(entries) do
+                local heading,description,version = entryText(entry)
                 if (heading and heading ~= "") or description ~= "" then
                     entryCount = entryCount + 1
                     local titleText = heading and heading ~= "" and heading or "UPDATE"
@@ -6607,7 +6755,6 @@ function JL:Window(opts)
                     item.LayoutOrder = index
                     item.Parent = changelogScroll
                     corner(6,item)
-
                     local marker = Instance.new("Frame")
                     marker.Size = UDim2.new(0,2,1,-10)
                     marker.Position = UDim2.new(0,0,0,5)
@@ -6615,14 +6762,12 @@ function JL:Window(opts)
                     marker.BorderSizePixel = 0
                     marker.Parent = item
                     corner(1,marker)
-
-                    newTxt({Parent=item,Text=titleText,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,8,0,4)})
-                    local descHeight = description ~= "" and fitH(description,9,GM,146,11,2) or 0
+                    newTxt({Parent=item,Text=version and ("V" .. version) or titleText,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,8,0,4)})
                     local preview = description
                     if #preview > 78 then preview = preview:sub(1,75) .. "..." end
-                    local desc = newTxt({Parent=item,Text=preview,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,descHeight),Pos=UDim2.new(0,8,0,17)})
+                    local descHeight = description ~= "" and fitH(preview,9,GM,146,11,2) or 11
+                    local desc = newTxt({Parent=item,Text=preview ~= "" and preview or titleText,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,descHeight),Pos=UDim2.new(0,8,0,17)})
                     desc.TextYAlignment = Enum.TextYAlignment.Top
-
                     local openHint = newTxt({Parent=item,Text="›",Font=GB,Size=18,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,16,1,0),Pos=UDim2.new(1,-20,0,0)})
                     openHint.ZIndex = 2
                     local click = Instance.new("TextButton")
@@ -6634,9 +6779,7 @@ function JL:Window(opts)
                     click.Text = ""
                     click.ZIndex = 5
                     click.Parent = item
-                    click.MouseButton1Click:Connect(function()
-                        showChangelogDetails(titleText,description)
-                    end)
+                    click.MouseButton1Click:Connect(function() showChangelogDetails(entry) end)
                     item.Size = UDim2.new(1,-4,0,math.max(34,17 + math.min(descHeight,22) + 5))
                 end
             end
@@ -6644,7 +6787,11 @@ function JL:Window(opts)
                 newTxt({Parent=changelogScroll,Text="No updates yet.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-8,0,18),Pos=UDim2.new(0,4,0,4)})
             end
             refreshChangelogCanvas()
-
+            if latestEntry and latestVersion and readSeenVersion() ~= latestVersion then
+                trackedDelay(0.45,function()
+                    if root and root.Parent and not root:FindFirstChild("JustLibUpdateOverlay") then showLatestUpdate() end
+                end)
+            end
             if hopts.Tier or #SUB.order > 0 then
                 local chip = Instance.new("TextButton")
                 chip.AutoButtonColor = false
