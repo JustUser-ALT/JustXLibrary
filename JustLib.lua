@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.11"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.12"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -6524,8 +6524,8 @@ function JL:Window(opts)
                 if existing then existing:Destroy() end
                 local camera = workspace.CurrentCamera
                 local viewport = camera and camera.ViewportSize or Vector2.new(800,600)
-                local panelW = math.min(340,math.max(250,viewport.X - 34))
-                local panelH = math.min(300,math.max(220,viewport.Y - 100))
+                local panelW = math.min(320,math.max(250,viewport.X - 34))
+                local panelH = math.min(280,math.max(215,viewport.Y - 100))
                 local overlay = Instance.new("Frame")
                 overlay.Name = "ChangelogDetailOverlay"
                 overlay.Size = UDim2.new(1,0,1,0)
@@ -6664,8 +6664,8 @@ function JL:Window(opts)
                 JL:Track(updateGui)
                 local camera = workspace.CurrentCamera
                 local viewport = camera and camera.ViewportSize or Vector2.new(800,600)
-                local panelW = math.min(340,math.max(250,viewport.X - 30))
-                local panelH = math.min(258,math.max(218,viewport.Y - 70))
+                local panelW = math.min(310,math.max(250,viewport.X - 30))
+                local panelH = math.min(238,math.max(210,viewport.Y - 70))
                 local overlay = Instance.new("Frame")
                 overlay.Name = "Backdrop"
                 overlay.Size = UDim2.new(1,0,1,0)
