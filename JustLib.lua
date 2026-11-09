@@ -6633,7 +6633,7 @@ function JL:Window(opts)
             local function saveSeenVersion(version)
                 local saved = false
                 local path = "JustLib_UpdateState.json"
-                if writefile then
+                if writefile and readfile and isfile then
                     local ok = pcall(function() writefile(path,HTTP:JSONEncode({Version=version})) end)
                     saved = ok
                 end
@@ -6690,10 +6690,9 @@ function JL:Window(opts)
                 newTxt({Parent=panel,Text=titleText,Font=GB,Size=16,Sz=UDim2.new(1,-28,0,22),Pos=UDim2.new(0,14,0,34),Z=92})
                 newTxt({Parent=panel,Text="VERSION  " .. version,Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=92})
                 local descText = description ~= "" and description or "Here's what's new in this version."
-                local desc = newTxt({Parent=panel,Text=descText,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,0),Pos=UDim2.new(0,14,0,79),Z=92})
-                desc.AutomaticSize = Enum.AutomaticSize.Y
+                local desc = newTxt({Parent=panel,Text=descText,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,28),Pos=UDim2.new(0,14,0,79),Z=92})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
-                local listY = 104
+                local listY = 114
                 if #changes > 0 then
                     local changesLabel = newTxt({Parent=panel,Text="WHAT'S INCLUDED",Font=GB,Size=9,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,listY),Z=92})
                     changesLabel.TextTruncate = Enum.TextTruncate.AtEnd
