@@ -1,5 +1,5 @@
 -- JustLib Update UI test
--- Run once: the 4.4.11 popup should appear.
+-- Run once: the 4.4.12 popup should appear.
 -- Close it and run again: it should stay closed, while Home > What's New
 -- still lets you open either version from the history list.
 -- To test another popup, change the newest Version below (for example 4.4.12).
@@ -21,12 +21,12 @@ Window:HomeTab({
     WelcomeTitle = "Update UI Test",
     Changelog = {
         {
-            Version = "4.4.11",
+            Version = "4.4.12",
             Title = "Update UI Redesign",
             Description = "A redesigned update popup and a cleaner version history.",
             Changes = {
-                "New compact update popup appears once per version.",
-                "Dismissed updates remain available in the Home changelog.",
+                "Compact release popup appears immediately on script startup, once per version.",
+                "Popup is independent of the hub window; history remains on Home.",
                 "Version details now include a full Changes list.",
             },
         },
