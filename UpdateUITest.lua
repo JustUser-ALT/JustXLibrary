@@ -1,8 +1,8 @@
 -- JustLib Update UI test
--- Run once: the 4.4.12 popup should appear.
+-- Run once: the 4.4.13 popup should appear.
 -- Close it and run again: it should stay closed, while Home > What's New
 -- still lets you open either version from the history list.
--- To test another popup, change the newest Version below (for example 4.4.12).
+-- To test another popup, change the newest Version below (for example 4.4.13).
 
 local Library = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/JustLib.lua"
@@ -21,7 +21,7 @@ Window:HomeTab({
     WelcomeTitle = "Update UI Test",
     Changelog = {
         {
-            Version = "4.4.12",
+            Version = "4.4.13",
             Title = "Update UI Redesign",
             Description = "A redesigned update popup and a cleaner version history.",
             Changes = {
