@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.12"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.13"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -6473,14 +6473,15 @@ function JL:Window(opts)
             changelogAccent.Parent = changelogFrame
             corner(1,changelogAccent)
 
-            newTxt({Parent=changelogFrame,Text="WHAT'S NEW",Font=GB,Size=10,Sz=UDim2.new(1,-72,0,14),Pos=UDim2.new(0,10,0,8)})
+            newTxt({Parent=changelogFrame,Text="JUSTLIB  /  UPDATES",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-72,0,12),Pos=UDim2.new(0,10,0,8)})
+            newTxt({Parent=changelogFrame,Text="RELEASE HISTORY",Font=GB,Size=9,Color=C.txt,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,10,0,20)})
             local changelogCount = # (type(hopts.Changelog) == "table" and hopts.Changelog or {})
-            newTxt({Parent=changelogFrame,Text=tostring(changelogCount) .. " updates",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,64,0,14),Pos=UDim2.new(1,-74,0,8)})
+            newTxt({Parent=changelogFrame,Text=tostring(changelogCount) .. " BUILDS",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,64,0,12),Pos=UDim2.new(1,-74,0,9)})
 
             local changelogScroll = Instance.new("ScrollingFrame")
             changelogScroll.Name = "ChangelogList"
-            changelogScroll.Size = UDim2.new(1,-12,1,-38)
-            changelogScroll.Position = UDim2.new(0,6,0,32)
+            changelogScroll.Size = UDim2.new(1,-12,1,-48)
+            changelogScroll.Position = UDim2.new(0,6,0,42)
             changelogScroll.BackgroundTransparency = 1
             changelogScroll.BorderSizePixel = 0
             changelogScroll.ScrollBarThickness = 2
@@ -6686,22 +6687,22 @@ function JL:Window(opts)
                 panel.Parent = overlay
                 corner(11,panel)
                 stroke(C.border,1,panel)
-                local topLine = Instance.new("Frame")
-                topLine.Size = UDim2.new(1,-22,0,2)
-                topLine.Position = UDim2.new(0,11,0,0)
-                topLine.BackgroundColor3 = ACCENTS[1]
-                topLine.BorderSizePixel = 0
-                topLine.ZIndex = 3
-                topLine.Parent = panel
-                corner(1,topLine)
-                local brand = newTxt({Parent=panel,Text="J U S T L I B",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(0.55,-18,0,13),Pos=UDim2.new(0,14,0,11),Z=3})
-                local release = newTxt({Parent=panel,Text="NEW RELEASE",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,76,0,18),Pos=UDim2.new(1,-90,0,8),Z=3})
+                local rail = Instance.new("Frame")
+                rail.Size = UDim2.new(0,3,1,-22)
+                rail.Position = UDim2.new(0,0,0,11)
+                rail.BackgroundColor3 = ACCENTS[1]
+                rail.BorderSizePixel = 0
+                rail.ZIndex = 3
+                rail.Parent = panel
+                corner(2,rail)
+                newTxt({Parent=panel,Text="JUSTLIB  /  UPDATE",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-66,0,12),Pos=UDim2.new(0,14,0,11),Z=3})
+                local release = newTxt({Parent=panel,Text="NEW BUILD",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,70,0,18),Pos=UDim2.new(1,-84,0,8),Z=3})
                 release.BackgroundColor3 = C.pHdr
                 release.BackgroundTransparency = 0
                 corner(5,release)
-                local title = newTxt({Parent=panel,Text=(select(1,entryText(latestEntry)) or "A new update"),Font=GB,Size=16,Sz=UDim2.new(1,-28,0,23),Pos=UDim2.new(0,14,0,34),Z=3})
+                local title = newTxt({Parent=panel,Text=(select(1,entryText(latestEntry)) or "A new update"),Font=GB,Size=15,Sz=UDim2.new(1,-28,0,22),Pos=UDim2.new(0,14,0,35),Z=3})
                 title.TextTruncate = Enum.TextTruncate.AtEnd
-                newTxt({Parent=panel,Text="VERSION  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=3})
+                newTxt({Parent=panel,Text="BUILD  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=3})
                 local descText = description ~= "" and description or "A new version of JustLib is ready."
                 local desc = newTxt({Parent=panel,Text=descText,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,27),Pos=UDim2.new(0,14,0,78),Z=3})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
