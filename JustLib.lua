@@ -6647,21 +6647,9 @@ function JL:Window(opts)
                     if enabled then button.Activated:Connect(callback) end
                     return button
                 end
-                local hasOlder = entryIndex < #entries
                 local hasNewer = entryIndex > 1
-                navButton("OlderVersion","‹",15,hasOlder,function()
-                    local nextIndex = entryIndex + 1
-                    while nextIndex <= #entries do
-                        local h,d = entryText(entries[nextIndex])
-                        if (h and h ~= "") or d ~= "" then
-                            showChangelogDetails(entries[nextIndex],nextIndex)
-                            return
-                        end
-                        nextIndex = nextIndex + 1
-                    end
-                end)
-                newTxt({Parent=panel,Text=tostring(entryIndex) .. " / " .. tostring(navigableCount),Font=GB,Size=8,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-112,0,26),Pos=UDim2.new(0,56,0,navY),Z=83})
-                navButton("NewerVersion","›",panelW - 49,hasNewer,function()
+                local hasOlder = entryIndex < #entries
+                navButton("NewerVersion","‹",15,hasNewer,function()
                     local nextIndex = entryIndex - 1
                     while nextIndex >= 1 do
                         local h,d = entryText(entries[nextIndex])
@@ -6670,6 +6658,18 @@ function JL:Window(opts)
                             return
                         end
                         nextIndex = nextIndex - 1
+                    end
+                end)
+                newTxt({Parent=panel,Text=tostring(entryIndex) .. " / " .. tostring(navigableCount),Font=GB,Size=8,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-112,0,26),Pos=UDim2.new(0,56,0,navY),Z=83})
+                navButton("OlderVersion","›",panelW - 49,hasOlder,function()
+                    local nextIndex = entryIndex + 1
+                    while nextIndex <= #entries do
+                        local h,d = entryText(entries[nextIndex])
+                        if (h and h ~= "") or d ~= "" then
+                            showChangelogDetails(entries[nextIndex],nextIndex)
+                            return
+                        end
+                        nextIndex = nextIndex + 1
                     end
                 end)
             end
