@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.13"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.14"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -6519,8 +6519,19 @@ function JL:Window(opts)
                 description = description ~= nil and tostring(description) or ""
                 return heading,description,version,changes
             end
-            local function showChangelogDetails(entry)
+            local function showChangelogDetails(entry,entryIndex)
                 local heading,description,version,changes = entryText(entry)
+                if not entryIndex then
+                    for i,candidate in ipairs(entries) do
+                        if candidate == entry then entryIndex = i; break end
+                    end
+                end
+                entryIndex = entryIndex or 1
+                local navigableCount = 0
+                for _,candidate in ipairs(entries) do
+                    local h,d = entryText(candidate)
+                    if (h and h ~= "") or d ~= "" then navigableCount = navigableCount + 1 end
+                end
                 local existing = root:FindFirstChild("ChangelogDetailOverlay")
                 if existing then existing:Destroy() end
                 local camera = workspace.CurrentCamera
@@ -6575,12 +6586,12 @@ function JL:Window(opts)
                 local title = newTxt({Parent=panel,Text=titleText,Font=GB,Size=15,Sz=UDim2.new(1,-30,0,22),Pos=UDim2.new(0,15,0,35),Z=82})
                 title.TextTruncate = Enum.TextTruncate.AtEnd
                 if version and version ~= "" then
-                    newTxt({Parent=panel,Text="BUILD  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-30,0,12),Pos=UDim2.new(0,15,0,59),Z=82})
+                    newTxt({Parent=panel,Text="VERSION  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-30,0,12),Pos=UDim2.new(0,15,0,59),Z=82})
                 end
                 local bodyY = version and 78 or 72
                 local detailScroll = Instance.new("ScrollingFrame")
                 detailScroll.Name = "ChangelogFullText"
-                detailScroll.Size = UDim2.new(1,-30,1,-(bodyY + 18))
+                detailScroll.Size = UDim2.new(1,-30,1,-(bodyY + 54))
                 detailScroll.Position = UDim2.new(0,15,0,bodyY)
                 detailScroll.BackgroundTransparency = 1
                 detailScroll.BorderSizePixel = 0
@@ -6615,6 +6626,52 @@ function JL:Window(opts)
                         line.LayoutOrder = i + 2
                     end
                 end
+                local navY = panelH - 39
+                local function navButton(name,label,x,enabled,callback)
+                    local button = Instance.new("TextButton")
+                    button.Name = name
+                    button.Size = UDim2.new(0,34,0,26)
+                    button.Position = UDim2.new(0,x,0,navY)
+                    button.BackgroundColor3 = C.pHdr
+                    button.BackgroundTransparency = enabled and 0 or 0.55
+                    button.BorderSizePixel = 0
+                    button.AutoButtonColor = false
+                    button.Text = label
+                    button.Font = GB
+                    button.TextSize = 15
+                    button.TextColor3 = enabled and C.txt or C.dim
+                    button.TextTransparency = enabled and 0 or 0.45
+                    button.ZIndex = 83
+                    button.Parent = panel
+                    corner(6,button)
+                    if enabled then button.Activated:Connect(callback) end
+                    return button
+                end
+                local hasOlder = entryIndex < #entries
+                local hasNewer = entryIndex > 1
+                navButton("OlderVersion","‹",15,hasOlder,function()
+                    local nextIndex = entryIndex + 1
+                    while nextIndex <= #entries do
+                        local h,d = entryText(entries[nextIndex])
+                        if (h and h ~= "") or d ~= "" then
+                            showChangelogDetails(entries[nextIndex],nextIndex)
+                            return
+                        end
+                        nextIndex = nextIndex + 1
+                    end
+                end)
+                newTxt({Parent=panel,Text=tostring(entryIndex) .. " / " .. tostring(navigableCount),Font=GB,Size=8,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-112,0,26),Pos=UDim2.new(0,56,0,navY),Z=83})
+                navButton("NewerVersion","›",panelW - 49,hasNewer,function()
+                    local nextIndex = entryIndex - 1
+                    while nextIndex >= 1 do
+                        local h,d = entryText(entries[nextIndex])
+                        if (h and h ~= "") or d ~= "" then
+                            showChangelogDetails(entries[nextIndex],nextIndex)
+                            return
+                        end
+                        nextIndex = nextIndex - 1
+                    end
+                end)
             end
             local latestEntry,latestVersion
             for _,entry in ipairs(entries) do
@@ -6696,13 +6753,13 @@ function JL:Window(opts)
                 rail.Parent = panel
                 corner(2,rail)
                 newTxt({Parent=panel,Text="JUSTLIB  /  UPDATE",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-66,0,12),Pos=UDim2.new(0,14,0,11),Z=3})
-                local release = newTxt({Parent=panel,Text="NEW BUILD",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,70,0,18),Pos=UDim2.new(1,-84,0,8),Z=3})
+                local release = newTxt({Parent=panel,Text="NEW VERSION",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,82,0,18),Pos=UDim2.new(1,-112,0,8),Z=3})
                 release.BackgroundColor3 = C.pHdr
                 release.BackgroundTransparency = 0
                 corner(5,release)
                 local title = newTxt({Parent=panel,Text=(select(1,entryText(latestEntry)) or "A new update"),Font=GB,Size=15,Sz=UDim2.new(1,-28,0,22),Pos=UDim2.new(0,14,0,35),Z=3})
                 title.TextTruncate = Enum.TextTruncate.AtEnd
-                newTxt({Parent=panel,Text="BUILD  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=3})
+                newTxt({Parent=panel,Text="VERSION  " .. version,Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,59),Z=3})
                 local descText = description ~= "" and description or "A new version of JustLib is ready."
                 local desc = newTxt({Parent=panel,Text=descText,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,27),Pos=UDim2.new(0,14,0,78),Z=3})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
@@ -6821,7 +6878,7 @@ function JL:Window(opts)
                     click.Text = ""
                     click.ZIndex = 5
                     click.Parent = item
-                    click.MouseButton1Click:Connect(function() showChangelogDetails(entry) end)
+                    click.MouseButton1Click:Connect(function() showChangelogDetails(entry,index) end)
                     item.Size = UDim2.new(1,-4,0,math.max(34,17 + math.min(descHeight,22) + 5))
                 end
             end
