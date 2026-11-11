@@ -19,8 +19,8 @@ end
 local Window = Library:Window({
     Title = "JustLib Storage Test",
     Config = CONFIG_NAME,
-    Width = 520,
-    Height = 420,
+    Width = 560,
+    Height = 440,
 })
 
 if not Window then
