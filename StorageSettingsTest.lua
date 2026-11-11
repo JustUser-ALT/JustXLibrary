@@ -1,7 +1,9 @@
 -- JustLib Storage Settings Test
 -- Run this script to test Auto Save, Save Settings, Global Settings and the new file layout.
 -- To test cross-hub Global Settings, change CONFIG_NAME to "JustLib_StorageTest_B" and run again.
--- Check the Presets page for Save Settings and Global Settings.
+-- In Presets, enable Save Settings, change Interface > UI Scale, create a preset,
+-- change UI Scale again, then load the preset to verify it restores the saved setting.
+-- To test Global Settings, enable it, change UI Scale, then run with CONFIG_NAME = "JustLib_StorageTest_B".
 
 local CONFIG_NAME = "JustLib_StorageTest_A"
 
