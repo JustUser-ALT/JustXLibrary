@@ -4939,7 +4939,10 @@ function JL:Window(opts)
     local function refreshSearch()
         clearSearchResults()
         local query = searchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
-        if query == "" then\n            newTxt({Parent=searchResults,Text="Start typing to find controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})\n            return\n        end
+        if query == "" then
+            newTxt({Parent=searchResults,Text="Start typing to find controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
+            return
+        end
         local matches = {}
         local indexedRows = {}
         for _,entry in ipairs(searchEntries) do
