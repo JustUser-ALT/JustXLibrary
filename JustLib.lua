@@ -1,4 +1,4 @@
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.14"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
 JL._registry = {}; JL._noSave = {}
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
@@ -768,7 +768,97 @@ local function snap(v,vmin,vmax,step)
 end
 local _cfgFile = nil; local _cfgData = {}; local _saveQueued = false
 local _memData = {} -- значения, которые не пишутся на диск (Auto Save выключен): живут только до конца сессии
+local _globalSettingsFile = "JustX/Settings.lua"
+local _globalSettingsData = {}
+local _globalSettingsEnabled = true
+local _globalSaveQueued = false
+local _applyingPreset = false
 JL._autoSave = true; JL._addonAutoSave = false
+JL._globalSettingsEnabled = true
+local function safeFileName(value)
+    local name = tostring(value or "JustLib")
+    name = name:gsub("[\\/:*?\"<>|]", "_"):gsub("[%c]", "_")
+    name = name:gsub("^%s+", ""):gsub("%s+$", "")
+    if name == "" or name == "." or name == ".." then name = "JustLib" end
+    return name
+end
+local function ensureFolder(path)
+    if type(path) ~= "string" or path == "" then return false end
+    local current = ""
+    for part in string.gmatch(path, "[^/\\]+") do
+        current = (current == "") and part or (current .. "/" .. part)
+        local exists = false
+        if isfolder then
+            local ok, result = pcall(isfolder, current)
+            exists = ok and result == true
+        end
+        if not exists and makefolder then pcall(makefolder, current) end
+    end
+    if isfolder then
+        local ok, result = pcall(isfolder, path)
+        return ok and result == true
+    end
+    return makefolder ~= nil
+end
+local function serializeLua(value, seen)
+    local kind = type(value)
+    if kind == "string" then return string.format("%q", value) end
+    if kind == "number" then
+        if value ~= value or value == math.huge or value == -math.huge then return "0" end
+        return tostring(value)
+    end
+    if kind == "boolean" then return tostring(value) end
+    if kind ~= "table" then return "nil" end
+    seen = seen or {}
+    if seen[value] then return "{}" end
+    seen[value] = true
+    local parts = {}
+    for key, item in pairs(value) do
+        local keyType = type(key)
+        if keyType == "string" or keyType == "number" then
+            parts[#parts + 1] = "[" .. serializeLua(key, seen) .. "]=" .. serializeLua(item, seen)
+        end
+    end
+    seen[value] = nil
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+local function isLibrarySetting(flag)
+    if type(flag) ~= "string" or flag:sub(1,1) ~= "_" then return false end
+    local excluded = {
+        _autosave = true, _addons_autosave = true, _autoload = true,
+        _autoload_name = true, _preset_save_settings = true,
+        _global_settings = true, _jl_changelog_seen_version = true,
+    }
+    return not excluded[flag]
+end
+local function saveGlobalSettings()
+    if not writefile or _globalSaveQueued then return end
+    _globalSaveQueued = true
+    trackedDelay(.4, function()
+        _globalSaveQueued = false
+        ensureFolder("JustX")
+        _globalSettingsData._enabled = _globalSettingsEnabled
+        pcall(function()
+            writefile(_globalSettingsFile, "return " .. serializeLua(_globalSettingsData))
+        end)
+    end)
+end
+local function loadGlobalSettings()
+    _globalSettingsData = {}
+    _globalSettingsEnabled = true
+    if readfile then
+        local ok, raw = pcall(readfile, _globalSettingsFile)
+        if ok and type(raw) == "string" and raw ~= "" and type(loadstring) == "function" then
+            local okFn, fn = pcall(loadstring, raw)
+            if okFn and type(fn) == "function" then
+                local okData, data = pcall(fn)
+                if okData and type(data) == "table" then _globalSettingsData = data end
+            end
+        end
+    end
+    _globalSettingsEnabled = _globalSettingsData._enabled ~= false
+    JL._globalSettingsEnabled = _globalSettingsEnabled
+end
 local function persistable(flag)
     if type(flag) ~= "string" then return true end
     if flag:sub(1,1) == "_" then return true end -- настройки интерфейса сохраняются всегда
@@ -776,12 +866,26 @@ local function persistable(flag)
     return JL._autoSave ~= false
 end
 local function cfgLoad(name)
-    _cfgFile = name .. ".json"
+    loadGlobalSettings()
+    local configName = safeFileName(name)
+    ensureFolder("JustX/Configs")
+    _cfgFile = "JustX/Configs/" .. configName .. ".json"
+    _cfgData = {}
     if readfile then
-        local ok,r = pcall(readfile, _cfgFile)
-        if ok and r and r ~= "" then
-            local ok2,d = pcall(HTTP.JSONDecode, HTTP, r)
-            if ok2 and type(d) == "table" then _cfgData = d end
+        local ok, raw = pcall(readfile, _cfgFile)
+        if (not ok or not raw or raw == "") then
+            local legacyPath = tostring(name) .. ".json"
+            local oldOk, oldRaw = pcall(readfile, legacyPath)
+            if oldOk and type(oldRaw) == "string" and oldRaw ~= "" then
+                local decodeOk, oldData = pcall(HTTP.JSONDecode, HTTP, oldRaw)
+                if decodeOk and type(oldData) == "table" then
+                    _cfgData = oldData
+                    if writefile then pcall(writefile, _cfgFile, oldRaw) end
+                end
+            end
+        else
+            local decodeOk, data = pcall(HTTP.JSONDecode, HTTP, raw)
+            if decodeOk and type(data) == "table" then _cfgData = data end
         end
     end
     JL._autoSave = (_cfgData._autosave ~= false)
@@ -792,11 +896,14 @@ local function cfgSave()
     _saveQueued = true
     trackedDelay(.4, function()
         _saveQueued = false
+        ensureFolder("JustX/Configs")
         pcall(function() writefile(_cfgFile, HTTP:JSONEncode(_cfgData)) end)
     end)
 end
 local function cfgHas(flag)
     if flag == nil then return false end
+    if flag == "_global_settings" then return true end
+    if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then return true end
     if persistable(flag) then return _cfgData[flag] ~= nil end
     return _memData[flag] ~= nil
 end
@@ -804,11 +911,30 @@ local function cfgSet(flag,val,store)
     if not flag then return end
     if store == nil then store = val end
     JL.Flags[flag] = val
+    if flag == "_global_settings" then
+        _globalSettingsEnabled = val == true
+        JL._globalSettingsEnabled = _globalSettingsEnabled
+        _globalSettingsData._enabled = _globalSettingsEnabled
+        saveGlobalSettings()
+        return
+    end
     if persistable(flag) then _cfgData[flag] = store; _memData[flag] = nil; cfgSave()
     else _memData[flag] = store end
+    if isLibrarySetting(flag) and _globalSettingsEnabled and not _applyingPreset then
+        _globalSettingsData[flag] = store
+        saveGlobalSettings()
+    end
 end
 local function cfgGet(flag,default)
     if flag then
+        if flag == "_global_settings" then
+            JL.Flags[flag] = _globalSettingsEnabled
+            return _globalSettingsEnabled
+        end
+        if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then
+            JL.Flags[flag] = _globalSettingsData[flag]
+            return _globalSettingsData[flag]
+        end
         if persistable(flag) then
             if _cfgData[flag] ~= nil then JL.Flags[flag] = _cfgData[flag]; return _cfgData[flag] end
         elseif _memData[flag] ~= nil then
@@ -4143,7 +4269,7 @@ function JL:Window(opts)
     -- Remove leftover UI roots if an older build stopped partway through cleanup.
     -- This also prevents orphaned Remote panels from stacking after Restart Hub.
     removeOrphanedHubGuis()
-    if opts.Config then cfgLoad(opts.Config) end
+    if opts.Config then cfgLoad(opts.Config) else loadGlobalSettings() end
     JL._activeCfgSet = cfgSet
     if type(opts.Backgrounds) == "table" then for k,v in pairs(opts.Backgrounds) do JL._bgs[k] = v end end
     if opts.Background ~= nil then JL._bgs.Window = opts.Background end
@@ -4156,16 +4282,37 @@ function JL:Window(opts)
             JL._currentTheme = savedTheme; JL._userTheme = savedTheme
         end
     end
-    local profFolder = opts.ConfigFolder or ((opts.Config or "JustLib") .. "_Presets")
+    local configKey = safeFileName(opts.Config or "JustLib")
+    local profFolder = opts.ConfigFolder or ("JustX/Presets/" .. configKey)
+    local legacyProfFolder = tostring(opts.Config or "JustLib") .. "_Presets"
+    local legacyProfilesChecked = false
     local function fsReady() return writefile and readfile and listfiles and isfile and delfile end
     local function ensureProfFolder()
-        if isfolder and makefolder and not isfolder(profFolder) then pcall(makefolder, profFolder) end
+        ensureFolder(profFolder)
+        if legacyProfilesChecked then return end
+        legacyProfilesChecked = true
+        if not (listfiles and readfile and writefile) then return end
+        local ok, files = pcall(listfiles, legacyProfFolder)
+        if not ok or type(files) ~= "table" then return end
+        for _, oldPath in ipairs(files) do
+            local nm = tostring(oldPath):match("([^\\/]+)%.json$")
+            if nm then
+                local target = profFolder .. "/" .. safeFileName(nm) .. ".json"
+                local exists = false
+                if isfile then local existsOk, result = pcall(isfile, target); exists = existsOk and result == true end
+                if not exists then
+                    local readOk, raw = pcall(readfile, oldPath)
+                    if readOk and type(raw) == "string" and raw ~= "" then pcall(writefile, target, raw) end
+                end
+            end
+        end
     end
     local function listProfiles()
         local out = {}
-        if not (fsReady() and isfolder and isfolder(profFolder)) then return out end
+        if not fsReady() then return out end
+        ensureProfFolder()
         local ok,files = pcall(listfiles, profFolder)
-        if not ok then return out end
+        if not ok or type(files) ~= "table" then return out end
         for _,p in ipairs(files) do
             local nm = tostring(p):match("([^\\/]+)%.json$")
             if nm then out[#out + 1] = nm end
@@ -4181,29 +4328,52 @@ function JL:Window(opts)
         for flag,val in pairs(_memData) do
             if not tostring(flag):match("^_") and not tostring(flag):match("^addon%.") and not JL._noSave[flag] then out[flag] = val end
         end
+        if cfgGet("_preset_save_settings", false) then
+            for flag,val in pairs(_cfgData) do if isLibrarySetting(flag) then out[flag] = val end end
+            for flag,val in pairs(_memData) do if isLibrarySetting(flag) then out[flag] = val end end
+            if _globalSettingsEnabled then
+                for flag,val in pairs(_globalSettingsData) do if isLibrarySetting(flag) then out[flag] = val end end
+            end
+        end
         return out
     end
     local function saveProfile(name)
         if not fsReady() then return false end
         ensureProfFolder()
-        local ok = pcall(writefile, profFolder .. "/" .. name .. ".json", HTTP:JSONEncode(snapshotFlags()))
+        local fileName = safeFileName(name)
+        local ok = pcall(writefile, profFolder .. "/" .. fileName .. ".json", HTTP:JSONEncode(snapshotFlags()))
         return ok
     end
     local function loadProfile(name)
         if not fsReady() then return false end
-        local ok,raw = pcall(readfile, profFolder .. "/" .. name .. ".json")
+        ensureProfFolder()
+        local path = profFolder .. "/" .. safeFileName(name) .. ".json"
+        local ok,raw = pcall(readfile, path)
         if not ok or not raw or raw == "" then return false end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, raw)
         if not ok2 or type(data) ~= "table" then return false end
+        _applyingPreset = true
         for flag,val in pairs(data) do
-            local ctrl = JL._registry[flag]
-            if ctrl and ctrl.Set then pcall(function() ctrl:Set(val) end) end
+            if isLibrarySetting(flag) and flag == "_theme" then
+                pcall(function() JL:SetTheme(val) end)
+            else
+                local ctrl = JL._registry[flag]
+                if ctrl and ctrl.Set then
+                    pcall(function() ctrl:Set(val) end)
+                else
+                    pcall(function() cfgSet(flag, val) end)
+                end
+            end
         end
+        _applyingPreset = false
+        if JL._notifyReposition then pcall(JL._notifyReposition) end
+        if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
         return true
     end
     local function deleteProfile(name)
         if not fsReady() then return false end
-        local path = profFolder .. "/" .. name .. ".json"
+        ensureProfFolder()
+        local path = profFolder .. "/" .. safeFileName(name) .. ".json"
         if isfile(path) then return (pcall(delfile, path)) end
         return false
     end
@@ -6198,9 +6368,26 @@ function JL:Window(opts)
         end)
         addButton(pR, "Reset Position", "Moves the panel back to its default place", "Reset", false, function() RM.resetPos() end)
         local pP = newPage("Presets", "Save and load snapshots of your enabled features")
-        addSwitch(pP, "Auto Save", "Remembers your toggles and values between launches. Turn it off to start clean every time (interface settings are always saved). Use a preset to keep a setup", "_autosave", true, function(v)
+        addSwitch(pP, "Auto Save", "Remembers this hub's toggles and values between launches. Library settings are managed separately below", "_autosave", true, function(v)
             JL._autoSave = v
             if v and JL._cfgFlush then JL._cfgFlush() end
+        end)
+        addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
+        addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _globalSettingsEnabled, function(v)
+            if v then
+                for flag,val in pairs(_globalSettingsData) do
+                    if isLibrarySetting(flag) then
+                        if flag == "_theme" then
+                            pcall(function() JL:SetTheme(val) end)
+                        else
+                            local ctrl = JL._registry[flag]
+                            if ctrl and ctrl.Set then pcall(function() ctrl:Set(val) end) end
+                        end
+                    end
+                end
+                if JL._notifyReposition then pcall(JL._notifyReposition) end
+                if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
+            end
         end)
         local profileNameBox
         do
@@ -6256,7 +6443,7 @@ function JL:Window(opts)
             if nm == "" then JL:Notify({Title = "Presets", Desc = "Type a name first", Type = "Warn", Duration = 3}); return end
             if saveProfile(nm) then
                 JL:Notify({Title = "Preset Saved", Desc = "Saved \"" .. nm .. "\"", Type = "Success", Duration = 3})
-                selectedProfile = nm; refreshProfiles()
+                selectedProfile = safeFileName(nm); refreshProfiles()
             else
                 JL:Notify({Title = "Presets", Desc = "Could not save — unsupported executor", Type = "Error", Duration = 4})
             end
