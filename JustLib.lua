@@ -4817,25 +4817,25 @@ function JL:Window(opts)
     topBarDivider.ZIndex = 71
     local searchButton = Instance.new("TextButton")
     searchButton.Name = "JLGlobalSearchButton"
-    searchButton.Size = UDim2.new(0,112,0,30)
-    searchButton.Position = UDim2.new(1,-(PADIN + 102 + 112),0,PADIN + 3)
-    searchButton.BackgroundColor3 = C.input
+    searchButton.Size = UDim2.new(0,132,0,28)
+    searchButton.Position = UDim2.new(1,-(PADIN + 102 + 132),0,5)
+    searchButton.BackgroundColor3 = C.panel
     searchButton.BorderSizePixel = 0
     searchButton.AutoButtonColor = false
     searchButton.Text = ""
     searchButton.Parent = win
     searchButton.ZIndex = 80
     corner(9,searchButton); stroke(C.border,1,searchButton)
-    local searchButtonIcon = mkIcon(searchButton,"search",14,81)
+    local searchButtonIcon = mkIcon(searchButton,"search",15,81)
     searchButtonIcon.Position = UDim2.new(0,10,0.5,-7)
-    searchButtonIcon.Size = UDim2.new(0,14,0,14)
+    searchButtonIcon.Size = UDim2.new(0,15,0,14)
     if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.dim end
-    newTxt({Parent=searchButton,Text="Search...",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-38,1,0),Pos=UDim2.new(0,32,0,0),Z=81})
+    newTxt({Parent=searchButton,Text="Search controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-38,1,0),Pos=UDim2.new(0,34,0,0),Z=81})
     local function windowActionButton(name,label,x,color,callback)
         local button = Instance.new("TextButton")
         button.Name = name
-        button.Size = UDim2.new(0,26,0,30)
-        button.Position = UDim2.new(1,-(PADIN + x + 26),0,PADIN + 3)
+        button.Size = UDim2.new(0,26,0,28)
+        button.Position = UDim2.new(1,-(PADIN + x + 26),0,5)
         button.BackgroundColor3 = C.panel
         button.BorderSizePixel = 0
         button.AutoButtonColor = false
