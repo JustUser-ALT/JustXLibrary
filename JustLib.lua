@@ -4383,6 +4383,7 @@ function JL:Window(opts)
         end
         _applyingPreset = false
         if JL._notifyReposition then pcall(JL._notifyReposition) end
+        if JL._remoteRefresh then pcall(JL._remoteRefresh) end
         if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
         return true
     end
@@ -5982,6 +5983,7 @@ function JL:Window(opts)
             RM.gui, RM.built = nil, false
         end
     end
+    JL._remoteRefresh = function() RM.refresh() end
     function RM.addItem(item)
         if item.id then
             local _,existing = RM.findItem(item.id)
@@ -6404,6 +6406,7 @@ function JL:Window(opts)
                     end
                 end
                 if JL._notifyReposition then pcall(JL._notifyReposition) end
+                if JL._remoteRefresh then pcall(JL._remoteRefresh) end
                 if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
             end
         end)
