@@ -773,6 +773,7 @@ local _globalSettingsData = {}
 local _globalSettingsEnabled = true
 local _globalSaveQueued = false
 local _applyingPreset = false
+local _presetSettingsOverrides = {}
 JL._autoSave = true; JL._addonAutoSave = false
 JL._globalSettingsEnabled = true
 local function safeFileName(value)
@@ -903,6 +904,7 @@ end
 local function cfgHas(flag)
     if flag == nil then return false end
     if flag == "_global_settings" then return true end
+    if isLibrarySetting(flag) and _presetSettingsOverrides[flag] ~= nil then return true end
     if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then return true end
     if persistable(flag) then return _cfgData[flag] ~= nil end
     return _memData[flag] ~= nil
@@ -912,6 +914,7 @@ local function cfgSet(flag,val,store)
     if store == nil then store = val end
     JL.Flags[flag] = val
     if flag == "_global_settings" then
+        if val == true then _presetSettingsOverrides = {} end
         _globalSettingsEnabled = val == true
         JL._globalSettingsEnabled = _globalSettingsEnabled
         _globalSettingsData._enabled = _globalSettingsEnabled
@@ -920,9 +923,16 @@ local function cfgSet(flag,val,store)
     end
     if persistable(flag) then _cfgData[flag] = store; _memData[flag] = nil; cfgSave()
     else _memData[flag] = store end
-    if isLibrarySetting(flag) and _globalSettingsEnabled and not _applyingPreset then
-        _globalSettingsData[flag] = store
-        saveGlobalSettings()
+    if isLibrarySetting(flag) then
+        if _applyingPreset then
+            _presetSettingsOverrides[flag] = store
+        else
+            _presetSettingsOverrides[flag] = nil
+            if _globalSettingsEnabled then
+                _globalSettingsData[flag] = store
+                saveGlobalSettings()
+            end
+        end
     end
 end
 local function cfgGet(flag,default)
@@ -930,6 +940,10 @@ local function cfgGet(flag,default)
         if flag == "_global_settings" then
             JL.Flags[flag] = _globalSettingsEnabled
             return _globalSettingsEnabled
+        end
+        if isLibrarySetting(flag) and _presetSettingsOverrides[flag] ~= nil then
+            JL.Flags[flag] = _presetSettingsOverrides[flag]
+            return _presetSettingsOverrides[flag]
         end
         if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then
             JL.Flags[flag] = _globalSettingsData[flag]
@@ -4334,6 +4348,7 @@ function JL:Window(opts)
             if _globalSettingsEnabled then
                 for flag,val in pairs(_globalSettingsData) do if isLibrarySetting(flag) then out[flag] = val end end
             end
+            for flag,val in pairs(_presetSettingsOverrides) do if isLibrarySetting(flag) then out[flag] = val end end
         end
         return out
     end
@@ -4352,6 +4367,7 @@ function JL:Window(opts)
         if not ok or not raw or raw == "" then return false end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, raw)
         if not ok2 or type(data) ~= "table" then return false end
+        _presetSettingsOverrides = {}
         _applyingPreset = true
         for flag,val in pairs(data) do
             if isLibrarySetting(flag) and flag == "_theme" then
@@ -5710,6 +5726,7 @@ function JL:Window(opts)
         RM.py = (tonumber(cfgGet("_remote_y", 0.30)) or 0.30) * v.Y
         RM.clamp()
     end
+    JL._remoteRestorePos = function() RM.restorePos() end
     function RM.setLogical(lw, lh)
         RM.lw, RM.lh = lw, lh
         local s = RM.s or 1
@@ -6375,6 +6392,7 @@ function JL:Window(opts)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _globalSettingsEnabled, function(v)
             if v then
+                _presetSettingsOverrides = {}
                 for flag,val in pairs(_globalSettingsData) do
                     if isLibrarySetting(flag) then
                         if flag == "_theme" then
