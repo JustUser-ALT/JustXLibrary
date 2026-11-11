@@ -891,6 +891,16 @@ local function cfgLoad(name)
     end
     JL._autoSave = (_cfgData._autosave ~= false)
     JL._addonAutoSave = (_cfgData._addons_autosave == true)
+    if _globalSettingsEnabled then
+        local seeded = false
+        for flag,val in pairs(_cfgData) do
+            if isLibrarySetting(flag) and _globalSettingsData[flag] == nil then
+                _globalSettingsData[flag] = val
+                seeded = true
+            end
+        end
+        if seeded then saveGlobalSettings() end
+    end
 end
 local function cfgSave()
     if not (_cfgFile and writefile) or _saveQueued then return end
