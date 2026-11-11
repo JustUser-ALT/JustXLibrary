@@ -6247,18 +6247,39 @@ function JL:Window(opts)
             local _,ctrl = mkRow(sf, title, desc, 34)
             local state = cfgGet(flag, default)
             local sw = mkSwitch(ctrl, UDim2.new(0,0,0.5,-9), state, ACC)
+            local function setState(value)
+                state = value == true
+                sw.Set(state)
+                cfgSet(flag, state)
+                if onChange then onChange(state) end
+            end
             local hit = Instance.new("TextButton"); hit.Size = UDim2.new(1,0,1,0); hit.BackgroundTransparency = 1; hit.Text = ""; hit.Parent = ctrl
-            hit.MouseButton1Click:Connect(function() state = not state; sw.Set(state); cfgSet(flag, state); onChange(state) end)
-            resetters[#resetters + 1] = function() state = default; sw.Set(state); cfgSet(flag, state); onChange(state) end
+            hit.MouseButton1Click:Connect(function() setState(not state) end)
+            resetters[#resetters + 1] = function() setState(default) end
+            JL._registry[flag] = {Set = function(_,value) setState(value) end, Get = function() return state end}
+            JL._noSave[flag] = nil
         end
         local function addSlider(sf,title,desc,flag,default,vmin,vmax,step,suffix,onChange)
             local _,ctrl = mkRow(sf, title, desc, 210)
             local cur = tonumber(cfgGet(flag, default)) or default
             local vl = newTxt({Parent=ctrl,Text=fmtNum(cur,0) .. suffix,Font=GB,Size=11,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,46,1,0),Pos=UDim2.new(1,-46,0,0)})
-            local bar = mkSliderBar(ctrl, UDim2.new(0,7,0.5,-3), UDim2.new(1,-68,0,6), ACC, vmin, vmax, step, cur, function(v)
-                vl.Text = fmtNum(v,0) .. suffix; cfgSet(flag, v); onChange(v)
+            local bar
+            local function setValue(value)
+                cur = snap(tonumber(value) or default, vmin, vmax, step)
+                if bar then bar.Set(cur, true) end
+                vl.Text = fmtNum(cur,0) .. suffix
+                cfgSet(flag, cur)
+                if onChange then onChange(cur) end
+            end
+            bar = mkSliderBar(ctrl, UDim2.new(0,7,0.5,-3), UDim2.new(1,-68,0,6), ACC, vmin, vmax, step, cur, function(v)
+                cur = v
+                vl.Text = fmtNum(v,0) .. suffix
+                cfgSet(flag, v)
+                if onChange then onChange(v) end
             end)
-            resetters[#resetters + 1] = function() bar.Set(default, true); vl.Text = fmtNum(default,0) .. suffix; cfgSet(flag, default); onChange(default) end
+            resetters[#resetters + 1] = function() setValue(default) end
+            JL._registry[flag] = {Set = function(_,value) setValue(value) end, Get = function() return cur end}
+            JL._noSave[flag] = nil
         end
         local function addButton(sf,title,desc,text,danger,fn)
             local _,ctrl = mkRow(sf, title, desc, 100)
@@ -6327,20 +6348,30 @@ function JL:Window(opts)
             local chip = mkKeyChip(ctrl, UDim2.new(0,0,0.5,-11), hotkey and hotkey.Name or "None", function(k)
                 hotkey = k; cfgSet("_hotkey", k and k.Name or "None")
             end)
+            JL._registry["_hotkey"] = {Set = function(_,value)
+                local key = keyFromName(tostring(value or "None"))
+                hotkey = key
+                chip.Set(key)
+                cfgSet("_hotkey", key and key.Name or "None")
+            end, Get = function() return hotkey and hotkey.Name or "None" end}
+            JL._noSave["_hotkey"] = nil
             resetters[#resetters + 1] = function() local k = keyFromName(opts.Hotkey and opts.Hotkey.Name or "RightShift"); hotkey = k; chip.Set(k); cfgSet("_hotkey", k and k.Name or "None") end
         end
         do
             local _,ctrl = mkRow(pI, "Badge Position", "Where the small FPS badge sits on screen", 190)
             local function apply(name) local p = BPOS[name:lower()]; if p then tw(badge2,{Position = p},.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out) end; cfgSet("_badgepos", name) end
             local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"Top","Center","Bottom"}, tostring(cfgGet("_badgepos","Top")), ACC, apply)
+            JL._registry["_badgepos"] = {Set = function(_,value) seg.Set(value, true); apply(value) end, Get = function() return cfgGet("_badgepos","Top") end}
+            JL._noSave["_badgepos"] = nil
             resetters[#resetters + 1] = function() seg.Set("Top", true); apply("Top") end
         end
         do
             local _,ctrl = mkRow(pI, "Tooltip Position", "Which side of a control its hover tooltip appears on", 260)
-            local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"Top","Bottom","Left","Right"}, tostring(cfgGet("_tooltip_side","Right")), ACC, function(v)
-                cfgSet("_tooltip_side", v)
-            end)
-            resetters[#resetters + 1] = function() seg.Set("Right", true); cfgSet("_tooltip_side","Right") end
+            local function applyTooltipSide(value) cfgSet("_tooltip_side", value) end
+            local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"Top","Bottom","Left","Right"}, tostring(cfgGet("_tooltip_side","Right")), ACC, applyTooltipSide)
+            JL._registry["_tooltip_side"] = {Set = function(_,value) seg.Set(value, true); applyTooltipSide(value) end, Get = function() return cfgGet("_tooltip_side","Right") end}
+            JL._noSave["_tooltip_side"] = nil
+            resetters[#resetters + 1] = function() seg.Set("Right", true); applyTooltipSide("Right") end
         end
         local pPrivacy = newPage("Privacy", "Hide your identity on your screen while recording")
         addSwitch(pPrivacy, "Streamer Mode", "Locally masks your username and display name in visible UI text, including the hub, player list and overhead labels", "_streamer_mode", false, function(v)
@@ -6354,10 +6385,14 @@ function JL:Window(opts)
         addSlider(pN, "Default Duration", "How long a notification stays, unless it sets its own Duration", "_notify_duration", 5, 2, 15, 1, "s", function() end)
         do
             local _,ctrl = mkRow(pN, "Notify Side", "Which corner of the screen notifications appear in", 260)
-            local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"TopLeft","TopRight","BottomLeft","BottomRight"}, tostring(cfgGet("_notify_side","TopRight")), ACC, function(v)
-                cfgSet("_notify_side", v); if JL._notifyReposition then JL._notifyReposition() end
-            end)
-            resetters[#resetters + 1] = function() seg.Set("TopRight", true); cfgSet("_notify_side","TopRight"); if JL._notifyReposition then JL._notifyReposition() end end
+            local function applyNotifySide(value)
+                cfgSet("_notify_side", value)
+                if JL._notifyReposition then JL._notifyReposition() end
+            end
+            local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"TopLeft","TopRight","BottomLeft","BottomRight"}, tostring(cfgGet("_notify_side","TopRight")), ACC, applyNotifySide)
+            JL._registry["_notify_side"] = {Set = function(_,value) seg.Set(value, true); applyNotifySide(value) end, Get = function() return cfgGet("_notify_side","TopRight") end}
+            JL._noSave["_notify_side"] = nil
+            resetters[#resetters + 1] = function() seg.Set("TopRight", true); applyNotifySide("TopRight") end
         end
         addSwitch(pN, "Notify Stack", "Repeated notifications with the same text pile into one, shown as x1, x2...", "_notify_stack", false, function() end)
         addButton(pN, "Test Notification", "Sends a sample notification with your current settings", "Send", false, function()
