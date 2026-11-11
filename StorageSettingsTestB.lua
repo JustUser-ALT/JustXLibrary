@@ -1,9 +1,7 @@
 -- JustLib Storage Settings Test
 -- Run this script to test Auto Save, Save Settings, Global Settings and the new file layout.
--- To test cross-hub Global Settings, change CONFIG_NAME to "JustLib_StorageTest_B" and run this B test loader.
--- In Presets, enable Save Settings, change Interface > UI Scale, create a preset,
--- change UI Scale again, then load the preset to verify it restores the saved setting.
--- To test Global Settings, enable it, change UI Scale, then run with CONFIG_NAME = "JustLib_StorageTest_B".
+-- The Settings tab below is created by Window:Settings() and contains the real JustXLibrary interface settings.
+-- Run this after StorageSettingsTest.lua to verify that Global Settings are shared across different hub configs.
 
 local CONFIG_NAME = "JustLib_StorageTest_B"
 
@@ -59,5 +57,9 @@ Section:Slider({
     end,
 })
 
+-- This creates the actual library Settings tab (Interface, Appearance, Presets, etc.).
+Window:Settings()
+
 print("[Storage Test] Loaded with config:", CONFIG_NAME)
+print("[Storage Test] Open Settings > Interface and Settings > Presets to verify shared settings.")
 print("[Storage Test] Files are stored under Workspace/JustX/")
