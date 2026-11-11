@@ -4030,7 +4030,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     return MS
 end
 -- ===== Preview UI loader =====
-JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustLib/main/PreviewUI.lua"
+JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/PreviewUI.lua"
 -- Если файл не нашёлся или сломан, показываем, ЧТО именно пришло (строка с ошибкой, размер, начало файла)
 local function previewDiag(body, err)
     local info = ""
@@ -6476,7 +6476,7 @@ function JL:Window(opts)
             newTxt({Parent=changelogFrame,Text="JUSTLIB  /  UPDATES",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-72,0,12),Pos=UDim2.new(0,10,0,8)})
             newTxt({Parent=changelogFrame,Text="RELEASE HISTORY",Font=GB,Size=9,Color=C.txt,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,10,0,20)})
             local changelogCount = # (type(hopts.Changelog) == "table" and hopts.Changelog or {})
-            newTxt({Parent=changelogFrame,Text=tostring(changelogCount) .. " BUILDS",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,64,0,12),Pos=UDim2.new(1,-74,0,9)})
+            newTxt({Parent=changelogFrame,Text=tostring(changelogCount) .. " VERSIONS",Font=GB,Size=7,Color=ACCENTS[1],XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,64,0,12),Pos=UDim2.new(1,-74,0,9)})
 
             local changelogScroll = Instance.new("ScrollingFrame")
             changelogScroll.Name = "ChangelogList"
