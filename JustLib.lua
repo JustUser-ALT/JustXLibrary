@@ -4819,7 +4819,7 @@ function JL:Window(opts)
         local button = Instance.new("TextButton")
         button.Name = name
         button.Size = UDim2.new(0,26,0,30)
-        button.Position = UDim2.new(1,-(PADIN + x),0,PADIN + 3)
+        button.Position = UDim2.new(1,-(PADIN + x + 26),0,PADIN + 3)
         button.BackgroundColor3 = C.panel
         button.BorderSizePixel = 0
         button.AutoButtonColor = false
@@ -4838,7 +4838,7 @@ function JL:Window(opts)
     windowActionButton("JLMinimizeButton","—",26,C.txt,function()
         closeW()
     end)
-    windowActionButton("JLUnloadButton","X",0,C.danger,function()
+    windowActionButton("JLUnloadButton","X",0,Color3.fromRGB(255,255,255),function()
         if unloadDialog() then destroyHub() end
     end)
     local searchWidth = math.max(180,CWW - 2 * PADIN)
