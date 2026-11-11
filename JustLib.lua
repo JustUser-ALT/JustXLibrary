@@ -4678,13 +4678,13 @@ function JL:Window(opts)
     local isOpen = false
     local function openW()
         if _dead then return end
-        isOpen = true; JL._winOpen = true; win.Visible = true
+        isOpen = true; JL._winOpen = true; win.Visible = true; badge2.Visible = false
         if animOn then uiScale.Scale = userScale * 0.88; tw(uiScale,{Scale = userScale},.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out) else uiScale.Scale = userScale end
         tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur()
     end
     local function closeW()
         if _dead then return end
-        isOpen = false; JL._winOpen = false
+        isOpen = false; JL._winOpen = false; badge2.Visible = true
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
             trackedDelay(.19, function() if not isOpen then win.Visible = false end end)
@@ -4835,7 +4835,7 @@ function JL:Window(opts)
         button.MouseButton1Click:Connect(callback)
         return button
     end
-    windowActionButton("JLMinimizeButton","—",26,C.txt,function()
+    windowActionButton("JLMinimizeButton","—",40,C.txt,function()
         closeW()
     end)
     windowActionButton("JLUnloadButton","X",0,Color3.fromRGB(255,255,255),function()
