@@ -4815,20 +4815,12 @@ function JL:Window(opts)
     topBarDivider.BorderSizePixel = 0
     topBarDivider.Parent = topBar
     topBarDivider.ZIndex = 71
-    local searchButton = Instance.new("TextBox")
+    local searchButton = Instance.new("Frame")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,132,0,28)
     searchButton.Position = UDim2.new(1,-(PADIN + 102 + 132),0,5)
     searchButton.BackgroundColor3 = C.panel
     searchButton.BorderSizePixel = 0
-    searchButton.ClearTextOnFocus = false
-    searchButton.PlaceholderText = "Search controls"
-    searchButton.PlaceholderColor3 = C.dim
-    searchButton.Text = ""
-    searchButton.TextColor3 = C.txt
-    searchButton.TextSize = 11
-    searchButton.Font = GM
-    searchButton.TextXAlignment = Enum.TextXAlignment.Left
     searchButton.Parent = win
     searchButton.ZIndex = 80
     corner(9,searchButton); stroke(C.border,1,searchButton)
@@ -4836,9 +4828,22 @@ function JL:Window(opts)
     searchButtonIcon.Position = UDim2.new(0,10,0.5,-7)
     searchButtonIcon.Size = UDim2.new(0,15,0,14)
     if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.dim end
-    searchButton:GetPropertyChangedSignal("Text"):Connect(function()
-        searchButton.CursorPosition = #searchButton.Text + 1
-    end)
+    local searchBox = Instance.new("TextBox")
+    searchBox.Name = "JLGlobalSearchInput"
+    searchBox.Size = UDim2.new(1,-42,1,0)
+    searchBox.Position = UDim2.new(0,34,0,0)
+    searchBox.BackgroundTransparency = 1
+    searchBox.BorderSizePixel = 0
+    searchBox.ClearTextOnFocus = false
+    searchBox.PlaceholderText = "Search controls"
+    searchBox.PlaceholderColor3 = C.dim
+    searchBox.Text = ""
+    searchBox.TextColor3 = C.txt
+    searchBox.TextSize = 11
+    searchBox.Font = GM
+    searchBox.TextXAlignment = Enum.TextXAlignment.Left
+    searchBox.Parent = searchButton
+    searchBox.ZIndex = 82
     local function windowActionButton(name,label,x,color,callback)
         local button = Instance.new("TextButton")
         button.Name = name
@@ -4934,7 +4939,7 @@ function JL:Window(opts)
     local function refreshSearch()
         clearSearchResults()
         local query = searchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
-        if query == "" then return end
+        if query == "" then\n            newTxt({Parent=searchResults,Text="Start typing to find controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})\n            return\n        end
         local matches = {}
         local indexedRows = {}
         for _,entry in ipairs(searchEntries) do
@@ -5031,7 +5036,7 @@ function JL:Window(opts)
             newTxt({Parent=searchResults,Text="No matching controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
         end
     end
-    searchButton:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
+    searchBox:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
     local function openSearch(capture)
         if not searchPanel.Visible then
             searchPanel.Visible = true
@@ -5039,25 +5044,25 @@ function JL:Window(opts)
             tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,196)},.16)
         end
         refreshSearch()
-        if capture then trackedDefer(function() pcall(function() searchButton:CaptureFocus() end) end) end
+        if capture then trackedDefer(function() pcall(function() searchBox:CaptureFocus() end) end) end
     end
     local function closeSearch()
         tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,0)},.14)
         trackedDelay(.15,function() if searchPanel and searchPanel.Parent then searchPanel.Visible = false end end)
-        pcall(function() searchButton:ReleaseFocus() end)
+        pcall(function() searchBox:ReleaseFocus() end)
     end
-    searchButton.Focused:Connect(function()
+    searchBox.Focused:Connect(function()
         openSearch(false)
     end)
-    searchButton.FocusLost:Connect(function()
+    searchBox.FocusLost:Connect(function()
         trackedDelay(.18,function()
-            if searchPanel and searchPanel.Parent and not searchButton:IsFocused() then
+            if searchPanel and searchPanel.Parent and not searchBox:IsFocused() then
                 closeSearch()
             end
         end)
     end)
     function Win:Search(query)
-        if query ~= nil then searchButton.Text = tostring(query) end
+        if query ~= nil then searchBox.Text = tostring(query) end
         openSearch(true)
         return true
     end
