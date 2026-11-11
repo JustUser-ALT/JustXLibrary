@@ -4799,22 +4799,38 @@ function JL:Window(opts)
     end
     local searchEntries = {}
     JL._searchEntries = searchEntries
+    local topBar = Instance.new("Frame")
+    topBar.Name = "JLTopBar"
+    topBar.Size = UDim2.new(0,CWW,0,42)
+    topBar.Position = UDim2.new(0,SBW + GAP,0,0)
+    topBar.BackgroundColor3 = C.sidebar
+    topBar.BorderSizePixel = 0
+    topBar.Parent = win
+    topBar.ZIndex = 70
+    local topBarDivider = Instance.new("Frame")
+    topBarDivider.Name = "JLTopBarDivider"
+    topBarDivider.Size = UDim2.new(1,0,0,2)
+    topBarDivider.Position = UDim2.new(0,0,1,-2)
+    topBarDivider.BackgroundColor3 = C.border
+    topBarDivider.BorderSizePixel = 0
+    topBarDivider.Parent = topBar
+    topBarDivider.ZIndex = 71
     local searchButton = Instance.new("TextButton")
     searchButton.Name = "JLGlobalSearchButton"
-    searchButton.Size = UDim2.new(0,36,0,30)
-    searchButton.Position = UDim2.new(1,-(PADIN + 36 + 56),0,PADIN + 3)
-    searchButton.BackgroundColor3 = C.panel
+    searchButton.Size = UDim2.new(0,112,0,30)
+    searchButton.Position = UDim2.new(1,-(PADIN + 102 + 112),0,PADIN + 3)
+    searchButton.BackgroundColor3 = C.input
     searchButton.BorderSizePixel = 0
     searchButton.AutoButtonColor = false
     searchButton.Text = ""
     searchButton.Parent = win
     searchButton.ZIndex = 80
     corner(9,searchButton); stroke(C.border,1,searchButton)
-    local searchButtonIcon = mkIcon(searchButton,"search",16,81)
-    searchButtonIcon.AnchorPoint = Vector2.new(.5,.5)
-    searchButtonIcon.Position = UDim2.new(.5,0,.5,0)
-    searchButtonIcon.Size = UDim2.new(0,16,0,16)
-    if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.txt end
+    local searchButtonIcon = mkIcon(searchButton,"search",14,81)
+    searchButtonIcon.Position = UDim2.new(0,10,0.5,-7)
+    searchButtonIcon.Size = UDim2.new(0,14,0,14)
+    if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.dim end
+    newTxt({Parent=searchButton,Text="Search...",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-38,1,0),Pos=UDim2.new(0,32,0,0),Z=81})
     local function windowActionButton(name,label,x,color,callback)
         local button = Instance.new("TextButton")
         button.Name = name
