@@ -4802,7 +4802,7 @@ function JL:Window(opts)
     local searchButton = Instance.new("TextButton")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,36,0,30)
-    searchButton.Position = UDim2.new(1,-(PADIN + 36),0,PADIN + 3)
+    searchButton.Position = UDim2.new(1,-(PADIN + 36 + 56),0,PADIN + 3)
     searchButton.BackgroundColor3 = C.panel
     searchButton.BorderSizePixel = 0
     searchButton.AutoButtonColor = false
@@ -4815,6 +4815,32 @@ function JL:Window(opts)
     searchButtonIcon.Position = UDim2.new(.5,0,.5,0)
     searchButtonIcon.Size = UDim2.new(0,16,0,16)
     if searchButtonIcon:IsA("TextLabel") then searchButtonIcon.TextColor3 = C.txt end
+    local function windowActionButton(name,label,x,color,callback)
+        local button = Instance.new("TextButton")
+        button.Name = name
+        button.Size = UDim2.new(0,26,0,30)
+        button.Position = UDim2.new(1,-(PADIN + x),0,PADIN + 3)
+        button.BackgroundColor3 = C.panel
+        button.BorderSizePixel = 0
+        button.AutoButtonColor = false
+        button.Text = label
+        button.Font = GB
+        button.TextSize = 16
+        button.TextColor3 = color or C.txt
+        button.Parent = win
+        button.ZIndex = 80
+        corner(8,button); stroke(C.border,1,button)
+        button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3 = C.btnHov},.1) end end)
+        button.MouseLeave:Connect(function() tw(button,{BackgroundColor3 = C.panel},.1) end)
+        button.MouseButton1Click:Connect(callback)
+        return button
+    end
+    windowActionButton("JLMinimizeButton","—",26,C.txt,function()
+        closeW()
+    end)
+    windowActionButton("JLUnloadButton","X",0,C.danger,function()
+        if unloadDialog() then destroyHub() end
+    end)
     local searchWidth = math.max(180,CWW - 2 * PADIN)
     local searchPanel = Instance.new("Frame")
     searchPanel.Name = "JLGlobalSearchPanel"
