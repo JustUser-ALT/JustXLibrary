@@ -4940,7 +4940,8 @@ function JL:Window(opts)
         clearSearchResults()
         local query = searchBox.Text:lower():gsub("^%s+",""):gsub("%s+$","")
         if query == "" then
-            newTxt({Parent=searchResults,Text="Start typing to find controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
+            searchPanel.Visible = false
+            searchPanel.Size = UDim2.new(0,searchWidth,0,0)
             return
         end
         local matches = {}
@@ -5036,33 +5037,25 @@ function JL:Window(opts)
             end)
         end
         if #matches == 0 then
-            newTxt({Parent=searchResults,Text="No matching controls",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
+            newTxt({Parent=searchResults,Text="No results found",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-12,0,24),Pos=UDim2.new(0,6,0,6),Z=84})
         end
+        local visibleCount = math.min(#matches,4)
+        local panelHeight = #matches == 0 and 42 or (visibleCount * 54 + 10)
+        searchPanel.Visible = true
+        searchPanel.Size = UDim2.new(0,searchWidth,0,panelHeight)
     end
     searchBox:GetPropertyChangedSignal("Text"):Connect(refreshSearch)
     local function openSearch(capture)
-        if not searchPanel.Visible then
-            searchPanel.Visible = true
-            searchPanel.Size = UDim2.new(0,searchWidth,0,0)
-            tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,196)},.16)
-        end
         refreshSearch()
         if capture then trackedDefer(function() pcall(function() searchBox:CaptureFocus() end) end) end
-    end
-    local function closeSearch()
-        tw(searchPanel,{Size = UDim2.new(0,searchWidth,0,0)},.14)
-        trackedDelay(.15,function() if searchPanel and searchPanel.Parent then searchPanel.Visible = false end end)
-        pcall(function() searchBox:ReleaseFocus() end)
     end
     searchBox.Focused:Connect(function()
         openSearch(false)
     end)
-    searchBox.FocusLost:Connect(function()
-        trackedDelay(.18,function()
-            if searchPanel and searchPanel.Parent and not searchBox:IsFocused() then
-                closeSearch()
-            end
-        end)
+    searchBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            pcall(function() searchBox:ReleaseFocus() end)
+        end
     end)
     function Win:Search(query)
         if query ~= nil then searchBox.Text = tostring(query) end
