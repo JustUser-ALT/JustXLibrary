@@ -828,7 +828,7 @@ local function isLibrarySetting(flag)
     local excluded = {
         _autosave = true, _addons_autosave = true, _autoload = true,
         _autoload_name = true, _preset_save_settings = true,
-        _global_settings = true, _jl_changelog_seen_version = true,
+        _global_settings = true, _enabled = true, _jl_changelog_seen_version = true,
     }
     return not excluded[flag]
 end
