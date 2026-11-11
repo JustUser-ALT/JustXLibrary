@@ -5057,6 +5057,20 @@ function JL:Window(opts)
             pcall(function() searchBox:ReleaseFocus() end)
         end
     end)
+    local function pointInside(guiObject,point)
+        if not guiObject or not guiObject.Visible then return false end
+        local pos,size = guiObject.AbsolutePosition,guiObject.AbsoluteSize
+        return point.X >= pos.X and point.X <= pos.X + size.X and point.Y >= pos.Y and point.Y <= pos.Y + size.Y
+    end
+    keep(UIS.InputBegan:Connect(function(input)
+        if not searchPanel.Visible then return end
+        local inputType = input.UserInputType
+        if inputType ~= Enum.UserInputType.Touch and inputType ~= Enum.UserInputType.MouseButton1 then return end
+        local point = Vector2.new(input.Position.X,input.Position.Y)
+        if pointInside(searchButton,point) or pointInside(searchPanel,point) then return end
+        searchPanel.Visible = false
+        searchPanel.Size = UDim2.new(0,searchWidth,0,0)
+    end))
     function Win:Search(query)
         if query ~= nil then searchBox.Text = tostring(query) end
         openSearch(true)
