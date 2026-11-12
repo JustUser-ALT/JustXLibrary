@@ -847,17 +847,31 @@ local function snap(v,vmin,vmax,step)
     v = math.floor(v * m + 0.5) / m
     return math.clamp(v, vmin, vmax)
 end
-local _cfgFile = nil; local _cfgData = {}; local _saveQueued = false
-local _memData = {} -- значения, которые не пишутся на диск (Auto Save выключен): живут только до конца сессии
-local _globalSettingsFile = "JustX/Settings.lua"
-_workspace.GlobalSettings = type(_workspace.GlobalSettings) == "table" and _workspace.GlobalSettings or {}
-_workspace.GlobalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
-_workspace.GlobalSettingsLoaded = _workspace.GlobalSettingsLoaded == true
-local _globalSettingsData = _workspace.GlobalSettings
-local _applyingPreset = false
-local _presetSettingsOverrides = {}
-JL._autoSave = true; JL._addonAutoSave = false
-JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
+-- Config module factory. Dependencies are injected; config state stays private.
+local function createConfigModule(deps)
+    local JL = deps.JL
+    local _workspace = deps.Workspace
+    local HTTP = deps.HTTP
+    local readfile = deps.ReadFile
+    local writefile = deps.WriteFile
+    local isfolder = deps.IsFolder
+    local makefolder = deps.MakeFolder
+    local loadstring = deps.LoadString
+    local task = deps.Task
+
+    local _cfgFile = nil
+    local _cfgData = {}
+    local _memData = {}
+    local _globalSettingsFile = "JustX/Settings.lua"
+    _workspace.GlobalSettings = type(_workspace.GlobalSettings) == "table" and _workspace.GlobalSettings or {}
+    _workspace.GlobalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
+    _workspace.GlobalSettingsLoaded = _workspace.GlobalSettingsLoaded == true
+    local _globalSettingsData = _workspace.GlobalSettings
+    local _applyingPreset = false
+    local _presetSettingsOverrides = {}
+    JL._autoSave = true; JL._addonAutoSave = false
+    JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
+
 local function safeFileName(value)
     local name = tostring(value or "JustLib")
     name = name:gsub("[\\/:*?\"<>|]", "_"):gsub("[%c]", "_")
@@ -958,11 +972,11 @@ local function cfgLoad(name)
     local configName = safeFileName(name)
     ensureFolder("JustX/Configs")
     _cfgFile = "JustX/Configs/" .. configName .. ".json"
-    _cfgData = {}
+    for key in pairs(_cfgData) do _cfgData[key] = nil end
     local pendingSave = _workspace.ConfigSaveQueue[_cfgFile]
     if pendingSave and type(pendingSave.data) == "string" and pendingSave.data ~= "" then
         local decodeOk, data = pcall(HTTP.JSONDecode, HTTP, pendingSave.data)
-        if decodeOk and type(data) == "table" then _cfgData = data end
+        if decodeOk and type(data) == "table" then for key, value in pairs(data) do _cfgData[key] = value end end
     elseif readfile then
         local ok, raw = pcall(readfile, _cfgFile)
         if (not ok or not raw or raw == "") then
@@ -971,13 +985,13 @@ local function cfgLoad(name)
             if oldOk and type(oldRaw) == "string" and oldRaw ~= "" then
                 local decodeOk, oldData = pcall(HTTP.JSONDecode, HTTP, oldRaw)
                 if decodeOk and type(oldData) == "table" then
-                    _cfgData = oldData
+                    for key, value in pairs(oldData) do _cfgData[key] = value end
                     if writefile then pcall(writefile, _cfgFile, oldRaw) end
                 end
             end
         else
             local decodeOk, data = pcall(HTTP.JSONDecode, HTTP, raw)
-            if decodeOk and type(data) == "table" then _cfgData = data end
+            if decodeOk and type(data) == "table" then for key, value in pairs(data) do _cfgData[key] = value end end
         end
     end
     JL._autoSave = (_cfgData._autosave ~= false)
@@ -992,6 +1006,7 @@ local function cfgLoad(name)
         end
         if seeded then saveGlobalSettings() end
     end
+    return _cfgFile
 end
 local function cfgSave()
     if not (_cfgFile and writefile) then return end
@@ -1028,7 +1043,7 @@ local function cfgSet(flag,val,store)
     if store == nil then store = val end
     JL.Flags[flag] = val
     if flag == "_global_settings" then
-        if val == true then _presetSettingsOverrides = {} end
+        if val == true then for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end end
         _workspace.GlobalSettingsEnabled = val == true
         JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled
         _globalSettingsData._enabled = _workspace.GlobalSettingsEnabled
@@ -1073,13 +1088,65 @@ local function cfgGet(flag,default)
     return default
 end
 -- Auto Save снова включили: записываем на диск то, что копилось в памяти
-function JL._cfgFlush()
+local function cfgFlush()
     local any = false
     for flag,v in pairs(_memData) do
         if persistable(flag) then _cfgData[flag] = v; _memData[flag] = nil; any = true end
     end
     if any then cfgSave() end
 end
+
+    JL._cfgFlush = cfgFlush
+    return {
+        Data = _cfgData,
+        MemoryData = _memData,
+        GlobalSettingsData = _globalSettingsData,
+        PresetSettingsOverrides = _presetSettingsOverrides,
+        Load = cfgLoad,
+        Save = cfgSave,
+        Has = cfgHas,
+        Set = cfgSet,
+        Get = cfgGet,
+        Flush = cfgFlush,
+        SafeFileName = safeFileName,
+        EnsureFolder = ensureFolder,
+        IsLibrarySetting = isLibrarySetting,
+        LoadGlobalSettings = loadGlobalSettings,
+        GetFile = function() return _cfgFile end,
+        SetApplyingPreset = function(value) _applyingPreset = value == true end,
+        ClearPresetSettingsOverrides = function()
+            for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end
+        end
+    }
+end
+local Config = createConfigModule({
+    JL = JL,
+    Workspace = _workspace,
+    HTTP = HTTP,
+    ReadFile = readfile,
+    WriteFile = writefile,
+    IsFolder = isfolder,
+    MakeFolder = makefolder,
+    LoadString = loadstring,
+    Task = task
+})
+local _cfgFile = nil
+local _cfgData = Config.Data
+local _memData = Config.MemoryData
+local _globalSettingsData = Config.GlobalSettingsData
+local _presetSettingsOverrides = Config.PresetSettingsOverrides
+local function safeFileName(value) return Config.SafeFileName(value) end
+local function ensureFolder(path) return Config.EnsureFolder(path) end
+local function isLibrarySetting(flag) return Config.IsLibrarySetting(flag) end
+local function loadGlobalSettings() return Config.LoadGlobalSettings() end
+local function cfgLoad(name)
+    _cfgFile = Config.Load(name)
+    return _cfgFile
+end
+local function cfgSave() return Config.Save() end
+local function cfgHas(flag) return Config.Has(flag) end
+local function cfgSet(flag, val, store) return Config.Set(flag, val, store) end
+local function cfgGet(flag, default) return Config.Get(flag, default) end
 -- ===== Preview UI bridge (PreviewUI.lua берёт отсюда темы, конфиг и хуки Unload) =====
 JL._extraRoots = {}; JL._themeHooks = {}; JL._unloadHooks = {}
 JL._streamerMode = false
@@ -4835,8 +4902,8 @@ function JL:Window(opts)
         if not ok or not raw or raw == "" then return false end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, raw)
         if not ok2 or type(data) ~= "table" then return false end
-        _presetSettingsOverrides = {}
-        _applyingPreset = true
+        Config.ClearPresetSettingsOverrides()
+        Config.SetApplyingPreset(true)
         for flag,val in pairs(data) do
             if isLibrarySetting(flag) and flag == "_theme" then
                 pcall(function() JL:SetTheme(val) end)
@@ -4849,7 +4916,7 @@ function JL:Window(opts)
                 end
             end
         end
-        _applyingPreset = false
+        Config.SetApplyingPreset(false)
         if JL._notifyReposition then pcall(JL._notifyReposition) end
         if JL._remoteRefresh then pcall(JL._remoteRefresh) end
         if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
@@ -6973,7 +7040,7 @@ function JL:Window(opts)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
             if v then
-                _presetSettingsOverrides = {}
+                Config.ClearPresetSettingsOverrides()
                 for flag,val in pairs(_globalSettingsData) do
                     if isLibrarySetting(flag) then
                         if flag == "_theme" then
