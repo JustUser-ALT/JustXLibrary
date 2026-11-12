@@ -6,6 +6,7 @@ const path = require("node:path");
 const root = __dirname;
 const parts = [
   "src/00-core.lua",
+  "src/modules/config.lua",
   "src/10-config.lua",
   "src/20-runtime-ui.lua",
   "src/30-subplaces.lua",
