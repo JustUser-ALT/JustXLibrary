@@ -978,6 +978,7 @@ local Lifecycle = createLifecycleModule({
     Error = error,
     Type = type,
     Pairs = pairs,
+    IPairs = ipairs,
     IsDisposed = function() return _disposed end
 })
 local _conns = Lifecycle.Connections
