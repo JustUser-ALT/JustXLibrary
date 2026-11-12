@@ -382,7 +382,7 @@ local function compactWidth(cfg)
     end
     return 0
 end
-local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg)
+local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet,cfgHas)
     cfg = cfg or {}
     local t = cfg.Type or "Toggle"
     if t == "Toggle" then
