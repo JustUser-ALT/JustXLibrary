@@ -4691,7 +4691,7 @@ function JL:Window(opts)
     if sameHub and sameHub.alive then
         local reload = restartPrompt(
             "Tab Already Running",
-            "Looks like "" .. hubTitle .. "" is already running. Are you sure you want to reload it?",
+            "Looks like \"" .. hubTitle .. "\" is already running. Are you sure you want to reload it?",
             "Reload Tab"
         )
         if not reload then return nil end
@@ -4713,7 +4713,7 @@ function JL:Window(opts)
         if #previousHubs > 0 then
             local replace = restartPrompt(
                 "Hub Already Running",
-                "Since the "Multi-Hub Tabs" toggle is disabled, "" .. previousTitle .. "" will be overwritten by "" .. hubTitle .. "".",
+                "Since the \"Multi-Hub Tabs\" toggle is disabled, \"" .. previousTitle .. "\" will be overwritten by \"" .. hubTitle .. "\".",
                 "Replace Hub"
             )
             if not replace then return nil end
