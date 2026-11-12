@@ -4293,12 +4293,11 @@ function JL:Preview(popts)
 end
 function JL:GetPreview() return JL._preview end
 local function hubGuiName(hubId, remote)
-    local base = "JustLib_" .. safeFileName(hubId)
-    if remote then return base .. "_Remote" end
-    return base
+    return scopedGuiName(remote and "Remote" or "Main", hubId)
 end
 local function removeOrphanedHubGuis(hubId)
     -- Only clean roots belonging to this identity; never remove another hub's UI.
+    local prefix = "JL_" .. safeFileName(hubId) .. "_"
     local names = {
         [hubGuiName(hubId, false)] = true,
         [hubGuiName(hubId, true)] = true
@@ -4314,7 +4313,7 @@ local function removeOrphanedHubGuis(hubId)
     for _, container in ipairs(containers) do
         pcall(function()
             for _, child in ipairs(container:GetChildren()) do
-                if child:IsA("ScreenGui") and names[child.Name] then
+                if child:IsA("ScreenGui") and (names[child.Name] or child.Name:sub(1, #prefix) == prefix) then
                     child:Destroy()
                 end
             end
