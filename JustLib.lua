@@ -4342,6 +4342,7 @@ local function removeOrphanedHubGuis(hubId)
         end)
     end
 end
+local refreshWorkspaceTabs
 local function showWorkspaceCloseDialog()
     refreshWorkspaceTabs()
     local gui = _workspace.HubTabsGui
@@ -4447,7 +4448,7 @@ local function showWorkspaceCloseDialog()
     return true
 end
 
-local function refreshWorkspaceTabs()
+refreshWorkspaceTabs = function()
     local entries = {}
     for id, entry in pairs(_workspace.Hubs) do
         if entry and entry.alive then
