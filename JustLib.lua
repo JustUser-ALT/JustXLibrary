@@ -1335,15 +1335,56 @@ local function mkTopBar(parent,color,z)
 end
 local function confirmDialog(promptTitle,promptDesc,opts)
     opts = opts or {}
+    local hasCheckbox = type(opts.CheckboxText) == "string" and opts.CheckboxText ~= ""
     local CoreGui = game:GetService("CoreGui")
     local sg3 = registerHubGui(Instance.new("ScreenGui"), "Confirm"); sg3.ResetOnSpawn = false; sg3.IgnoreGuiInset = true; sg3.DisplayOrder = 1000
     local okp = pcall(function() sg3.Parent = CoreGui end); if not okp or not sg3.Parent then sg3.Parent = PG end
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sg3
-    local shell,card,showPopup,hidePopup = mkPopup(bd,280,150)
+    local shell,card,showPopup,hidePopup = mkPopup(bd,280,hasCheckbox and 178 or 150)
     local accentCol = opts.Danger and C.danger or ACCENTS[1]
     local topBar = mkTopBar(card, accentCol)
     newTxt({Parent=card,Text=promptTitle,Font=GB,Size=15,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-20,0,20),Pos=UDim2.new(0,10,0,16)})
     newTxt({Parent=card,Text=promptDesc,Size=11,Color=C.dim,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-28,0,52),Pos=UDim2.new(0,14,0,42)})
+    local checkboxValue = opts.CheckboxDefault == true
+    if hasCheckbox then
+        local checkboxRow = Instance.new("Frame")
+        checkboxRow.Size = UDim2.new(1,-36,0,22)
+        checkboxRow.Position = UDim2.new(0,18,0,105)
+        checkboxRow.BackgroundTransparency = 1
+        checkboxRow.Parent = card
+        local checkboxBox = Instance.new("TextButton")
+        checkboxBox.Size = UDim2.new(0,17,0,17)
+        checkboxBox.Position = UDim2.new(0,0,0,2)
+        checkboxBox.BackgroundColor3 = checkboxValue and ACCENTS[1] or C.btnBg
+        checkboxBox.BorderSizePixel = 0
+        checkboxBox.AutoButtonColor = false
+        checkboxBox.Text = checkboxValue and "✓" or ""
+        checkboxBox.Font = GB
+        checkboxBox.TextSize = 12
+        checkboxBox.TextColor3 = Color3.new(1,1,1)
+        checkboxBox.Parent = checkboxRow
+        corner(5,checkboxBox)
+        stroke(C.border,1,checkboxBox)
+        local checkboxLabel = Instance.new("TextButton")
+        checkboxLabel.Size = UDim2.new(1,-25,1,0)
+        checkboxLabel.Position = UDim2.new(0,25,0,0)
+        checkboxLabel.BackgroundTransparency = 1
+        checkboxLabel.BorderSizePixel = 0
+        checkboxLabel.AutoButtonColor = false
+        checkboxLabel.Text = opts.CheckboxText
+        checkboxLabel.Font = GM
+        checkboxLabel.TextSize = 11
+        checkboxLabel.TextColor3 = C.dim
+        checkboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+        checkboxLabel.Parent = checkboxRow
+        local function toggleCheckbox()
+            checkboxValue = not checkboxValue
+            checkboxBox.Text = checkboxValue and "✓" or ""
+            tw(checkboxBox,{BackgroundColor3 = checkboxValue and ACCENTS[1] or C.btnBg},.12)
+        end
+        checkboxBox.MouseButton1Click:Connect(toggleCheckbox)
+        checkboxLabel.MouseButton1Click:Connect(toggleCheckbox)
+    end
     local function mkB(txt,col,bordered,pos)
         local b = Instance.new("TextButton"); b.Size = UDim2.new(0.5,-22,0,32); b.Position = pos; b.BackgroundColor3 = col; b.Text = txt; b.Font = GB; b.TextSize = 13
         b.TextColor3 = Color3.new(1,1,1); b.AutoButtonColor = true; b.Parent = card; corner(8,b); if bordered then stroke(C.border,1,b) end; return b
@@ -1357,7 +1398,7 @@ local function confirmDialog(promptTitle,promptDesc,opts)
     while result == nil do task.wait() end
     hidePopup(); task.wait(.16)
     sg3:Destroy()
-    return result
+    return result, checkboxValue
 end
 local function unloadDialog()
     local CoreGui = game:GetService("CoreGui")
@@ -4629,12 +4670,29 @@ function JL:Window(opts)
             end
         end
         if hasOtherHub then
-            local join = confirmDialog(
-                "Add Hub to Library?",
-                hubTitle .. " can be added as another tab while your existing hub stays open.",
-                {ConfirmText = "Add Hub", CancelText = "Cancel"}
-            )
-            if not join then return nil end
+            local joinPolicy = _workspace.JoinPolicy
+            if joinPolicy == "Restart" then
+                if not restartPrompt() then return nil end
+                local previousHubs = {}
+                for _,entry in pairs(_workspace.Hubs) do
+                    if entry and entry.alive and type(entry.destroy) == "function" then
+                        previousHubs[#previousHubs + 1] = entry
+                    end
+                end
+                for _,entry in ipairs(previousHubs) do
+                    pcall(entry.destroy)
+                end
+            elseif joinPolicy ~= "Join" then
+                local join, dontShow = confirmDialog(
+                    "Add Hub to Library?",
+                    hubTitle .. " can be added as another tab while your existing hub stays open.",
+                    {ConfirmText = "Add Hub", CancelText = "Cancel", CheckboxText = "Do Not Show"}
+                )
+                if dontShow then
+                    _workspace.JoinPolicy = join and "Join" or "Restart"
+                end
+                if not join then return nil end
+            end
         end
     end
     -- Remove leftover UI roots if an older build stopped partway through cleanup.
