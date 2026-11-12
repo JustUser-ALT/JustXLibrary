@@ -9,6 +9,47 @@ if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
     shared._JLWorkspace = _workspace
 end
 if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
+if _workspace.JoinPromptEnabled == nil then _workspace.JoinPromptEnabled = true end
+if _workspace.JoinSettingsLoaded ~= true then
+    local loaded
+    if type(readfile) == "function" then
+        local ok, raw = pcall(readfile, "JustX/HubSettings.lua")
+        if ok and type(raw) == "string" and raw ~= "" and type(loadstring) == "function" then
+            local okFn, fn = pcall(loadstring, raw)
+            if okFn and type(fn) == "function" then
+                local okData, data = pcall(fn)
+                if okData and type(data) == "table" then loaded = data end
+            end
+        end
+    end
+    if type(loaded) == "table" then
+        _workspace.JoinPromptEnabled = loaded.PromptEnabled ~= false
+        local policy = loaded.Policy
+        if policy == "Join" or policy == "Restart" then
+            _workspace.JoinPolicy = policy
+        else
+            _workspace.JoinPolicy = nil
+        end
+    end
+    _workspace.JoinSettingsLoaded = true
+end
+local function saveJoinSettings()
+    if type(writefile) ~= "function" then return false end
+    if type(isfolder) == "function" then
+        local ok, exists = pcall(isfolder, "JustX")
+        if not ok or not exists then
+            if type(makefolder) == "function" then pcall(makefolder, "JustX") end
+        end
+    elseif type(makefolder) == "function" then
+        pcall(makefolder, "JustX")
+    end
+    local policy = _workspace.JoinPolicy
+    if policy ~= "Join" and policy ~= "Restart" then policy = nil end
+    local data = "return {PromptEnabled=" .. tostring(_workspace.JoinPromptEnabled ~= false)
+        .. ",Policy=" .. (policy and string.format("%q", policy) or "nil") .. "}"
+    local ok = pcall(writefile, "JustX/HubSettings.lua", data)
+    return ok
+end
 _workspace.SetActiveHub = function(hubId, openTarget)
     local target = _workspace.Hubs[hubId]
     if not target or not target.alive then return false end
@@ -4670,7 +4711,7 @@ function JL:Window(opts)
             end
         end
         if hasOtherHub then
-            local joinPolicy = _workspace.JoinPolicy
+            local joinPolicy = _workspace.JoinPromptEnabled == false and _workspace.JoinPolicy or nil
             if joinPolicy == "Restart" then
                 if not restartPrompt() then return nil end
                 local previousHubs = {}
@@ -4690,6 +4731,8 @@ function JL:Window(opts)
                 )
                 if dontShow then
                     _workspace.JoinPolicy = join and "Join" or "Restart"
+                    _workspace.JoinPromptEnabled = false
+                    saveJoinSettings()
                 end
                 if not join then return nil end
             end
@@ -6934,6 +6977,15 @@ function JL:Window(opts)
                 if JL._remoteRefresh then pcall(JL._remoteRefresh) end
                 if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
             end
+        end)
+        addSwitch(pP, "Add Hub Confirmation", "Show the Add Hub prompt again. Turning this on clears the remembered Do Not Show choice.", "_hub_join_prompt", _workspace.JoinPromptEnabled ~= false, function(v)
+            _workspace.JoinPromptEnabled = v == true
+            if v then
+                _workspace.JoinPolicy = nil
+            elseif _workspace.JoinPolicy == nil then
+                _workspace.JoinPolicy = "Join"
+            end
+            saveJoinSettings()
         end)
         local profileNameBox
         do
