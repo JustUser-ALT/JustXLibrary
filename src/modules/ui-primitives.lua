@@ -13,20 +13,6 @@ local function createUIPrimitivesModule(deps)
     local pcall = deps.PCall
     local math = deps.Math
     local function touchLast() return UIS:GetLastInputType() == Enum.UserInputType.Touch end
-    local _tweens = {}
-    local function createTween(...)
-        local tween = TS:Create(...)
-        local record = {tween = tween}
-        _tweens[record] = true
-        record.connection = tween.Completed:Connect(function()
-            _tweens[record] = nil
-            if record.connection then pcall(function() record.connection:Disconnect() end) end
-        end)
-        return tween
-    end
-    local function tw(o,p,t,s,d)
-        createTween(o, TweenInfo.new(t or .2, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out), p):Play()
-    end
     local function corner(r,p) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,r); c.Parent = p; return c end
     local function stroke(col,t,p) local s = Instance.new("UIStroke"); s.Color = col; s.Thickness = t; s.Parent = p; return s end
     local function pad(l,r,t,b,p)
