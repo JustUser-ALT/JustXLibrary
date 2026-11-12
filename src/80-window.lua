@@ -13,7 +13,7 @@ function JL:Window(opts)
     local cfgFlush = function() return hubConfig.Flush() end
     local hubId = resolveHubIdentity(opts)
     local hubTitle = tostring(opts.Title or hubId)
-    _currentHubId = hubId
+    Workspace.SetCurrentHubId(hubId)
     local hubEntry
     _disposed = false
     JL._perfEnabled = opts.DebugPerformance == true
