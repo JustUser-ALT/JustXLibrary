@@ -4339,6 +4339,241 @@ local function removeOrphanedHubGuis(hubId)
         end)
     end
 end
+local function refreshWorkspaceTabs()
+    local entries = {}
+    for id, entry in pairs(_workspace.Hubs) do
+        if entry and entry.alive then
+            entries[#entries + 1] = {Id = id, Entry = entry}
+        end
+    end
+    table.sort(entries, function(a, b)
+        return tostring(a.Entry.Title or a.Id):lower() < tostring(b.Entry.Title or b.Id):lower()
+    end)
+
+    local gui = _workspace.HubTabsGui
+    if #entries < 2 then
+        if gui then pcall(function() gui:Destroy() end) end
+        _workspace.HubTabsGui = nil
+        _workspace.HubTabsFrame = nil
+        _workspace.CloseDialogFrame = nil
+        return
+    end
+
+    if not gui or not gui.Parent then
+        gui = Instance.new("ScreenGui")
+        gui.Name = "JL_WorkspaceTabs"
+        gui.ResetOnSpawn = false
+        gui.IgnoreGuiInset = true
+        gui.DisplayOrder = 10000
+        gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        local okCore, core = pcall(function() return game:GetService("CoreGui") end)
+        if okCore and core then
+            local okParent = pcall(function() gui.Parent = core end)
+            if not okParent or not gui.Parent then gui.Parent = PG end
+        else
+            gui.Parent = PG
+        end
+
+        local bar = Instance.new("Frame")
+        bar.Name = "HubTabs"
+        bar.AnchorPoint = Vector2.new(0.5, 0)
+        bar.Position = UDim2.new(0.5, 0, 0, 8)
+        bar.Size = UDim2.new(0.9, 0, 0, 40)
+        bar.BackgroundColor3 = Color3.fromRGB(27, 29, 35)
+        bar.BackgroundTransparency = 0.04
+        bar.BorderSizePixel = 0
+        bar.Parent = gui
+        local barCorner = Instance.new("UICorner")
+        barCorner.CornerRadius = UDim.new(0, 10)
+        barCorner.Parent = bar
+        local barStroke = Instance.new("UIStroke")
+        barStroke.Color = Color3.fromRGB(65, 69, 80)
+        barStroke.Transparency = 0.2
+        barStroke.Thickness = 1
+        barStroke.Parent = bar
+        local sizeLimit = Instance.new("UISizeConstraint")
+        sizeLimit.MinSize = Vector2.new(250, 40)
+        sizeLimit.MaxSize = Vector2.new(680, 40)
+        sizeLimit.Parent = bar
+
+        local scroll = Instance.new("ScrollingFrame")
+        scroll.Name = "HubList"
+        scroll.Position = UDim2.new(0, 7, 0, 5)
+        scroll.Size = UDim2.new(1, -48, 1, -10)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 2
+        scroll.ScrollingDirection = Enum.ScrollingDirection.X
+        scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+        scroll.Parent = bar
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = scroll
+
+        local close = Instance.new("TextButton")
+        close.Name = "CloseMenu"
+        close.AnchorPoint = Vector2.new(1, 0.5)
+        close.Position = UDim2.new(1, -6, 0.5, 0)
+        close.Size = UDim2.new(0, 34, 0, 30)
+        close.BackgroundColor3 = Color3.fromRGB(57, 43, 47)
+        close.BorderSizePixel = 0
+        close.Text = "×"
+        close.Font = Enum.Font.GothamBold
+        close.TextSize = 21
+        close.TextColor3 = Color3.fromRGB(245, 135, 145)
+        close.Parent = bar
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 8)
+        closeCorner.Parent = close
+
+        close.MouseButton1Click:Connect(function()
+            local activeId = _workspace.ActiveHubId
+            local activeEntry = activeId and _workspace.Hubs[activeId]
+            if not activeEntry or not activeEntry.alive then return end
+            local old = _workspace.CloseDialogFrame
+            if old then pcall(function() old:Destroy() end) end
+
+            local overlay = Instance.new("Frame")
+            overlay.Name = "CloseHubDialog"
+            overlay.Size = UDim2.new(1, 0, 1, 0)
+            overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+            overlay.BackgroundTransparency = 0.42
+            overlay.BorderSizePixel = 0
+            overlay.ZIndex = 20
+            overlay.Parent = gui
+            _workspace.CloseDialogFrame = overlay
+
+            local panel = Instance.new("Frame")
+            panel.AnchorPoint = Vector2.new(0.5, 0.5)
+            panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+            panel.Size = UDim2.new(0, 300, 0, 166)
+            panel.BackgroundColor3 = Color3.fromRGB(34, 36, 43)
+            panel.BorderSizePixel = 0
+            panel.ZIndex = 21
+            panel.Parent = overlay
+            local panelCorner = Instance.new("UICorner")
+            panelCorner.CornerRadius = UDim.new(0, 12)
+            panelCorner.Parent = panel
+            local panelStroke = Instance.new("UIStroke")
+            panelStroke.Color = Color3.fromRGB(75, 80, 94)
+            panelStroke.Parent = panel
+
+            local heading = Instance.new("TextLabel")
+            heading.BackgroundTransparency = 1
+            heading.Position = UDim2.new(0, 14, 0, 13)
+            heading.Size = UDim2.new(1, -28, 0, 24)
+            heading.Font = Enum.Font.GothamBold
+            heading.Text = "Close Library"
+            heading.TextSize = 16
+            heading.TextColor3 = Color3.fromRGB(245, 246, 250)
+            heading.TextXAlignment = Enum.TextXAlignment.Left
+            heading.ZIndex = 22
+            heading.Parent = panel
+
+            local description = Instance.new("TextLabel")
+            description.BackgroundTransparency = 1
+            description.Position = UDim2.new(0, 14, 0, 42)
+            description.Size = UDim2.new(1, -28, 0, 38)
+            description.Font = Enum.Font.Gotham
+            description.Text = "Choose what you want to close."
+            description.TextSize = 12
+            description.TextColor3 = Color3.fromRGB(170, 175, 187)
+            description.TextWrapped = true
+            description.TextXAlignment = Enum.TextXAlignment.Left
+            description.ZIndex = 22
+            description.Parent = panel
+
+            local function makeChoice(name, textValue, x, width, color, callback)
+                local button = Instance.new("TextButton")
+                button.Name = name
+                button.Position = UDim2.new(0, x, 1, -48)
+                button.Size = UDim2.new(0, width, 0, 34)
+                button.BackgroundColor3 = color
+                button.BorderSizePixel = 0
+                button.Text = textValue
+                button.Font = Enum.Font.GothamSemibold
+                button.TextSize = 11
+                button.TextColor3 = Color3.fromRGB(245, 246, 250)
+                button.ZIndex = 22
+                button.Parent = panel
+                local buttonCorner = Instance.new("UICorner")
+                buttonCorner.CornerRadius = UDim.new(0, 8)
+                buttonCorner.Parent = button
+                button.MouseButton1Click:Connect(function()
+                    if _workspace.CloseDialogFrame == overlay then
+                        _workspace.CloseDialogFrame = nil
+                    end
+                    overlay:Destroy()
+                    callback()
+                end)
+            end
+
+            makeChoice("CloseCurrent", "This Hub", 12, 84, Color3.fromRGB(62, 105, 174), function()
+                if activeEntry.alive and type(activeEntry.destroy) == "function" then
+                    pcall(activeEntry.destroy)
+                end
+                refreshWorkspaceTabs()
+            end)
+            makeChoice("CloseAll", "All Hubs", 108, 84, Color3.fromRGB(165, 62, 70), function()
+                local snapshot = {}
+                for _, item in ipairs(entries) do snapshot[#snapshot + 1] = item.Entry end
+                for _, item in pairs(_workspace.Hubs) do
+                    if item and item.alive then snapshot[#snapshot + 1] = item end
+                end
+                local seen = {}
+                for _, item in ipairs(snapshot) do
+                    if item and item.alive and not seen[item] then
+                        seen[item] = true
+                        if type(item.destroy) == "function" then pcall(item.destroy) end
+                    end
+                end
+                refreshWorkspaceTabs()
+            end)
+            makeChoice("Cancel", "Cancel", 204, 84, Color3.fromRGB(58, 61, 70), function() end)
+        end)
+
+        _workspace.HubTabsGui = gui
+        _workspace.HubTabsFrame = bar
+    end
+
+    local bar = _workspace.HubTabsFrame
+    if not bar or not bar.Parent then return end
+    local scroll = bar:FindFirstChild("HubList")
+    if not scroll then return end
+    for _, child in ipairs(scroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    for index, item in ipairs(entries) do
+        local entry = item.Entry
+        local active = item.Id == _workspace.ActiveHubId
+        local title = tostring(entry.Title or item.Id)
+        local button = Instance.new("TextButton")
+        button.Name = "Hub_" .. tostring(index)
+        button.LayoutOrder = index
+        button.Size = UDim2.new(0, math.clamp(#title * 7 + 28, 104, 190), 1, -2)
+        button.BackgroundColor3 = active and Color3.fromRGB(65, 112, 190) or Color3.fromRGB(45, 48, 57)
+        button.BorderSizePixel = 0
+        button.Text = title
+        button.Font = Enum.Font.GothamSemibold
+        button.TextSize = 12
+        button.TextColor3 = Color3.fromRGB(245, 246, 250)
+        button.TextTruncate = Enum.TextTruncate.AtEnd
+        button.Parent = scroll
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+        buttonCorner.Parent = button
+        button.MouseButton1Click:Connect(function()
+            if _workspace.Hubs[item.Id] and _workspace.Hubs[item.Id].alive then
+                _workspace.SetActiveHub(item.Id)
+                refreshWorkspaceTabs()
+            end
+        end)
+    end
+end
 function JL:Window(opts)
     opts = opts or {}
     local hubId = resolveHubIdentity(opts)
@@ -4828,6 +5063,7 @@ function JL:Window(opts)
                 end
             end
         end
+        refreshWorkspaceTabs()
         JL._searchRegister = nil
         if JL._searchEntries then for k in pairs(JL._searchEntries) do JL._searchEntries[k] = nil end end
         if JL._searchPageTargets then for k in pairs(JL._searchPageTargets) do JL._searchPageTargets[k] = nil end end
@@ -7476,6 +7712,7 @@ function JL:Window(opts)
     }
     _workspace.Hubs[hubId] = hubEntry
     _workspace.SetActiveHub(hubId)
+    refreshWorkspaceTabs()
     JL._destroyActive = destroyHub
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
