@@ -869,7 +869,9 @@ local function createConfigModule(deps)
     local _globalSettingsData = _workspace.GlobalSettings
     local _applyingPreset = false
     local _presetSettingsOverrides = {}
-    JL._autoSave = true; JL._addonAutoSave = false
+    local _autoSave = true
+    local _addonAutoSave = false
+    JL._autoSave = _autoSave; JL._addonAutoSave = _addonAutoSave
     JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
 
 local function safeFileName(value)
@@ -964,8 +966,8 @@ end
 local function persistable(flag)
     if type(flag) ~= "string" then return true end
     if flag:sub(1,1) == "_" then return true end -- настройки интерфейса сохраняются всегда
-    if flag:sub(1,6) == "addon." then return JL._addonAutoSave == true end
-    return JL._autoSave ~= false
+    if flag:sub(1,6) == "addon." then return _addonAutoSave == true end
+    return _autoSave ~= false
 end
 local function cfgLoad(name)
     loadGlobalSettings()
@@ -994,8 +996,9 @@ local function cfgLoad(name)
             if decodeOk and type(data) == "table" then for key, value in pairs(data) do _cfgData[key] = value end end
         end
     end
-    JL._autoSave = (_cfgData._autosave ~= false)
-    JL._addonAutoSave = (_cfgData._addons_autosave == true)
+    _autoSave = (_cfgData._autosave ~= false)
+    _addonAutoSave = (_cfgData._addons_autosave == true)
+    JL._autoSave = _autoSave; JL._addonAutoSave = _addonAutoSave
     if _workspace.GlobalSettingsEnabled then
         local seeded = false
         for flag,val in pairs(_cfgData) do
@@ -1041,6 +1044,8 @@ end
 local function cfgSet(flag,val,store)
     if not flag then return end
     if store == nil then store = val end
+    if flag == "_autosave" then _autoSave = val ~= false; JL._autoSave = _autoSave end
+    if flag == "_addons_autosave" then _addonAutoSave = val == true; JL._addonAutoSave = _addonAutoSave end
     JL.Flags[flag] = val
     if flag == "_global_settings" then
         if val == true then for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end end
@@ -1116,7 +1121,8 @@ end
         SetApplyingPreset = function(value) _applyingPreset = value == true end,
         ClearPresetSettingsOverrides = function()
             for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end
-        end
+        end,
+        Fork = function() return createConfigModule(deps) end
     }
 end
 local Config = createConfigModule({
@@ -2868,7 +2874,7 @@ local function compactWidth(cfg)
     end
     return 0
 end
-local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg)
+local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet,cfgHas)
     cfg = cfg or {}
     local t = cfg.Type or "Toggle"
     if t == "Toggle" then
@@ -2969,7 +2975,8 @@ local function mkOptDivider(container,order,o,h)
         newTxt({Parent=chip,Text=o.Divider,Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center})
     end
 end
-local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
+local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
+    local cfgGet, cfgSet, cfgHas = config.Get, config.Set, config.Has
     local function unscale(px)
         local s = (uiScale and uiScale.Scale) or 1
         if not s or s <= 0 then s = 1 end
@@ -3045,7 +3052,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,6); layout.Parent = body
             pad(2,2,3,6,body)
             local innerWidth = math.max(170, math.min(264, panel.AbsoluteSize.X - 28))
-            local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip)
+            local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip,config)
             local count = 0
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
                 if type(definition) == "table" then
@@ -3881,8 +3888,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         newTxt({Parent=row,Text=name,Font=GB,Size=12,Wrap=true,Sz=UDim2.new(0,labW,1,0),Pos=UDim2.new(0,10,0,0)})
         local ctrls = {}
         local x = startX
-        if o.A then ctrls.A = mkCompactControl(row, x, wA, o.A, ac, regFlag, parentSg); x = x + wA + gap end
-        if o.B then ctrls.B = mkCompactControl(row, x, wB, o.B, ac, regFlag, parentSg) end
+        if o.A then ctrls.A = mkCompactControl(row, x, wA, o.A, ac, regFlag, parentSg, cfgGet, cfgSet, cfgHas); x = x + wA + gap end
+        if o.B then ctrls.B = mkCompactControl(row, x, wB, o.B, ac, regFlag, parentSg, cfgGet, cfgSet, cfgHas) end
         return mergeLock(ctrls, row, o)
     end
     function Sec:Text(o)
@@ -4236,7 +4243,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     return Sec
 end
-local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip)
+local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip,config)
     so = so or {}
     local ac = nxAc()
     local iconW = so.Icon and 22 or 0
@@ -4287,7 +4294,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     end
     secBtn.MouseButton1Click:Connect(function() setCollapsed(not collapsed) end)
     if collapsed then content.Visible = false; arrow.Rotation = 180; hfix.Visible = false; hline.Visible = false end
-    local Sec = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip)
+    local Sec = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip, config)
     Sec.Panel = panel
     function Sec:SetCollapsed(c) if c ~= collapsed then setCollapsed(c) end end
     JL._secPanels[panel] = Sec
@@ -4299,7 +4306,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     Sec.ToggleLocked = secLock.ToggleLocked; Sec.ToggleHidden = secLock.ToggleHidden
     return Sec
 end
-local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiScale,attachTip)
+local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiScale,attachTip,config)
     sopts = sopts or {}
     local ac = nxAc()
     local INNER = colW - 16
@@ -4359,7 +4366,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
         sharedLine.Visible = sharedH > 0; sharedLine.Position = UDim2.new(0,8,0,HH + 1 + sharedH)
         repaint()
     end)
-    local sharedSec = attachWidgets(sharedHost, INNER, ac, uiScale, parentSg, attachTip)
+    local sharedSec = attachWidgets(sharedHost, INNER, ac, uiScale, parentSg, attachTip, config)
     -- любой элемент страницы с Shared = true (или Pinned = true) создаётся в общем блоке сверху
     local function redirect(sec)
         for k,fn in pairs(sec) do
@@ -4762,6 +4769,13 @@ refreshWorkspaceTabs = function()
 end
 function JL:Window(opts)
     opts = opts or {}
+    local hubConfig = Config.Fork()
+    local cfgLoad = function(name) return hubConfig.Load(name) end
+    local cfgSave = function() return hubConfig.Save() end
+    local cfgHas = function(flag) return hubConfig.Has(flag) end
+    local cfgSet = function(flag, value, store) return hubConfig.Set(flag, value, store) end
+    local cfgGet = function(flag, default) return hubConfig.Get(flag, default) end
+    local cfgFlush = function() return hubConfig.Flush() end
     local hubId = resolveHubIdentity(opts)
     local hubTitle = tostring(opts.Title or hubId)
     _currentHubId = hubId
@@ -5802,13 +5816,13 @@ function JL:Window(opts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip)
+                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip, hubConfig)
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip)
+                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig)
             end
             for i = 1,VIS do getCol(i) end
         elseif typ == "Custom" then
@@ -5823,11 +5837,11 @@ function JL:Window(opts)
             local _sOrd = 0
             function Tab:Section(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip)
+                return makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig)
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip)
+                return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip, hubConfig)
             end
         end
         return Tab
@@ -6229,7 +6243,7 @@ function JL:Window(opts)
             Callback = function(v)
                 JL._addonAutoSave = v
                 if AM.building then return end
-                if v and JL._cfgFlush then JL._cfgFlush() end
+                if v then cfgFlush() end
                 JL:Notify({Title = "Addons", Desc = v and "Auto Save on: enabled addons will be restored next launch" or "Auto Save off: addons start disabled next launch", Type = "Info", Duration = 3})
             end,
         })
@@ -7035,7 +7049,7 @@ function JL:Window(opts)
         local pP = newPage("Presets", "Save and load snapshots of your enabled features")
         addSwitch(pP, "Auto Save", "Remembers this hub's toggles and values between launches. Library settings are managed separately below", "_autosave", true, function(v)
             JL._autoSave = v
-            if v and JL._cfgFlush then JL._cfgFlush() end
+            if v then cfgFlush() end
         end)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
