@@ -1252,8 +1252,12 @@ do
         for i = #active, 1, -1 do
             local nd = active[i]
             if nd and nd.HubId == _currentHubId then
-                if nd.close then pcall(nd.close) elseif nd.g then pcall(function() nd.g:Destroy() end) end
-                table.remove(active, i)
+                if nd.close then
+                    pcall(nd.close)
+                else
+                    if nd.g then pcall(function() nd.g:Destroy() end) end
+                    table.remove(active, i)
+                end
             end
         end
         pcall(updPos)
