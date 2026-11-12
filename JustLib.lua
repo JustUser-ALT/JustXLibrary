@@ -6690,11 +6690,10 @@ function JL:Window(opts)
         local navList = Instance.new("ScrollingFrame"); navList.Name = "SettingsNavigation"; navList.Size = UDim2.new(1,-16,1,-74); navList.Position = UDim2.new(0,8,0,68)
         navList.BackgroundTransparency = 1; navList.BorderSizePixel = 0; navList.ClipsDescendants = true
         navList.ScrollBarThickness = 3; navList.ScrollBarImageColor3 = ACC; navList.ScrollingDirection = Enum.ScrollingDirection.Y
-        navList.CanvasSize = UDim2.new(0,0,0,0); navList.AutomaticCanvasSize = Enum.AutomaticSize.None; navList.Parent = nav
+        navList.Active = true; navList.ScrollingEnabled = true
+        navList.CanvasSize = UDim2.new(0,0,0,0); navList.AutomaticCanvasSize = Enum.AutomaticSize.Y; navList.Parent = nav
         local nlay = Instance.new("UIListLayout"); nlay.Padding = UDim.new(0,4); nlay.SortOrder = Enum.SortOrder.LayoutOrder; nlay.Parent = navList
-        nlay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            navList.CanvasSize = UDim2.new(0,0,0,nlay.AbsoluteContentSize.Y + 8)
-        end)
+        local navPadding = Instance.new("UIPadding"); navPadding.PaddingBottom = UDim.new(0,16); navPadding.Parent = navList
         local card = Instance.new("Frame"); card.Size = UDim2.new(1,-(navW + 8),1,0); card.Position = UDim2.new(0,navW + 8,0,0); card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.Parent = root; corner(10,card); stroke(C.border,1,card)
         local pgTitle = newTxt({Parent=card,Text="",Font=GB,Size=16,Sz=UDim2.new(1,-32,0,20),Pos=UDim2.new(0,16,0,12)})
         local pgSub = newTxt({Parent=card,Text="",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-32,0,14),Pos=UDim2.new(0,16,0,34)})
