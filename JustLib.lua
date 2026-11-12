@@ -4393,7 +4393,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
             if name == activePage then repaint() end
         end)
         contents[name] = content
-        pageSecs[name] = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip)
+        pageSecs[name] = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip, config)
         redirect(pageSecs[name])
     end
     local MS = {Panel = panel}
