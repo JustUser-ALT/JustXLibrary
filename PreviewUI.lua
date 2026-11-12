@@ -183,22 +183,44 @@ local function dragLocked(inst, onMove, onEnd)
 end
 
 local function mkIcon(parent, icon, size, color)
-	local s = tostring(icon or "")
-	if B and B.icon then
-		local ok, r = pcall(B.icon, s)
-		if ok and r then
-			s = tostring(r)
+	local raw = icon
+	local resolved
+	if type(raw) == "string" and B and B.icon then
+		local ok, value = pcall(B.icon, raw)
+		if ok then
+			resolved = value
 		end
 	end
-	if s:match("^rbxassetid://") or s:match("^%d+$") then
-		return new("ImageLabel", {
-			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
-			Image = s:match("^%d+$") and ("rbxassetid://" .. s) or s, ImageColor3 = color,
-		}, parent)
+	local url, glyph, font, rectOffset, rectSize
+	if type(resolved) == "table" then
+		url = resolved.Url or resolved.Image or resolved.ImageUrl or resolved.Texture or resolved.Asset or resolved.AssetId or resolved.ImageId or resolved.Id
+		glyph = resolved.Text or resolved.Glyph
+		font = resolved.Font
+		rectOffset = resolved.ImageRectOffset
+		rectSize = resolved.ImageRectSize
+	elseif type(resolved) == "string" or type(resolved) == "number" then
+		url = resolved
 	end
+	if url == nil then
+		url = raw
+	end
+	local value = tostring(url or "")
+	if value:match("^%d+$") then
+		value = "rbxassetid://" .. value
+	end
+	if value:match("^rbxassetid://") or value:match("^https?://") then
+		local image = new("ImageLabel", {
+			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
+			Image = value, ImageColor3 = color, ScaleType = Enum.ScaleType.Fit,
+			ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero,
+			ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero,
+		}, parent)
+		return image
+	end
+	local textValue = glyph or (type(raw) == "string" and raw or "")
 	return new("TextLabel", {
-		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Text = s,
-		TextScaled = true, Font = GB, TextColor3 = color,
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Text = tostring(textValue),
+		TextScaled = true, Font = font or GB, TextColor3 = color,
 	}, parent)
 end
 
@@ -541,6 +563,16 @@ end
 
 local function hasPreview(a)
 	return a.Preview ~= false and (a.Model ~= nil or a.Build ~= nil or a.Image ~= nil)
+end
+
+local VARIANT_FIELDS = {
+	"Model", "Build", "Image", "Description", "Tags", "Info", "Version", "Type",
+	"Icon", "Yaw", "Tilt", "Creator", "Created", "Size", "Avatar", "AvatarUserId",
+}
+
+local function hasInfo(a)
+	return a.Description ~= nil or a.Tags ~= nil or a.Info ~= nil or a.Creator ~= nil
+		or a.Created ~= nil or a.Size ~= nil or a.Version ~= nil or a.Avatar ~= nil or a.AvatarUserId ~= nil
 end
 
 --------------------------------------------------------------------
@@ -1318,8 +1350,47 @@ PAGES.preview = {
 	id = "preview", name = "Preview", icon = "⬡",
 	build = function(parent, a, pv)
 		local cleanups = {}
+		local variants = a._variants or {}
+		local variantBar
+		if #variants > 1 then
+			variantBar = new("ScrollingFrame", {
+				BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 6),
+				Size = U2(1, -20, 0, 32), CanvasSize = U2(0, 0, 0, 0),
+				AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
+				ScrollingDirection = Enum.ScrollingDirection.X,
+			}, parent)
+			local layout = new("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+			}, variantBar)
+			for i, variant in ipairs(variants) do
+				local selected = i == (a._variantIndex or 1)
+				local button = txt("TextButton", {
+					Text = tostring(variant.Name or ("Variant " .. i)), Font = GM, TextSize = 11,
+					TextColor3 = selected and ACCENTS[1] or C.dim,
+					BackgroundColor3 = selected and C.badge or C.btnBg, BackgroundTransparency = selected and 0 or 0.15,
+					Size = UDim2.fromOffset(math.clamp(58 + #tostring(variant.Name or ("Variant " .. i)) * 5, 82, 126), 28),
+					LayoutOrder = i,
+				}, variantBar)
+				corner(button, 7)
+				local border = stroke(button, selected and ACCENTS[1] or C.border, selected and 1.5 or 1)
+				if variant.Icon then
+					local ic = mkIcon(button, variant.Icon, 13, selected and ACCENTS[1] or C.dim)
+					ic.Position = UDim2.fromOffset(7, 7)
+					button.TextXAlignment = Enum.TextXAlignment.Left
+					button.Text = "  " .. button.Text
+				end
+				button.Activated:Connect(function()
+					if a:SetVariant(i) then
+						pv:_showPage("preview", false)
+					end
+				end)
+			end
+		end
+		local topOffset = variantBar and 44 or 8
 		local box = new("Frame", {
-			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 8), Size = U2(1, -20, 1, -56),
+			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(10, topOffset),
+			Size = U2(1, -20, 1, variantBar and -92 or -56),
 		}, parent)
 		corner(box, 9)
 		stroke(box, C.border, 1)
@@ -1602,6 +1673,13 @@ function M:_addAsset(tab, a, quiet)
 		asset[k] = v
 	end
 	asset.Name = asset.Name or "Asset"
+	asset._baseVariantData = {}
+	asset._variants = type(asset.Variants) == "table" and asset.Variants or {}
+	asset._variantIndex = 1
+	for _, key in ipairs(VARIANT_FIELDS) do
+		asset._baseVariantData[key] = asset[key]
+	end
+	asset.Variants = nil
 	asset.tab = tab
 	asset._pv = self
 	asset._isAsset = true
@@ -1616,8 +1694,39 @@ function M:_addAsset(tab, a, quiet)
 	function asset:Update(t)
 		for k, v in pairs(t or {}) do
 			self[k] = v
+			if self._baseVariantData[k] ~= nil or table.find(VARIANT_FIELDS, k) then
+				self._baseVariantData[k] = v
+			end
 		end
 		self._pv:_assetUpdated(self)
+	end
+	function asset:SetVariant(target)
+		local index
+		if type(target) == "number" then
+			index = math.floor(target)
+		else
+			for i, variant in ipairs(self._variants) do
+				if variant.Name == target then
+					index = i
+					break
+				end
+			end
+		end
+		if not index or not self._variants[index] then
+			return false
+		end
+		local variant = self._variants[index]
+		for _, key in ipairs(VARIANT_FIELDS) do
+			local value = variant[key]
+			if value == nil then
+				value = self._baseVariantData[key]
+			end
+			self[key] = value
+		end
+		self._variantIndex = index
+		self._variantName = variant.Name or ("Variant " .. tostring(index))
+		self._pv:_assetUpdated(self)
+		return true
 	end
 	-- пункт меню "три точки" (до MAX_ACTIONS штук на ассет)
 	function asset:Action(o2)
@@ -2325,8 +2434,14 @@ function M:_makeCard(asset)
 	local label = new("Frame", { BackgroundColor3 = C.btnBg, BorderSizePixel = 0, Position = UDim2.fromOffset(0, th), Size = U2(1, 0, 1, -th) }, card)
 	corner(label, 9)
 	new("Frame", { BackgroundColor3 = C.btnBg, BorderSizePixel = 0, Size = U2(1, 0, 0, 10) }, label)
-	txt("TextLabel", {
-		Text = asset.Name, Font = GM, TextSize = 12, Position = UDim2.fromOffset(10, 6), Size = U2(1, -40, 0, 16),
+	local titleIcon
+	if asset.Icon then
+		titleIcon = mkIcon(label, asset.Icon, 14, C.dim)
+		titleIcon.Position = UDim2.fromOffset(9, 7)
+	end
+	local titleX = titleIcon and 29 or 10
+	local titleLabel = txt("TextLabel", {
+		Text = asset.Name, Font = GM, TextSize = 12, Position = UDim2.fromOffset(titleX, 6), Size = U2(1, -titleX - 30, 0, 16),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, label)
 	txt("TextLabel", {
@@ -2377,7 +2492,7 @@ function M:_makeCard(asset)
 	btn.Activated:Connect(function()
 		self:_onCardClick(asset)
 	end)
-	return { frame = card, stroke = st, thumb = thumb, label = label, dots = dots, scale = sc, built = false }
+	return { frame = card, stroke = st, thumb = thumb, label = label, dots = dots, scale = sc, built = false, titleIcon = titleIcon, titleLabel = titleLabel }
 end
 
 function M:_ensureThumb(asset, c)
@@ -2587,21 +2702,21 @@ function M:_openMenu(asset, anchor)
 	end
 	self:_closeMenu()
 	local items = {}
-	for _, a in ipairs(asset._actions) do
-		items[#items + 1] = { name = a.Name, icon = a.Icon, fn = function() safe(a.Callback, asset, a) end }
+	local function openPage(id)
+		return function()
+			self._page = id
+			self:_select(asset)
+			self:_setDrawer(true)
+		end
+	end
+	for _, page in ipairs(self:_pagesFor(asset)) do
+		items[#items + 1] = { name = page.name, icon = page.icon, fn = openPage(page.id) }
+	end
+	for _, action in ipairs(asset._actions) do
+		items[#items + 1] = { name = action.Name, icon = action.Icon, fn = function() safe(action.Callback, asset, action) end }
 	end
 	if #items == 0 then
-		local function openPage(id)
-			return function()
-				self._page = id
-				self:_select(asset)
-				self:_setDrawer(true)
-			end
-		end
-		items[#items + 1] = { name = "Info", icon = "ℹ", fn = openPage("info") }
-		if hasPreview(asset) then
-			items[#items + 1] = { name = "Preview", icon = "⬡", fn = openPage("preview") }
-		end
+		return
 	end
 
 	local back = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 39 }, self._root)
@@ -2736,7 +2851,9 @@ function M:_pagesFor(asset)
 	if #self:_controlsFor(asset) > 0 then
 		out[#out + 1] = PAGES.actions
 	end
-	out[#out + 1] = PAGES.info
+	if hasInfo(asset) then
+		out[#out + 1] = PAGES.info
+	end
 	if hasPreview(asset) then
 		out[#out + 1] = PAGES.preview
 	end
