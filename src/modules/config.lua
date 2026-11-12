@@ -20,7 +20,9 @@ local function createConfigModule(deps)
     local _globalSettingsData = _workspace.GlobalSettings
     local _applyingPreset = false
     local _presetSettingsOverrides = {}
-    JL._autoSave = true; JL._addonAutoSave = false
+    local _autoSave = true
+    local _addonAutoSave = false
+    JL._autoSave = _autoSave; JL._addonAutoSave = _addonAutoSave
     JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
 
 local function safeFileName(value)
@@ -115,8 +117,8 @@ end
 local function persistable(flag)
     if type(flag) ~= "string" then return true end
     if flag:sub(1,1) == "_" then return true end -- настройки интерфейса сохраняются всегда
-    if flag:sub(1,6) == "addon." then return JL._addonAutoSave == true end
-    return JL._autoSave ~= false
+    if flag:sub(1,6) == "addon." then return _addonAutoSave == true end
+    return _autoSave ~= false
 end
 local function cfgLoad(name)
     loadGlobalSettings()
@@ -145,8 +147,9 @@ local function cfgLoad(name)
             if decodeOk and type(data) == "table" then for key, value in pairs(data) do _cfgData[key] = value end end
         end
     end
-    JL._autoSave = (_cfgData._autosave ~= false)
-    JL._addonAutoSave = (_cfgData._addons_autosave == true)
+    _autoSave = (_cfgData._autosave ~= false)
+    _addonAutoSave = (_cfgData._addons_autosave == true)
+    JL._autoSave = _autoSave; JL._addonAutoSave = _addonAutoSave
     if _workspace.GlobalSettingsEnabled then
         local seeded = false
         for flag,val in pairs(_cfgData) do
@@ -192,6 +195,8 @@ end
 local function cfgSet(flag,val,store)
     if not flag then return end
     if store == nil then store = val end
+    if flag == "_autosave" then _autoSave = val ~= false; JL._autoSave = _autoSave end
+    if flag == "_addons_autosave" then _addonAutoSave = val == true; JL._addonAutoSave = _addonAutoSave end
     JL.Flags[flag] = val
     if flag == "_global_settings" then
         if val == true then for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end end
@@ -267,6 +272,7 @@ end
         SetApplyingPreset = function(value) _applyingPreset = value == true end,
         ClearPresetSettingsOverrides = function()
             for key in pairs(_presetSettingsOverrides) do _presetSettingsOverrides[key] = nil end
-        end
+        end,
+        Fork = function() return createConfigModule(deps) end
     }
 end
