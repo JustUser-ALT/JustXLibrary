@@ -6678,14 +6678,14 @@ function JL:Window(opts)
     end)
     function Win:Settings()
         if opts.Settings == false then return nil end
-        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Interface"})
+        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings"})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
         local navW = 146
         local PW = IW - navW - 8
         local nav = Instance.new("Frame"); nav.Size = UDim2.new(0,navW,1,0); nav.BackgroundColor3 = C.panel; nav.BorderSizePixel = 0; nav.Parent = root; corner(10,nav); stroke(C.border,1,nav)
         newTxt({Parent=nav,Text=opts.Title or "JustLib",Font=GB,Size=15,Sz=UDim2.new(1,-28,0,20),Pos=UDim2.new(0,14,0,14)})
-        newTxt({Parent=nav,Text="Interface · v" .. JL.Version,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,14,0,35)})
+        newTxt({Parent=nav,Text="Settings · v" .. JL.Version,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,14,0,35)})
         local nl = Instance.new("Frame"); nl.Size = UDim2.new(1,-28,0,1); nl.Position = UDim2.new(0,14,0,58); nl.BackgroundColor3 = C.divLine; nl.BackgroundTransparency = 0.4; nl.BorderSizePixel = 0; nl.Parent = nav
         local navList = Instance.new("ScrollingFrame"); navList.Name = "SettingsNavigation"; navList.Size = UDim2.new(1,-16,1,-74); navList.Position = UDim2.new(0,8,0,68)
         navList.BackgroundTransparency = 1; navList.BorderSizePixel = 0; navList.ClipsDescendants = true
