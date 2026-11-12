@@ -5047,7 +5047,7 @@ function JL:Window(opts)
                     end
                 end
                 if _workspace.ActiveHubId and _workspace.SetActiveHub then
-                    _workspace.SetActiveHub(_workspace.ActiveHubId)
+                    _workspace.SetActiveHub(_workspace.ActiveHubId, true)
                 end
             end
         end
