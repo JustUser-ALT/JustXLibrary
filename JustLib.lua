@@ -4770,6 +4770,10 @@ end
 function JL:Window(opts)
     opts = opts or {}
     local hubConfig = Config.Fork()
+    local _cfgData = hubConfig.Data
+    local _memData = hubConfig.MemoryData
+    local _globalSettingsData = hubConfig.GlobalSettingsData
+    local _presetSettingsOverrides = hubConfig.PresetSettingsOverrides
     local cfgLoad = function(name) return hubConfig.Load(name) end
     local cfgSave = function() return hubConfig.Save() end
     local cfgHas = function(flag) return hubConfig.Has(flag) end
@@ -4916,8 +4920,8 @@ function JL:Window(opts)
         if not ok or not raw or raw == "" then return false end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, raw)
         if not ok2 or type(data) ~= "table" then return false end
-        Config.ClearPresetSettingsOverrides()
-        Config.SetApplyingPreset(true)
+        hubConfig.ClearPresetSettingsOverrides()
+        hubConfig.SetApplyingPreset(true)
         for flag,val in pairs(data) do
             if isLibrarySetting(flag) and flag == "_theme" then
                 pcall(function() JL:SetTheme(val) end)
@@ -4930,7 +4934,7 @@ function JL:Window(opts)
                 end
             end
         end
-        Config.SetApplyingPreset(false)
+        hubConfig.SetApplyingPreset(false)
         if JL._notifyReposition then pcall(JL._notifyReposition) end
         if JL._remoteRefresh then pcall(JL._remoteRefresh) end
         if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
@@ -7054,7 +7058,7 @@ function JL:Window(opts)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
             if v then
-                Config.ClearPresetSettingsOverrides()
+                hubConfig.ClearPresetSettingsOverrides()
                 for flag,val in pairs(_globalSettingsData) do
                     if isLibrarySetting(flag) then
                         if flag == "_theme" then
