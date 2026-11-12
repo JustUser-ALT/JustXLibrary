@@ -784,9 +784,10 @@ end
 local _cfgFile = nil; local _cfgData = {}; local _saveQueued = false
 local _memData = {} -- значения, которые не пишутся на диск (Auto Save выключен): живут только до конца сессии
 local _globalSettingsFile = "JustX/Settings.lua"
-local _globalSettingsData = {}
-local _globalSettingsEnabled = true
-local _globalSaveQueued = false
+_workspace.GlobalSettings = type(_workspace.GlobalSettings) == "table" and _workspace.GlobalSettings or {}
+_workspace.GlobalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
+_workspace.GlobalSettingsLoaded = _workspace.GlobalSettingsLoaded == true
+local _globalSettingsData = _workspace.GlobalSettings
 local _applyingPreset = false
 local _presetSettingsOverrides = {}
 JL._autoSave = true; JL._addonAutoSave = false
@@ -848,32 +849,37 @@ local function isLibrarySetting(flag)
     return not excluded[flag]
 end
 local function saveGlobalSettings()
-    if not writefile or _globalSaveQueued then return end
-    _globalSaveQueued = true
-    trackedDelay(.4, function()
-        _globalSaveQueued = false
+    if not writefile or _workspace.GlobalSaveQueued then return end
+    _workspace.GlobalSaveQueued = true
+    -- This write belongs to the shared workspace, not to one hub's lifetime.
+    task.delay(.4, function()
+        _workspace.GlobalSaveQueued = false
         ensureFolder("JustX")
-        _globalSettingsData._enabled = _globalSettingsEnabled
+        _globalSettingsData._enabled = _workspace.GlobalSettingsEnabled ~= false
         pcall(function()
             writefile(_globalSettingsFile, "return " .. serializeLua(_globalSettingsData))
         end)
     end)
 end
 local function loadGlobalSettings()
-    _globalSettingsData = {}
-    _globalSettingsEnabled = true
-    if readfile then
-        local ok, raw = pcall(readfile, _globalSettingsFile)
-        if ok and type(raw) == "string" and raw ~= "" and type(loadstring) == "function" then
-            local okFn, fn = pcall(loadstring, raw)
-            if okFn and type(fn) == "function" then
-                local okData, data = pcall(fn)
-                if okData and type(data) == "table" then _globalSettingsData = data end
+    if not _workspace.GlobalSettingsLoaded then
+        local loaded = {}
+        if readfile then
+            local ok, raw = pcall(readfile, _globalSettingsFile)
+            if ok and type(raw) == "string" and raw ~= "" and type(loadstring) == "function" then
+                local okFn, fn = pcall(loadstring, raw)
+                if okFn and type(fn) == "function" then
+                    local okData, data = pcall(fn)
+                    if okData and type(data) == "table" then loaded = data end
+                end
             end
         end
+        for key in pairs(_globalSettingsData) do _globalSettingsData[key] = nil end
+        for key, value in pairs(loaded) do _globalSettingsData[key] = value end
+        _workspace.GlobalSettingsEnabled = _globalSettingsData._enabled ~= false
+        _workspace.GlobalSettingsLoaded = true
     end
-    _globalSettingsEnabled = _globalSettingsData._enabled ~= false
-    JL._globalSettingsEnabled = _globalSettingsEnabled
+    JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
 end
 local function persistable(flag)
     if type(flag) ~= "string" then return true end
