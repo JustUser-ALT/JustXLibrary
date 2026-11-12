@@ -3875,6 +3875,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if refreshing then return false end
                 local oldRow = stable.Row
                 if not oldRow or not oldRow.Parent then return false end
+                local oldWrapper = oldRow.Parent.Name == "JLMetaRow" and oldRow.Parent or nil
+                local oldRoot = oldWrapper or oldRow
                 refreshing = true
                 local nextOptions = cloneDropdownData(resolveDropdownOptions(overrideOptions or optionsSource,lastOptions))
                 if sameDropdownData(lastOptions,nextOptions) then
@@ -3895,7 +3897,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 nextOpts.Options = nextOptions
                 nextOpts._DynamicState = uiState
                 nextOpts.Callback = nil
-                local oldLayout = oldRow.LayoutOrder
+                local oldLayout = oldRoot.LayoutOrder
                 local oldLocked = stable.IsLocked and stable.IsLocked() or false
                 local oldHidden = stable.IsHidden and stable.IsHidden() or false
                 local ok,newControl = pcall(create,self,nextOpts)
@@ -3931,10 +3933,17 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
                 if uiState and newControl.RestoreDynamicState then
                     pcall(newControl.RestoreDynamicState,newControl,uiState)
                 end
-                if newControl.Row then newControl.Row.LayoutOrder = oldLayout end
+                if newControl.Row then
+                    local newWrapper = newControl.Row.Parent and newControl.Row.Parent.Name == "JLMetaRow" and newControl.Row.Parent or nil
+                    (newWrapper or newControl.Row).LayoutOrder = oldLayout
+                end
                 if oldLocked and newControl.SetLocked then pcall(newControl.SetLocked,newControl,true) end
                 if oldHidden and newControl.SetHidden then pcall(newControl.SetHidden,newControl,true) end
-                oldRow:Destroy()
+                if oldWrapper then oldWrapper:Destroy() else oldRow:Destroy() end
+                for i = #(JL._metaButtons or {}), 1, -1 do
+                    local button = JL._metaButtons[i]
+                    if not button or not button.Parent then table.remove(JL._metaButtons, i) end
+                end
                 for k in pairs(stable) do stable[k] = nil end
                 for k,v in pairs(newControl) do stable[k] = v end
                 lastOptions = nextOptions
