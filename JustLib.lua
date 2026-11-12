@@ -5115,7 +5115,7 @@ function JL:Window(opts)
         win.Visible = workspaceVisible and isOpen
         badge2.Visible = workspaceVisible and not isOpen
         JL._winOpen = workspaceVisible and isOpen
-        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+        if hubEntry and hubEntry.alive and _workspace.Hubs[hubId] == hubEntry and _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
             _workspace.HubTabsFrame.Visible = workspaceVisible and isOpen and _workspace.HubTabsFrame.Parent == win
         end
         applyBlur()
@@ -5124,23 +5124,23 @@ function JL:Window(opts)
     local function openW()
         if _dead then return end
         isOpen = true; JL._winOpen = workspaceVisible; win.Visible = workspaceVisible; badge2.Visible = false
-        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+        if hubEntry and hubEntry.alive and _workspace.Hubs[hubId] == hubEntry and _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
             _workspace.HubTabsFrame.Visible = workspaceVisible and _workspace.HubTabsFrame.Parent == win
         end
         if animOn then uiScale.Scale = userScale * 0.88; tw(uiScale,{Scale = userScale},.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out) else uiScale.Scale = userScale end
-        tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur()
+        tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur(); pcall(refreshWorkspaceTabs)
     end
     local function closeW()
         if _dead then return end
         isOpen = false; JL._winOpen = false; badge2.Visible = workspaceVisible
-        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+        if hubEntry and hubEntry.alive and _workspace.Hubs[hubId] == hubEntry and _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
             _workspace.HubTabsFrame.Visible = false
         end
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
             trackedDelay(.19, function() if not isOpen or not workspaceVisible then win.Visible = false end end)
         else win.Visible = false end
-        tw(badge2,{BackgroundColor3 = C.badge},.15); applyBlur()
+        tw(badge2,{BackgroundColor3 = C.badge},.15); applyBlur(); pcall(refreshWorkspaceTabs)
     end
     draggable(badgeTap, badge2, function() if isOpen then closeW() else openW() end end, function(position)
         _workspace.BadgePosition = position
