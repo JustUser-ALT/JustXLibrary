@@ -25,3 +25,5 @@ node build.js --check
 ```
 
 The build check compares the checked-in `JustLib.lua` byte-for-byte with the concatenated source fragments.
+
+`modules/workspace.lua` defines the shared workspace and Multi-Hub state module. It owns hub registration, active-hub switching, per-hub GUI naming/registration, and the persisted Multi-Hub Tabs setting. Its factory receives filesystem and shared-state dependencies explicitly.
