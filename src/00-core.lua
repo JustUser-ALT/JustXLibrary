@@ -1,83 +1,20 @@
 local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
 JL._registry = {}; JL._noSave = {}
 
--- Shared workspace metadata survives repeated script injections.
-local _workspace = shared._JLWorkspace
-if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
-    _workspace = {Version = 1, Hubs = {}, ActiveHubId = nil, MultiHubTabsEnabled = true}
-    shared._JLWorkspace = _workspace
-end
-if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
-if type(_workspace.ConfigSaveQueue) ~= "table" then _workspace.ConfigSaveQueue = {} end
-if _workspace.MultiHubTabsLoaded ~= true then
-    local loaded
-    if type(readfile) == "function" then
-        local ok, raw = pcall(readfile, "JustX/HubSettings.lua")
-        if ok and type(raw) == "string" and raw ~= "" and type(loadstring) == "function" then
-            local okFn, fn = pcall(loadstring, raw)
-            if okFn and type(fn) == "function" then
-                local okData, data = pcall(fn)
-                if okData and type(data) == "table" then loaded = data end
-            end
-        end
-    end
-    if type(loaded) == "table" and type(loaded.MultiHubTabs) == "boolean" then
-        _workspace.MultiHubTabsEnabled = loaded.MultiHubTabs
-    elseif _workspace.MultiHubTabsEnabled == nil then
-        _workspace.MultiHubTabsEnabled = true
-    end
-    _workspace.MultiHubTabsLoaded = true
-end
-_workspace.JoinPolicy = nil
-_workspace.JoinPromptEnabled = nil
-_workspace.JoinSettingsLoaded = nil
-local function saveWorkspaceSettings()
-    if type(writefile) ~= "function" then return false end
-    if type(isfolder) == "function" then
-        local ok, exists = pcall(isfolder, "JustX")
-        if not ok or not exists then
-            if type(makefolder) == "function" then pcall(makefolder, "JustX") end
-        end
-    elseif type(makefolder) == "function" then
-        pcall(makefolder, "JustX")
-    end
-    local data = "return {MultiHubTabs=" .. tostring(_workspace.MultiHubTabsEnabled ~= false) .. "}"
-    local ok = pcall(writefile, "JustX/HubSettings.lua", data)
-    return ok
-end
-_workspace.SetActiveHub = function(hubId, openTarget)
-    local target = _workspace.Hubs[hubId]
-    if not target or not target.alive then return false end
-    _workspace.ActiveHubId = hubId
-    shared._JLActive = target
-    for otherId, entry in pairs(_workspace.Hubs) do
-        if entry and entry.alive and type(entry.setWorkspaceVisible) == "function" then
-            pcall(entry.setWorkspaceVisible, otherId == hubId)
-        end
-    end
-    if openTarget == true and type(target.openWindow) == "function" then
-        pcall(target.openWindow)
-    end
-    return true
-end
-local _currentHubId = "JustLib"
-local _hubGuiRoots = {}
-local function scopedGuiName(baseName, hubId)
-    local safe = tostring(hubId or "JustLib"):gsub("[\\/:*?\"<>|]", "_"):gsub("[%c]", "_")
-    return "JL_" .. safe .. "_" .. tostring(baseName or "UI")
-end
-local function registerHubGui(gui, baseName)
-    if not gui then return nil end
-    gui.Name = scopedGuiName(baseName, _currentHubId)
-    _hubGuiRoots[#_hubGuiRoots + 1] = gui
-    return gui
-end
-local function resolveHubIdentity(opts)
-    local raw = opts.HubId
-    if raw == nil or tostring(raw):match("^%s*$") then raw = opts.Config end
-    if raw == nil or tostring(raw):match("^%s*$") then raw = "JustLib" end
-    return tostring(raw):match("^%s*(.-)%s*$")
-end
+local Workspace = createWorkspaceModule({
+    Shared = shared,
+    ReadFile = readfile,
+    WriteFile = writefile,
+    IsFolder = isfolder,
+    MakeFolder = makefolder,
+    LoadString = loadstring,
+})
+local _workspace = Workspace.Workspace
+local saveWorkspaceSettings = Workspace.SaveSettings
+local resolveHubIdentity = Workspace.ResolveHubIdentity
+local scopedGuiName = Workspace.ScopedGuiName
+local registerHubGui = Workspace.RegisterGui
+local _hubGuiRoots = Workspace.GuiRoots
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
 local HTTP        = game:GetService("HttpService")
