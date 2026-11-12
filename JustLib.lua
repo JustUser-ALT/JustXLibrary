@@ -6811,9 +6811,11 @@ function JL:Window(opts)
         local themeIntro = Instance.new("Frame"); themeIntro.Size = UDim2.new(1,0,0,26); themeIntro.BackgroundTransparency = 1; themeIntro.LayoutOrder = rowOrd; themeIntro.Parent = pT
         newTxt({Parent=themeIntro,Text="Pick a palette — everything on screen repaints live",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-32,1,0),Pos=UDim2.new(0,16,0,0)})
         rowOrd = rowOrd + 1
-        local themeGrid = Instance.new("Frame"); themeGrid.Size = UDim2.new(1,-32,0,0); themeGrid.Position = UDim2.new(0,16,0,0); themeGrid.BackgroundTransparency = 1; themeGrid.LayoutOrder = rowOrd; themeGrid.Parent = pT
+        local themeCols = math.max(1, math.floor((PW - 32 + 8) / 136))
+        local themeRows = math.ceil(#JL._themeOrder / themeCols)
+        local themeGridH = themeRows > 0 and (themeRows * 74 + (themeRows - 1) * 8) or 0
+        local themeGrid = Instance.new("Frame"); themeGrid.Size = UDim2.new(1,-32,0,themeGridH); themeGrid.Position = UDim2.new(0,16,0,0); themeGrid.BackgroundTransparency = 1; themeGrid.LayoutOrder = rowOrd; themeGrid.Parent = pT
         local tgl = Instance.new("UIGridLayout"); tgl.CellSize = UDim2.new(0,128,0,74); tgl.CellPadding = UDim2.new(0,8,0,8); tgl.SortOrder = Enum.SortOrder.LayoutOrder; tgl.Parent = themeGrid
-        tgl:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() themeGrid.Size = UDim2.new(1,-32,0,tgl.AbsoluteContentSize.Y) end)
         table.insert(JL._noRepaintRoots, themeGrid)
         local themeCards = {}
         local function paintCards()
@@ -7086,17 +7088,16 @@ function JL:Window(opts)
             end
             JL:Notify({Title = "Config Imported", Desc = applied .. " setting(s) applied", Type = (applied > 0) and "Success" or "Warn", Duration = 4})
         end)
-        local pC = newPage("Backup", "Restore interface defaults")
-        addButton(pC, "Reset interface", "Restores every setting on the Interface page", "Reset", true, function()
+        local pDebug = newPage("Debug", "Library information and recovery tools")
+        addButton(pDebug, "Reset interface", "Restores every setting on the Interface page", "Reset", true, function()
             if confirmDialog("Reset Settings", "Restore all interface settings to their defaults?", {Danger = true, ConfirmText = "Reset"}) then
                 for _,fn in ipairs(resetters) do pcall(fn) end
             end
         end)
-        local pB = newPage("About", "JustLib")
-        addValue(pB, "Version", nil, "JustLib v" .. JL.Version)
-        addValue(pB, "Tabs loaded", nil, tostring(_tabCount))
-        addValue(pB, "Columns", "Visible at once. Left Shift + wheel scrolls sideways", tostring(VIS))
-        addButton(pB, "Close Hub", "Fully unloads the hub", "Unload", true, function()
+        addValue(pDebug, "Version", nil, "JustLib v" .. JL.Version)
+        addValue(pDebug, "Tabs loaded", nil, tostring(_tabCount))
+        addValue(pDebug, "Columns", "Visible at once. Left Shift + wheel scrolls sideways", tostring(VIS))
+        addButton(pDebug, "Close Hub", "Fully unloads the hub", "Unload", true, function()
             if unloadDialog() then destroyHub() end
         end)
         showPage("Interface")
