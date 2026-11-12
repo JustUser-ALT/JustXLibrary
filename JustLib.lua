@@ -1,5 +1,20 @@
 local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
 JL._registry = {}; JL._noSave = {}
+
+-- Shared workspace metadata survives repeated script injections.
+-- Multi-hub UI is intentionally not enabled until each hub has an isolated runtime context.
+local _workspace = shared._JLWorkspace
+if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
+    _workspace = {Version = 1, Hubs = {}, ActiveHubId = nil, JoinPolicy = nil}
+    shared._JLWorkspace = _workspace
+end
+if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
+local function resolveHubIdentity(opts)
+    local raw = opts.HubId
+    if raw == nil or tostring(raw):match("^%s*$") then raw = opts.Config end
+    if raw == nil or tostring(raw):match("^%s*$") then raw = "JustLib" end
+    return tostring(raw):match("^%s*(.-)%s*$")
+end
 local TS          = game:GetService("TweenService")
 local UIS         = game:GetService("UserInputService")
 local HTTP        = game:GetService("HttpService")
@@ -4277,6 +4292,9 @@ local function removeOrphanedHubGuis()
 end
 function JL:Window(opts)
     opts = opts or {}
+    local hubId = resolveHubIdentity(opts)
+    local hubTitle = tostring(opts.Title or hubId)
+    local hubEntry
     _disposed = false
     JL._perfEnabled = opts.DebugPerformance == true
     local hubStartTick = tick()
@@ -4715,6 +4733,10 @@ function JL:Window(opts)
     local function destroyHub()
         if _dead then return end
         _dead = true; isOpen = false; JL._winOpen = false
+        if hubEntry and _workspace.Hubs[hubId] == hubEntry then
+            _workspace.Hubs[hubId] = nil
+            if _workspace.ActiveHubId == hubId then _workspace.ActiveHubId = nil end
+        end
         JL._searchRegister = nil
         if JL._searchEntries then for k in pairs(JL._searchEntries) do JL._searchEntries[k] = nil end end
         if JL._searchPageTargets then for k in pairs(JL._searchPageTargets) do JL._searchPageTargets[k] = nil end end
@@ -7337,7 +7359,18 @@ function JL:Window(opts)
         end
         return T
     end
-    shared._JLActive = {alive = true, destroy = destroyHub}
+    hubEntry = {
+        HubId = hubId,
+        Config = opts.Config,
+        Title = hubTitle,
+        alive = true,
+        destroy = destroyHub,
+        win = win,
+        badge = badge2
+    }
+    _workspace.Hubs[hubId] = hubEntry
+    _workspace.ActiveHubId = hubId
+    shared._JLActive = {alive = true, destroy = destroyHub, HubId = hubId}
     JL._destroyActive = destroyHub
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
