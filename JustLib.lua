@@ -9,6 +9,18 @@ if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
     shared._JLWorkspace = _workspace
 end
 if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
+_workspace.SetActiveHub = function(hubId)
+    local target = _workspace.Hubs[hubId]
+    if not target or not target.alive then return false end
+    for otherId, entry in pairs(_workspace.Hubs) do
+        if entry and entry.alive and type(entry.setWorkspaceVisible) == "function" then
+            pcall(entry.setWorkspaceVisible, otherId == hubId)
+        end
+    end
+    _workspace.ActiveHubId = hubId
+    shared._JLActive = target
+    return true
+end
 local _currentHubId = "JustLib"
 local _hubGuiRoots = {}
 local function scopedGuiName(baseName, hubId)
@@ -4792,6 +4804,9 @@ function JL:Window(opts)
                         break
                     end
                 end
+                if _workspace.ActiveHubId and _workspace.SetActiveHub then
+                    _workspace.SetActiveHub(_workspace.ActiveHubId)
+                end
             end
         end
         JL._searchRegister = nil
@@ -7441,8 +7456,7 @@ function JL:Window(opts)
         RemoteGuiName = hubGuiName(hubId, true)
     }
     _workspace.Hubs[hubId] = hubEntry
-    _workspace.ActiveHubId = hubId
-    shared._JLActive = hubEntry
+    _workspace.SetActiveHub(hubId)
     JL._destroyActive = destroyHub
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
