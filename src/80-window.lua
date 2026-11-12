@@ -1,5 +1,12 @@
 function JL:Window(opts)
     opts = opts or {}
+    local hubConfig = Config.Fork()
+    local cfgLoad = function(name) return hubConfig.Load(name) end
+    local cfgSave = function() return hubConfig.Save() end
+    local cfgHas = function(flag) return hubConfig.Has(flag) end
+    local cfgSet = function(flag, value, store) return hubConfig.Set(flag, value, store) end
+    local cfgGet = function(flag, default) return hubConfig.Get(flag, default) end
+    local cfgFlush = function() return hubConfig.Flush() end
     local hubId = resolveHubIdentity(opts)
     local hubTitle = tostring(opts.Title or hubId)
     _currentHubId = hubId
@@ -1040,13 +1047,13 @@ function JL:Window(opts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip)
+                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip, hubConfig)
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip)
+                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig)
             end
             for i = 1,VIS do getCol(i) end
         elseif typ == "Custom" then
@@ -1061,11 +1068,11 @@ function JL:Window(opts)
             local _sOrd = 0
             function Tab:Section(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip)
+                return makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig)
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip)
+                return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip, hubConfig)
             end
         end
         return Tab
@@ -1467,7 +1474,7 @@ function JL:Window(opts)
             Callback = function(v)
                 JL._addonAutoSave = v
                 if AM.building then return end
-                if v and JL._cfgFlush then JL._cfgFlush() end
+                if v then cfgFlush() end
                 JL:Notify({Title = "Addons", Desc = v and "Auto Save on: enabled addons will be restored next launch" or "Auto Save off: addons start disabled next launch", Type = "Info", Duration = 3})
             end,
         })
@@ -2273,7 +2280,7 @@ function JL:Window(opts)
         local pP = newPage("Presets", "Save and load snapshots of your enabled features")
         addSwitch(pP, "Auto Save", "Remembers this hub's toggles and values between launches. Library settings are managed separately below", "_autosave", true, function(v)
             JL._autoSave = v
-            if v and JL._cfgFlush then JL._cfgFlush() end
+            if v then cfgFlush() end
         end)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
