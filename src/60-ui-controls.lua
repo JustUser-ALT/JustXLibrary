@@ -9,7 +9,8 @@ local function mkOptDivider(container,order,o,h)
         newTxt({Parent=chip,Text=o.Divider,Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center})
     end
 end
-local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
+local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
+    local cfgGet, cfgSet, cfgHas = config.Get, config.Set, config.Has
     local function unscale(px)
         local s = (uiScale and uiScale.Scale) or 1
         if not s or s <= 0 then s = 1 end
@@ -85,7 +86,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
             layout.SortOrder = Enum.SortOrder.LayoutOrder; layout.Padding = UDim.new(0,6); layout.Parent = body
             pad(2,2,3,6,body)
             local innerWidth = math.max(170, math.min(264, panel.AbsoluteSize.X - 28))
-            local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip)
+            local nested = attachWidgets(body,innerWidth,ac,uiScale,parentSg,attachTip,config)
             local count = 0
             for _,definition in ipairs(type(meta) == "table" and meta or {}) do
                 if type(definition) == "table" then
@@ -921,8 +922,8 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
         newTxt({Parent=row,Text=name,Font=GB,Size=12,Wrap=true,Sz=UDim2.new(0,labW,1,0),Pos=UDim2.new(0,10,0,0)})
         local ctrls = {}
         local x = startX
-        if o.A then ctrls.A = mkCompactControl(row, x, wA, o.A, ac, regFlag, parentSg); x = x + wA + gap end
-        if o.B then ctrls.B = mkCompactControl(row, x, wB, o.B, ac, regFlag, parentSg) end
+        if o.A then ctrls.A = mkCompactControl(row, x, wA, o.A, ac, regFlag, parentSg, cfgGet, cfgSet, cfgHas); x = x + wA + gap end
+        if o.B then ctrls.B = mkCompactControl(row, x, wB, o.B, ac, regFlag, parentSg, cfgGet, cfgSet, cfgHas) end
         return mergeLock(ctrls, row, o)
     end
     function Sec:Text(o)
@@ -1276,7 +1277,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip)
     end
     return Sec
 end
-local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip)
+local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip,config)
     so = so or {}
     local ac = nxAc()
     local iconW = so.Icon and 22 or 0
@@ -1327,7 +1328,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     end
     secBtn.MouseButton1Click:Connect(function() setCollapsed(not collapsed) end)
     if collapsed then content.Visible = false; arrow.Rotation = 180; hfix.Visible = false; hline.Visible = false end
-    local Sec = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip)
+    local Sec = attachWidgets(content, INNER, ac, uiScale, parentSg, attachTip, config)
     Sec.Panel = panel
     function Sec:SetCollapsed(c) if c ~= collapsed then setCollapsed(c) end end
     JL._secPanels[panel] = Sec
@@ -1339,7 +1340,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     Sec.ToggleLocked = secLock.ToggleLocked; Sec.ToggleHidden = secLock.ToggleHidden
     return Sec
 end
-local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiScale,attachTip)
+local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiScale,attachTip,config)
     sopts = sopts or {}
     local ac = nxAc()
     local INNER = colW - 16
@@ -1399,7 +1400,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
         sharedLine.Visible = sharedH > 0; sharedLine.Position = UDim2.new(0,8,0,HH + 1 + sharedH)
         repaint()
     end)
-    local sharedSec = attachWidgets(sharedHost, INNER, ac, uiScale, parentSg, attachTip)
+    local sharedSec = attachWidgets(sharedHost, INNER, ac, uiScale, parentSg, attachTip, config)
     -- любой элемент страницы с Shared = true (или Pinned = true) создаётся в общем блоке сверху
     local function redirect(sec)
         for k,fn in pairs(sec) do
