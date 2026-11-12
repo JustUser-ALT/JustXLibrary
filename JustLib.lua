@@ -221,7 +221,7 @@ local function beginDrag(onMove,onEnd)
         if isPtr(i) then c1:Disconnect(); c2:Disconnect(); if onEnd then onEnd() end end
     end))
 end
-local function draggable(handle,frame,onTap)
+local function draggable(handle,frame,onTap,onDragEnd)
     handle.InputBegan:Connect(function(i)
         if not isPtr(i) then return end
         local ds = Vector2.new(i.Position.X, i.Position.Y); local sp = frame.Position; local moved = false
@@ -229,7 +229,10 @@ local function draggable(handle,frame,onTap)
             local d = Vector2.new(m.Position.X, m.Position.Y) - ds
             if d.Magnitude > 8 then moved = true end
             if moved then frame.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y) end
-        end, function() if not moved and onTap then onTap() end end)
+        end, function()
+            if moved and onDragEnd then onDragEnd(frame.Position)
+            elseif not moved and onTap then onTap() end
+        end)
     end)
 end
 JL._iconOverrides = {}
@@ -4785,7 +4788,7 @@ function JL:Window(opts)
         center = UDim2.new(0.5,-badgeW / 2,0.5,-15),
         bottom = UDim2.new(0.5,-badgeW / 2,1,-44),
     }
-    local badge2 = Instance.new("Frame"); badge2.Size = UDim2.new(0,badgeW,0,30); badge2.Position = BPOS[tostring(cfgGet("_badgepos","Top")):lower()] or BPOS.top
+    local badge2 = Instance.new("Frame"); badge2.Size = UDim2.new(0,badgeW,0,30); badge2.Position = _workspace.BadgePosition or BPOS[tostring(cfgGet("_badgepos","Top")):lower()] or BPOS.top
     badge2.BackgroundColor3 = C.badge; badge2.BorderSizePixel = 0; badge2.ZIndex = 60; badge2.Parent = sg; corner(8,badge2); stroke(C.border,1,badge2)
     BG.register("Badge", badge2, 8)
     JL._activeBadge = badge2
@@ -4808,7 +4811,7 @@ function JL:Window(opts)
             badgeTitleL.Size = UDim2.new(0,badgeTitleW,1,0)
             divF.Position = UDim2.new(0,badgeOffX + badgeTitleW + 10,0.5,-8)
             fpsL.Position = UDim2.new(0,badgeOffX + badgeTitleW + 20,0,0)
-            if os.clock() - t0 < 2 then badge2.Position = BPOS[tostring(cfgGet("_badgepos","Top")):lower()] or BPOS.top end
+            if not _workspace.BadgePosition and os.clock() - t0 < 2 then badge2.Position = BPOS[tostring(cfgGet("_badgepos","Top")):lower()] or BPOS.top end
         end
         fitBadge()
         badgeTitleL:GetPropertyChangedSignal("TextBounds"):Connect(fitBadge)
@@ -5054,7 +5057,9 @@ function JL:Window(opts)
         else win.Visible = false end
         tw(badge2,{BackgroundColor3 = C.badge},.15); applyBlur()
     end
-    draggable(badgeTap, badge2, function() if isOpen then closeW() else openW() end end)
+    draggable(badgeTap, badge2, function() if isOpen then closeW() else openW() end end, function(position)
+        _workspace.BadgePosition = position
+    end)
     keep(UIS.InputBegan:Connect(function(i,gp)
         if gp or JL._listening then return end
         if hotkey and i.KeyCode == hotkey then if isOpen then closeW() else openW() end end
@@ -6769,7 +6774,14 @@ function JL:Window(opts)
         end
         do
             local _,ctrl = mkRow(pI, "Badge Position", "Where the small FPS badge sits on screen", 190)
-            local function apply(name) local p = BPOS[name:lower()]; if p then tw(badge2,{Position = p},.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out) end; cfgSet("_badgepos", name) end
+            local function apply(name)
+                local p = BPOS[name:lower()]
+                if p then
+                    _workspace.BadgePosition = p
+                    tw(badge2,{Position = p},.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out)
+                end
+                cfgSet("_badgepos", name)
+            end
             local seg = mkSegmented(ctrl, UDim2.new(0,0,0,0), UDim2.new(1,0,1,0), {"Top","Center","Bottom"}, tostring(cfgGet("_badgepos","Top")), ACC, apply)
             JL._registry["_badgepos"] = {Set = function(_,value) seg.Set(value, true); apply(value) end, Get = function() return cfgGet("_badgepos","Top") end}
             JL._noSave["_badgepos"] = nil
