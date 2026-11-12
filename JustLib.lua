@@ -4741,18 +4741,28 @@ function JL:Window(opts)
         elseif blurObj then blurObj.Enabled = false end
     end
     local isOpen = false
+    local workspaceVisible = true
+    local function setWorkspaceVisible(visible)
+        if _dead then return false end
+        workspaceVisible = visible == true
+        win.Visible = workspaceVisible and isOpen
+        badge2.Visible = workspaceVisible and not isOpen
+        JL._winOpen = workspaceVisible and isOpen
+        applyBlur()
+        return true
+    end
     local function openW()
         if _dead then return end
-        isOpen = true; JL._winOpen = true; win.Visible = true; badge2.Visible = false
+        isOpen = true; JL._winOpen = workspaceVisible; win.Visible = workspaceVisible; badge2.Visible = false
         if animOn then uiScale.Scale = userScale * 0.88; tw(uiScale,{Scale = userScale},.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out) else uiScale.Scale = userScale end
         tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur()
     end
     local function closeW()
         if _dead then return end
-        isOpen = false; JL._winOpen = false; badge2.Visible = true
+        isOpen = false; JL._winOpen = false; badge2.Visible = workspaceVisible
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
-            trackedDelay(.19, function() if not isOpen then win.Visible = false end end)
+            trackedDelay(.19, function() if not isOpen or not workspaceVisible then win.Visible = false end end)
         else win.Visible = false end
         tw(badge2,{BackgroundColor3 = C.badge},.15); applyBlur()
     end
@@ -4829,6 +4839,8 @@ function JL:Window(opts)
     function Win:Destroy() destroyHub() end
     function Win:Unload() destroyHub() end
     function Win:IsOpen() return isOpen end
+    function Win:SetWorkspaceVisible(visible) return setWorkspaceVisible(visible) end
+    function Win:IsWorkspaceVisible() return workspaceVisible end
     function Win:Track(resource, cleanup) return JL:Track(resource, cleanup) end
     function Win:Connect(signal, callback) return JL:Connect(signal, callback) end
     function Win:Spawn(callback, ...) return JL:Spawn(callback, ...) end
@@ -7423,6 +7435,8 @@ function JL:Window(opts)
         destroy = destroyHub,
         win = win,
         badge = badge2,
+        setWorkspaceVisible = setWorkspaceVisible,
+        isOpen = function() return isOpen end,
         GuiName = hubGuiName(hubId, false),
         RemoteGuiName = hubGuiName(hubId, true)
     }
