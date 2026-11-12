@@ -4485,42 +4485,47 @@ refreshWorkspaceTabs = function()
 
         local bar = Instance.new("Frame")
         bar.Name = "HubTabs"
-        bar.AnchorPoint = Vector2.new(0.5, 0)
-        bar.Position = UDim2.new(0.5, 0, 0, 8)
-        bar.Size = UDim2.new(0.9, 0, 0, 40)
-        bar.BackgroundColor3 = Color3.fromRGB(27, 29, 35)
-        bar.BackgroundTransparency = 0.04
+        bar.AnchorPoint = Vector2.new(0.5, 1)
+        bar.Position = UDim2.new(0.5, 0, 0, -7)
+        bar.Size = UDim2.new(0, 300, 0, 32)
+        bar.BackgroundColor3 = Color3.fromRGB(24, 26, 32)
+        bar.BackgroundTransparency = 0.08
         bar.BorderSizePixel = 0
+        bar.ClipsDescendants = true
+        bar.ZIndex = 90
         bar.Parent = gui
         local barCorner = Instance.new("UICorner")
-        barCorner.CornerRadius = UDim.new(0, 10)
+        barCorner.CornerRadius = UDim.new(0, 9)
         barCorner.Parent = bar
         local barStroke = Instance.new("UIStroke")
-        barStroke.Color = Color3.fromRGB(65, 69, 80)
-        barStroke.Transparency = 0.2
+        barStroke.Color = Color3.fromRGB(78, 86, 105)
+        barStroke.Transparency = 0.32
         barStroke.Thickness = 1
         barStroke.Parent = bar
-        local sizeLimit = Instance.new("UISizeConstraint")
-        sizeLimit.MinSize = Vector2.new(250, 40)
-        sizeLimit.MaxSize = Vector2.new(680, 40)
-        sizeLimit.Parent = bar
 
         local scroll = Instance.new("ScrollingFrame")
         scroll.Name = "HubList"
-        scroll.Position = UDim2.new(0, 7, 0, 5)
-        scroll.Size = UDim2.new(1, -14, 1, -10)
+        scroll.Position = UDim2.new(0, 5, 0, 4)
+        scroll.Size = UDim2.new(1, -10, 1, -8)
         scroll.BackgroundTransparency = 1
         scroll.BorderSizePixel = 0
         scroll.ScrollBarThickness = 2
+        scroll.ScrollBarImageColor3 = Color3.fromRGB(105, 137, 190)
         scroll.ScrollingDirection = Enum.ScrollingDirection.X
         scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+        scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+        scroll.ZIndex = 91
         scroll.Parent = bar
         local layout = Instance.new("UIListLayout")
         layout.FillDirection = Enum.FillDirection.Horizontal
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, 5)
+        layout.Padding = UDim.new(0, 4)
         layout.Parent = scroll
+        local listPadding = Instance.new("UIPadding")
+        listPadding.PaddingLeft = UDim.new(0, 1)
+        listPadding.PaddingRight = UDim.new(0, 1)
+        listPadding.Parent = scroll
 
         _workspace.HubTabsGui = gui
         _workspace.HubTabsFrame = bar
@@ -4528,7 +4533,17 @@ refreshWorkspaceTabs = function()
 
     local bar = _workspace.HubTabsFrame
     if not bar or not bar.Parent then return end
-    bar.Visible = #entries >= 2
+    local activeEntry = _workspace.ActiveHubId and _workspace.Hubs[_workspace.ActiveHubId]
+    local activeWindow = activeEntry and activeEntry.win
+    if activeWindow and activeWindow.Parent then
+        bar.Parent = activeWindow
+        local windowWidth = activeWindow.Size.X.Offset
+        bar.Size = UDim2.new(0, math.clamp(windowWidth - 24, 210, 340), 0, 32)
+        bar.Position = UDim2.new(0.5, 0, 0, -7)
+    else
+        bar.Parent = gui
+    end
+    bar.Visible = #entries >= 2 and activeWindow ~= nil
     local scroll = bar:FindFirstChild("HubList")
     if not scroll then return end
     for _, child in ipairs(scroll:GetChildren()) do
@@ -4542,18 +4557,27 @@ refreshWorkspaceTabs = function()
         local button = Instance.new("TextButton")
         button.Name = "Hub_" .. tostring(index)
         button.LayoutOrder = index
-        button.Size = UDim2.new(0, math.clamp(#title * 7 + 28, 104, 190), 1, -2)
-        button.BackgroundColor3 = active and Color3.fromRGB(65, 112, 190) or Color3.fromRGB(45, 48, 57)
+        button.Size = UDim2.new(0, math.clamp(#title * 6 + 24, 82, 142), 1, -1)
+        button.BackgroundColor3 = active and Color3.fromRGB(48, 67, 101) or Color3.fromRGB(35, 38, 46)
+        button.BackgroundTransparency = active and 0 or 0.18
         button.BorderSizePixel = 0
         button.Text = title
         button.Font = Enum.Font.GothamSemibold
-        button.TextSize = 12
-        button.TextColor3 = Color3.fromRGB(245, 246, 250)
+        button.TextSize = 11
+        button.TextColor3 = active and Color3.fromRGB(225, 236, 255) or Color3.fromRGB(180, 185, 198)
         button.TextTruncate = Enum.TextTruncate.AtEnd
+        button.ZIndex = 92
         button.Parent = scroll
         local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 8)
+        buttonCorner.CornerRadius = UDim.new(0, 7)
         buttonCorner.Parent = button
+        if active then
+            local activeStroke = Instance.new("UIStroke")
+            activeStroke.Color = Color3.fromRGB(104, 151, 224)
+            activeStroke.Transparency = 0.35
+            activeStroke.Thickness = 1
+            activeStroke.Parent = button
+        end
         button.MouseButton1Click:Connect(function()
             if _workspace.Hubs[item.Id] and _workspace.Hubs[item.Id].alive then
                 _workspace.SetActiveHub(item.Id, true)
@@ -5002,18 +5026,27 @@ function JL:Window(opts)
         win.Visible = workspaceVisible and isOpen
         badge2.Visible = workspaceVisible and not isOpen
         JL._winOpen = workspaceVisible and isOpen
+        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+            _workspace.HubTabsFrame.Visible = workspaceVisible and isOpen and _workspace.HubTabsFrame.Parent == win
+        end
         applyBlur()
         return true
     end
     local function openW()
         if _dead then return end
         isOpen = true; JL._winOpen = workspaceVisible; win.Visible = workspaceVisible; badge2.Visible = false
+        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+            _workspace.HubTabsFrame.Visible = workspaceVisible and _workspace.HubTabsFrame.Parent == win
+        end
         if animOn then uiScale.Scale = userScale * 0.88; tw(uiScale,{Scale = userScale},.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out) else uiScale.Scale = userScale end
         tw(badge2,{BackgroundColor3 = C.badgeHi},.15); applyBlur()
     end
     local function closeW()
         if _dead then return end
         isOpen = false; JL._winOpen = false; badge2.Visible = workspaceVisible
+        if _workspace.HubTabsFrame and _workspace.ActiveHubId == hubId then
+            _workspace.HubTabsFrame.Visible = false
+        end
         if animOn then
             tw(uiScale,{Scale = userScale * 0.88},.18,Enum.EasingStyle.Quart,Enum.EasingDirection.In)
             trackedDelay(.19, function() if not isOpen or not workspaceVisible then win.Visible = false end end)
