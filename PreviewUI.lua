@@ -184,18 +184,19 @@ end
 
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
-	local resolved
+	local resolved = type(raw) == "table" and raw or nil
 	if type(raw) == "string" and B and B.icon then
 		local ok, value = pcall(B.icon, raw)
 		if ok then
 			resolved = value
 		end
 	end
-	local url, glyph, font, rectOffset, rectSize
+	local url, glyph, font, fontFace, rectOffset, rectSize
 	if type(resolved) == "table" then
 		url = resolved.Url or resolved.Image or resolved.ImageUrl or resolved.Texture or resolved.Asset or resolved.AssetId or resolved.ImageId or resolved.Id
 		glyph = resolved.Text or resolved.Glyph
 		font = resolved.Font
+		fontFace = resolved.FontFace
 		rectOffset = resolved.ImageRectOffset
 		rectSize = resolved.ImageRectSize
 	elseif type(resolved) == "string" or type(resolved) == "number" then
@@ -218,10 +219,14 @@ local function mkIcon(parent, icon, size, color)
 		return image
 	end
 	local textValue = glyph or (type(raw) == "string" and raw or "")
-	return new("TextLabel", {
+	local label = new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Text = tostring(textValue),
 		TextScaled = true, Font = font or GB, TextColor3 = color,
 	}, parent)
+	if fontFace then
+		pcall(function() label.FontFace = fontFace end)
+	end
+	return label
 end
 
 local function setIconColor(ic, col)
