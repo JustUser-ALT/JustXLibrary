@@ -208,7 +208,7 @@ do
         local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,180,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
         local cb=Instance.new("TextButton"); cb.BorderSizePixel=0; cb.BackgroundTransparency=1; cb.TextSize=14; cb.Font=GB; cb.TextColor3=Color3.new(1,1,1); cb.ZIndex=6; cb.Size=UDim2.new(0,20,0,20); cb.Position=UDim2.new(1,-22,0,2); cb.Text="x"; cb.Parent=f
         cb:SetAttribute("JLNoRepaint", true)
-        local nd = {f=f, g=sg2, HubId=_currentHubId, title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
+        local nd = {f=f, g=sg2, HubId=Workspace.GetCurrentHubId(), title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
         table.insert(active,nd)
         local function close()
             if nd.closing then return end; nd.closing=true
@@ -240,7 +240,7 @@ do
     table.insert(JL._unloadHooks, function()
         for i = #active, 1, -1 do
             local nd = active[i]
-            if nd and nd.HubId == _currentHubId then
+            if nd and nd.HubId == Workspace.GetCurrentHubId() then
                 if nd.close then
                     pcall(nd.close)
                 else
