@@ -1,19 +1,27 @@
 # JustXLibrary source layout
 
-The files in this directory are ordered source fragments of the original library, not standalone Lua modules. They deliberately share the original top-level lexical scope, so local functions and upvalues continue to work exactly as before.
+The files in this directory are ordered source fragments used to build the single-file release. They are not loaded independently at runtime. The root `build.js` concatenates them in manifest order to produce `JustLib.lua`.
 
-Do not execute, require, or reorder individual fragments. The root `build.js` concatenates them byte-for-byte in manifest order to produce the distributable `JustLib.lua`.
+Most legacy fragments still share the original top-level Lua scope so existing local-function and upvalue relationships remain intact.
 
-Build:
+## Isolated modules
+
+`modules/config.lua` defines the Config module factory. It receives its dependencies explicitly and keeps its internal state inside the factory closure. `10-config.lua` initializes that module and exposes only the small compatibility API needed by the rest of the existing library.
+
+This is the first true module extraction. Future modules should follow the same pattern: explicit dependencies, a narrow returned API, and no runtime `HttpGet` or external file loading.
+
+Do not execute, require, or reorder individual source fragments.
+
+## Build
 
 ```sh
 node build.js
 ```
 
-Verify the checked-in release matches the fragments:
+## Verify the release
 
 ```sh
 node build.js --check
 ```
 
-The first modularization pass preserves the original source text and behavior. Extracting independently initialized modules is a later refactor and must explicitly define dependency interfaces before any code is moved across lexical scopes.
+The build check compares the checked-in `JustLib.lua` byte-for-byte with the concatenated source fragments.
