@@ -26,4 +26,6 @@ node build.js --check
 
 The build check compares the checked-in `JustLib.lua` byte-for-byte with the concatenated source fragments.
 
+`modules/icons.lua` defines the icon pack, override, rendering, and refresh subsystem. Its factory receives the library instance and UI primitives explicitly, and exposes the icon constructor through a narrow API.
+
 `modules/workspace.lua` defines the shared workspace and Multi-Hub state module. It owns hub registration, active-hub switching, per-hub GUI naming/registration, and the persisted Multi-Hub Tabs setting. Its factory receives filesystem and shared-state dependencies explicitly.
