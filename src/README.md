@@ -37,3 +37,5 @@ The build check compares the checked-in `JustLib.lua` byte-for-byte with the con
 `modules/themes.lua` defines the theme palettes, active-theme state, palette application, and live UI repainting. The factory receives the shared color tables and repaint roots explicitly; it returns the palette registry while preserving the existing `JL:SetTheme` and `JL:GetTheme` API.
 
 `modules/ui-primitives.lua` defines the shared low-level UI helpers for input detection, pointer dragging, rounded corners, strokes, padding, text creation, and text-height measurement. Its factory receives Roblox UI primitives and the tracked connection helper explicitly; Core keeps the existing local helper names as aliases for compatibility with the remaining source fragments.
+
+`modules/lifecycle.lua` defines the shared lifecycle subsystem. It owns connection/resource/thread registries, tracked asynchronous runners, tween creation, and unload cleanup; Core retains compatibility aliases so the existing UI fragments keep their current call sites.
