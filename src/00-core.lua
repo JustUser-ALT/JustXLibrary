@@ -43,72 +43,33 @@ local ACCENTS = {
 }
 local _ai = 0
 local function nxAc() _ai = _ai + 1; return ACCENTS[((_ai - 1) % #ACCENTS) + 1] end
-local _conns = {}
-local _resources = {}
-local _threads = {}
 local _disposed = false
-local function cleanupResource(resource, cleanup)
-    pcall(function()
-        if cleanup then cleanup(resource); return end
-        local kind = typeof(resource)
-        if kind == "RBXScriptConnection" then resource:Disconnect()
-        elseif kind == "Instance" then resource:Destroy()
-        elseif kind == "thread" then task.cancel(resource)
-        elseif type(resource) == "function" then resource()
-        elseif type(resource) == "table" then
-            if resource.Destroy then resource:Destroy()
-            elseif resource.Disconnect then resource:Disconnect()
-            elseif resource.Cancel then resource:Cancel() end
-        end
-    end)
-end
-local function trackedRunner(record, callback)
-    return function(...)
-        if _disposed then _threads[record] = nil; return end
-        local result = table.pack(pcall(callback, ...))
-        _threads[record] = nil
-        if not result[1] then error(result[2], 0) end
-        return table.unpack(result, 2, result.n)
-    end
-end
-local function trackedSpawn(callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.spawn(trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function trackedDelay(seconds, callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.delay(seconds, trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function trackedDefer(callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.defer(trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function cleanupResources()
-    for record in pairs(_tweens) do
-        _tweens[record] = nil
-        if record.connection then pcall(function() record.connection:Disconnect() end) end
-        if record.tween then
-            pcall(function() record.tween:Cancel() end)
-            pcall(function() record.tween:Destroy() end)
-        end
-    end
-    for record in pairs(_threads) do
-        if record.thread then pcall(task.cancel, record.thread) end
-        _threads[record] = nil
-    end
-    for i = #_resources, 1, -1 do
-        local item = _resources[i]
-        _resources[i] = nil
-        if item then pcall(cleanupResource, item.resource, item.cleanup) end
-    end
-end
-local function keep(c) if c then _conns[#_conns + 1] = c end; return c end
+local Lifecycle = createLifecycleModule({
+    TweenService = TS,
+    TweenInfo = TweenInfo,
+    Enum = Enum,
+    Task = task,
+    Typeof = typeof,
+    PCall = pcall,
+    Pack = table.pack,
+    Unpack = table.unpack,
+    Error = error,
+    Type = type,
+    Pairs = pairs,
+    IPairs = ipairs,
+    IsDisposed = function() return _disposed end
+})
+local _conns = Lifecycle.Connections
+local _resources = Lifecycle.Resources
+local _threads = Lifecycle.Threads
+local cleanupResource = Lifecycle.CleanupResource
+local cleanupResources = Lifecycle.CleanupResources
+local keep = Lifecycle.Keep
+local trackedSpawn = Lifecycle.TrackedSpawn
+local trackedDelay = Lifecycle.TrackedDelay
+local trackedDefer = Lifecycle.TrackedDefer
+local createTween = Lifecycle.CreateTween
+local tw = Lifecycle.Tween
 function JL:Track(resource, cleanup)
     if resource == nil then return nil end
     if _disposed then cleanupResource(resource, cleanup); return resource end
