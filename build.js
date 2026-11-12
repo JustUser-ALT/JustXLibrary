@@ -9,6 +9,7 @@ const parts = [
   "src/modules/icons.lua",
   "src/modules/backgrounds.lua",
   "src/modules/guide.lua",
+  "src/modules/themes.lua",
   "src/00-core.lua",
   "src/modules/config.lua",
   "src/10-config.lua",
