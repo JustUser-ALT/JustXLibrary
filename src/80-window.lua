@@ -140,8 +140,8 @@ function JL:Window(opts)
         if not ok or not raw or raw == "" then return false end
         local ok2,data = pcall(HTTP.JSONDecode, HTTP, raw)
         if not ok2 or type(data) ~= "table" then return false end
-        _presetSettingsOverrides = {}
-        _applyingPreset = true
+        Config.ClearPresetSettingsOverrides()
+        Config.SetApplyingPreset(true)
         for flag,val in pairs(data) do
             if isLibrarySetting(flag) and flag == "_theme" then
                 pcall(function() JL:SetTheme(val) end)
@@ -154,7 +154,7 @@ function JL:Window(opts)
                 end
             end
         end
-        _applyingPreset = false
+        Config.SetApplyingPreset(false)
         if JL._notifyReposition then pcall(JL._notifyReposition) end
         if JL._remoteRefresh then pcall(JL._remoteRefresh) end
         if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
@@ -2278,7 +2278,7 @@ function JL:Window(opts)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
         addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
             if v then
-                _presetSettingsOverrides = {}
+                Config.ClearPresetSettingsOverrides()
                 for flag,val in pairs(_globalSettingsData) do
                     if isLibrarySetting(flag) then
                         if flag == "_theme" then
