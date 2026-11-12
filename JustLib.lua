@@ -733,6 +733,7 @@ local function createLifecycleModule(deps)
     local Error = deps.Error
     local Type = deps.Type
     local Pairs = deps.Pairs
+    local IPairs = deps.IPairs
     local IsDisposed = deps.IsDisposed
     local connections = {}
     local resources = {}
