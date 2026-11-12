@@ -791,7 +791,7 @@ local _globalSettingsData = _workspace.GlobalSettings
 local _applyingPreset = false
 local _presetSettingsOverrides = {}
 JL._autoSave = true; JL._addonAutoSave = false
-JL._globalSettingsEnabled = true
+JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled ~= false
 local function safeFileName(value)
     local name = tostring(value or "JustLib")
     name = name:gsub("[\\/:*?\"<>|]", "_"):gsub("[%c]", "_")
@@ -912,7 +912,7 @@ local function cfgLoad(name)
     end
     JL._autoSave = (_cfgData._autosave ~= false)
     JL._addonAutoSave = (_cfgData._addons_autosave == true)
-    if _globalSettingsEnabled then
+    if _workspace.GlobalSettingsEnabled then
         local seeded = false
         for flag,val in pairs(_cfgData) do
             if isLibrarySetting(flag) and _globalSettingsData[flag] == nil then
@@ -936,7 +936,7 @@ local function cfgHas(flag)
     if flag == nil then return false end
     if flag == "_global_settings" then return true end
     if isLibrarySetting(flag) and _presetSettingsOverrides[flag] ~= nil then return true end
-    if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then return true end
+    if isLibrarySetting(flag) and _workspace.GlobalSettingsEnabled and _globalSettingsData[flag] ~= nil then return true end
     if persistable(flag) then return _cfgData[flag] ~= nil end
     return _memData[flag] ~= nil
 end
@@ -946,9 +946,9 @@ local function cfgSet(flag,val,store)
     JL.Flags[flag] = val
     if flag == "_global_settings" then
         if val == true then _presetSettingsOverrides = {} end
-        _globalSettingsEnabled = val == true
-        JL._globalSettingsEnabled = _globalSettingsEnabled
-        _globalSettingsData._enabled = _globalSettingsEnabled
+        _workspace.GlobalSettingsEnabled = val == true
+        JL._globalSettingsEnabled = _workspace.GlobalSettingsEnabled
+        _globalSettingsData._enabled = _workspace.GlobalSettingsEnabled
         saveGlobalSettings()
         return
     end
@@ -959,7 +959,7 @@ local function cfgSet(flag,val,store)
             _presetSettingsOverrides[flag] = store
         else
             _presetSettingsOverrides[flag] = nil
-            if _globalSettingsEnabled then
+            if _workspace.GlobalSettingsEnabled then
                 _globalSettingsData[flag] = store
                 saveGlobalSettings()
             end
@@ -969,14 +969,14 @@ end
 local function cfgGet(flag,default)
     if flag then
         if flag == "_global_settings" then
-            JL.Flags[flag] = _globalSettingsEnabled
-            return _globalSettingsEnabled
+            JL.Flags[flag] = _workspace.GlobalSettingsEnabled
+            return _workspace.GlobalSettingsEnabled
         end
         if isLibrarySetting(flag) and _presetSettingsOverrides[flag] ~= nil then
             JL.Flags[flag] = _presetSettingsOverrides[flag]
             return _presetSettingsOverrides[flag]
         end
-        if isLibrarySetting(flag) and _globalSettingsEnabled and _globalSettingsData[flag] ~= nil then
+        if isLibrarySetting(flag) and _workspace.GlobalSettingsEnabled and _globalSettingsData[flag] ~= nil then
             JL.Flags[flag] = _globalSettingsData[flag]
             return _globalSettingsData[flag]
         end
@@ -4401,7 +4401,7 @@ function JL:Window(opts)
         if cfgGet("_preset_save_settings", false) then
             for flag,val in pairs(_cfgData) do if isLibrarySetting(flag) then out[flag] = val end end
             for flag,val in pairs(_memData) do if isLibrarySetting(flag) then out[flag] = val end end
-            if _globalSettingsEnabled then
+            if _workspace.GlobalSettingsEnabled then
                 for flag,val in pairs(_globalSettingsData) do if isLibrarySetting(flag) then out[flag] = val end end
             end
             for flag,val in pairs(_presetSettingsOverrides) do if isLibrarySetting(flag) then out[flag] = val end end
@@ -6505,7 +6505,7 @@ function JL:Window(opts)
             if v and JL._cfgFlush then JL._cfgFlush() end
         end)
         addSwitch(pP, "Save Settings", "Includes JustXLibrary interface settings when you create or rewrite a preset", "_preset_save_settings", false, function() end)
-        addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _globalSettingsEnabled, function(v)
+        addSwitch(pP, "Global Settings", "Shares JustXLibrary interface settings with other hubs using this library. Game toggles remain separate", "_global_settings", _workspace.GlobalSettingsEnabled, function(v)
             if v then
                 _presetSettingsOverrides = {}
                 for flag,val in pairs(_globalSettingsData) do
