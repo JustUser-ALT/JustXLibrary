@@ -1219,7 +1219,7 @@ do
         local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,180,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
         local cb=Instance.new("TextButton"); cb.BorderSizePixel=0; cb.BackgroundTransparency=1; cb.TextSize=14; cb.Font=GB; cb.TextColor3=Color3.new(1,1,1); cb.ZIndex=6; cb.Size=UDim2.new(0,20,0,20); cb.Position=UDim2.new(1,-22,0,2); cb.Text="x"; cb.Parent=f
         cb:SetAttribute("JLNoRepaint", true)
-        local nd = {f=f, g=sg2, title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
+        local nd = {f=f, g=sg2, HubId=_currentHubId, title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
         table.insert(active,nd)
         local function close()
             if nd.closing then return end; nd.closing=true
@@ -1251,9 +1251,12 @@ do
     table.insert(JL._unloadHooks, function()
         for i = #active, 1, -1 do
             local nd = active[i]
-            if nd and nd.g then pcall(function() nd.g:Destroy() end) end
-            active[i] = nil
+            if nd and nd.HubId == _currentHubId then
+                if nd.close then pcall(nd.close) elseif nd.g then pcall(function() nd.g:Destroy() end) end
+                table.remove(active, i)
+            end
         end
+        pcall(updPos)
     end)
 end
 local function mkPopup(backdrop,w,h,hero)
@@ -4764,15 +4767,29 @@ function JL:Window(opts)
     local function destroyHub()
         if _dead then return end
         _dead = true; isOpen = false; JL._winOpen = false
+        if hubEntry then hubEntry.alive = false end
         if hubEntry and _workspace.Hubs[hubId] == hubEntry then
             _workspace.Hubs[hubId] = nil
-            if _workspace.ActiveHubId == hubId then _workspace.ActiveHubId = nil end
+            if _workspace.ActiveHubId == hubId then
+                _workspace.ActiveHubId = nil
+                for otherId, otherEntry in pairs(_workspace.Hubs) do
+                    if otherEntry and otherEntry.alive then
+                        _workspace.ActiveHubId = otherId
+                        break
+                    end
+                end
+            end
         end
         JL._searchRegister = nil
         if JL._searchEntries then for k in pairs(JL._searchEntries) do JL._searchEntries[k] = nil end end
         if JL._searchPageTargets then for k in pairs(JL._searchPageTargets) do JL._searchPageTargets[k] = nil end end
         _disposed = true
-        if shared._JLActive then shared._JLActive.alive = false end
+        if shared._JLActive and shared._JLActive.destroy == destroyHub then
+            shared._JLActive = nil
+            local activeId = _workspace.ActiveHubId
+            local activeEntry = activeId and _workspace.Hubs[activeId]
+            if activeEntry and activeEntry.alive then shared._JLActive = activeEntry end
+        end
         pcall(function() fpsConn:Disconnect() end)
         for _,c in ipairs(_conns) do pcall(function() c:Disconnect() end) end
         _conns = {}
@@ -7407,7 +7424,7 @@ function JL:Window(opts)
     }
     _workspace.Hubs[hubId] = hubEntry
     _workspace.ActiveHubId = hubId
-    shared._JLActive = {alive = true, destroy = destroyHub, HubId = hubId}
+    shared._JLActive = hubEntry
     JL._destroyActive = destroyHub
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
