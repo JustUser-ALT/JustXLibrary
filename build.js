@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const root = __dirname;
 const parts = [
+  "src/modules/workspace.lua",
   "src/00-core.lua",
   "src/modules/config.lua",
   "src/10-config.lua",
