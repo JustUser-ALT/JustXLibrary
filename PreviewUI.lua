@@ -562,7 +562,18 @@ local function makeThumb(parent, asset)
 end
 
 local function hasPreview(a)
-	return a.Preview ~= false and (a.Model ~= nil or a.Build ~= nil or a.Image ~= nil)
+	if a.Preview == false then
+		return false
+	end
+	if a.Model ~= nil or a.Build ~= nil or a.Image ~= nil then
+		return true
+	end
+	for _, variant in ipairs(a._variants or {}) do
+		if variant.Model ~= nil or variant.Build ~= nil or variant.Image ~= nil then
+			return true
+		end
+	end
+	return false
 end
 
 local VARIANT_FIELDS = {
@@ -1381,9 +1392,7 @@ PAGES.preview = {
 					button.Text = "  " .. button.Text
 				end
 				button.Activated:Connect(function()
-					if a:SetVariant(i) then
-						pv:_showPage("preview", false)
-					end
+					a:SetVariant(i)
 				end)
 			end
 		end
@@ -1680,6 +1689,15 @@ function M:_addAsset(tab, a, quiet)
 		asset._baseVariantData[key] = asset[key]
 	end
 	asset.Variants = nil
+	if asset._variants[1] then
+		local first = asset._variants[1]
+		for _, key in ipairs(VARIANT_FIELDS) do
+			if first[key] ~= nil then
+				asset[key] = first[key]
+			end
+		end
+		asset._variantName = first.Name or "Variant 1"
+	end
 	asset.tab = tab
 	asset._pv = self
 	asset._isAsset = true
