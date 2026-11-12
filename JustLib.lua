@@ -4274,8 +4274,21 @@ function JL:Preview(popts)
     return obj
 end
 function JL:GetPreview() return JL._preview end
-local function removeOrphanedHubGuis()
-    local names = {JustLib = true, JLRemote = true}
+local function hubGuiName(hubId, remote)
+    local base = "JustLib_" .. safeFileName(hubId)
+    if remote then return base .. "_Remote" end
+    return base
+end
+local function removeOrphanedHubGuis(hubId)
+    -- Only clean roots belonging to this identity; never remove another hub's UI.
+    local names = {
+        [hubGuiName(hubId, false)] = true,
+        [hubGuiName(hubId, true)] = true
+    }
+    if hubId == "JustLib" then
+        names.JustLib = true
+        names.JLRemote = true
+    end
     local containers = {}
     local okCore, core = pcall(function() return game:GetService("CoreGui") end)
     if okCore and core then containers[#containers + 1] = core end
@@ -4319,7 +4332,7 @@ function JL:Window(opts)
     end
     -- Remove leftover UI roots if an older build stopped partway through cleanup.
     -- This also prevents orphaned Remote panels from stacking after Restart Hub.
-    removeOrphanedHubGuis()
+    removeOrphanedHubGuis(hubId)
     if opts.Config then cfgLoad(opts.Config) else loadGlobalSettings() end
     JL._activeCfgSet = cfgSet
     if type(opts.Backgrounds) == "table" then for k,v in pairs(opts.Backgrounds) do JL._bgs[k] = v end end
@@ -4431,7 +4444,7 @@ function JL:Window(opts)
         if isfile(path) then return (pcall(delfile, path)) end
         return false
     end
-    local sg = Instance.new("ScreenGui"); sg.Name = "JustLib"; sg.ResetOnSpawn = false; sg.IgnoreGuiInset = true
+    local sg = Instance.new("ScreenGui"); sg.Name = hubGuiName(hubId, false); sg.ResetOnSpawn = false; sg.IgnoreGuiInset = true
     sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; sg.DisplayOrder = 999
     local ok = pcall(function() sg.Parent = game:GetService("CoreGui") end); if not ok then sg.Parent = PG end
     local _dead = false
@@ -5941,7 +5954,7 @@ function JL:Window(opts)
     function RM.build()
         if RM.built then return end
         RM.built = true
-        local gui = Instance.new("ScreenGui"); gui.Name = "JLRemote"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 998
+        local gui = Instance.new("ScreenGui"); gui.Name = hubGuiName(hubId, true); gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 998
         local okp = pcall(function() gui.Parent = game:GetService("CoreGui") end); if not okp or not gui.Parent then gui.Parent = PG end
         RM.gui = gui
         table.insert(JL._extraRoots, gui)
@@ -7366,7 +7379,9 @@ function JL:Window(opts)
         alive = true,
         destroy = destroyHub,
         win = win,
-        badge = badge2
+        badge = badge2,
+        GuiName = hubGuiName(hubId, false),
+        RemoteGuiName = hubGuiName(hubId, true)
     }
     _workspace.Hubs[hubId] = hubEntry
     _workspace.ActiveHubId = hubId
