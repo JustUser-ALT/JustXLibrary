@@ -8,6 +8,7 @@ if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
     shared._JLWorkspace = _workspace
 end
 if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
+if type(_workspace.ConfigSaveQueue) ~= "table" then _workspace.ConfigSaveQueue = {} end
 if _workspace.MultiHubTabsLoaded ~= true then
     local loaded
     if type(readfile) == "function" then
@@ -47,13 +48,13 @@ end
 _workspace.SetActiveHub = function(hubId, openTarget)
     local target = _workspace.Hubs[hubId]
     if not target or not target.alive then return false end
+    _workspace.ActiveHubId = hubId
+    shared._JLActive = target
     for otherId, entry in pairs(_workspace.Hubs) do
         if entry and entry.alive and type(entry.setWorkspaceVisible) == "function" then
             pcall(entry.setWorkspaceVisible, otherId == hubId)
         end
     end
-    _workspace.ActiveHubId = hubId
-    shared._JLActive = target
     if openTarget == true and type(target.openWindow) == "function" then
         pcall(target.openWindow)
     end
@@ -958,7 +959,11 @@ local function cfgLoad(name)
     ensureFolder("JustX/Configs")
     _cfgFile = "JustX/Configs/" .. configName .. ".json"
     _cfgData = {}
-    if readfile then
+    local pendingSave = _workspace.ConfigSaveQueue[_cfgFile]
+    if pendingSave and type(pendingSave.data) == "string" and pendingSave.data ~= "" then
+        local decodeOk, data = pcall(HTTP.JSONDecode, HTTP, pendingSave.data)
+        if decodeOk and type(data) == "table" then _cfgData = data end
+    elseif readfile then
         local ok, raw = pcall(readfile, _cfgFile)
         if (not ok or not raw or raw == "") then
             local legacyPath = tostring(name) .. ".json"
@@ -989,12 +994,25 @@ local function cfgLoad(name)
     end
 end
 local function cfgSave()
-    if not (_cfgFile and writefile) or _saveQueued then return end
-    _saveQueued = true
-    trackedDelay(.4, function()
-        _saveQueued = false
+    if not (_cfgFile and writefile) then return end
+    local okEncode, encoded = pcall(HTTP.JSONEncode, HTTP, _cfgData)
+    if not okEncode or type(encoded) ~= "string" then return end
+    local path = _cfgFile
+    local queue = _workspace.ConfigSaveQueue
+    local pending = queue[path]
+    if pending then
+        pending.data = encoded
+        return
+    end
+    pending = {data = encoded}
+    queue[path] = pending
+    -- Config writes must outlive the hub being reloaded or destroyed.
+    task.delay(.4, function()
+        if queue[path] ~= pending then return end
+        local payload = pending.data
         ensureFolder("JustX/Configs")
-        pcall(function() writefile(_cfgFile, HTTP:JSONEncode(_cfgData)) end)
+        pcall(function() writefile(path, payload) end)
+        if queue[path] == pending then queue[path] = nil end
     end)
 end
 local function cfgHas(flag)
@@ -4545,6 +4563,14 @@ refreshWorkspaceTabs = function()
         _workspace.HubTabsFrame = nil
         _workspace.CloseDialogFrame = nil
         return
+    end
+
+    local existingBar = _workspace.HubTabsFrame
+    if gui and gui.Parent and (not existingBar or not existingBar.Parent) then
+        pcall(function() gui:Destroy() end)
+        gui = nil
+        _workspace.HubTabsGui = nil
+        _workspace.HubTabsFrame = nil
     end
 
     if not gui or not gui.Parent then
