@@ -39,3 +39,5 @@ The build check compares the checked-in `JustLib.lua` byte-for-byte with the con
 `modules/ui-primitives.lua` defines the shared low-level UI helpers for input detection, pointer dragging, rounded corners, strokes, padding, text creation, and text-height measurement. Its factory receives Roblox UI primitives and the tracked connection helper explicitly; Core keeps the existing local helper names as aliases for compatibility with the remaining source fragments.
 
 `modules/lifecycle.lua` defines the shared lifecycle subsystem. It owns connection/resource/thread registries, tracked asynchronous runners, tween creation, and unload cleanup; Core retains compatibility aliases so the existing UI fragments keep their current call sites.
+
+`modules/control-helpers.lua` defines the shared control helpers for knob styling, decimal precision, number formatting, and step snapping. Its factory receives the required color, math, string, and conversion dependencies explicitly; Core retains the existing local helper names for compatibility with the control and window fragments.
