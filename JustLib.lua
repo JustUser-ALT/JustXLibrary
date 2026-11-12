@@ -4358,13 +4358,32 @@ function JL:Window(opts)
             end
         end)
     end
-    if shared._JLActive and shared._JLActive.alive then
-        local active = shared._JLActive
+    -- Resolve conflicts by identity, not by the globally active hub pointer.
+    -- Re-injecting the same HubId keeps the legacy restart flow; a different
+    -- HubId may coexist after explicit user confirmation.
+    local sameHub = _workspace.Hubs[hubId]
+    if sameHub and sameHub.alive then
         local restart = restartPrompt()
         if not restart then return nil end
-        if type(active.destroy) == "function" then
-            local ok, err = pcall(active.destroy)
+        if type(sameHub.destroy) == "function" then
+            local ok, err = pcall(sameHub.destroy)
             if not ok then warn("[JustLib] Previous hub cleanup failed: " .. tostring(err)) end
+        end
+    else
+        local hasOtherHub = false
+        for otherId, entry in pairs(_workspace.Hubs) do
+            if otherId ~= hubId and entry and entry.alive then
+                hasOtherHub = true
+                break
+            end
+        end
+        if hasOtherHub then
+            local join = confirmDialog(
+                "Add Hub to Library?",
+                hubTitle .. " can be added as another tab while your existing hub stays open.",
+                {ConfirmText = "Add Hub", CancelText = "Cancel"}
+            )
+            if not join then return nil end
         end
     end
     -- Remove leftover UI roots if an older build stopped partway through cleanup.
