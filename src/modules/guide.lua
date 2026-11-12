@@ -76,8 +76,8 @@ local function createGuideModule(deps)
             if GUIDE.nav then GUIDE.nav(trow) end
             if GUIDE.active ~= token then return end
             GUIDE.pulse(trow)
-            local t0 = os.clock()
-            while GUIDE.active == token and os.clock() - t0 < (src.cfg.NeedsTimeout or 180) do
+            local t0 = clock()
+            while GUIDE.active == token and clock() - t0 < (src.cfg.NeedsTimeout or 180) do
                 if GUIDE.met(n, base) then break end
                 task.wait(.15)
             end
