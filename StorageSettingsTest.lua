@@ -29,11 +29,11 @@ Window:HomeTab({
         {
             Version = "Preview",
             Title = "Preview UI Testing",
-            Description = "Test the Preview layout, asset cards, variants and controls.",
+            Description = "Testing real 3D assets, Lucide icons, variant switching and asset pages.",
             Changes = {
-                "Home tab is available in the test hub.",
-                "One Key asset is used to test multiple variants in one card.",
-                "Three numbered sections contain Preview test controls.",
+                "Three numbered sections and a Home tab.",
+                "One asset card with three real 3D variants.",
+                "Actions, Info and Preview are opened from the three-dot menu.",
             },
         },
     },
@@ -41,164 +41,190 @@ Window:HomeTab({
 
 local TestTab = Window:Tab({
     Name = "Preview",
-    Icon = "grid",
+    Icon = "grid-2x2",
 })
 
-local Section1 = TestTab:Section({
-    Title = "1",
-})
-
-local Section2 = TestTab:Section({
-    Title = "2",
-})
-
-local Section3 = TestTab:Section({
-    Title = "3",
-})
+local Section1 = TestTab:Section({Title = "1"})
+local Section2 = TestTab:Section({Title = "2"})
+local Section3 = TestTab:Section({Title = "3"})
 
 local Preview
-local KeyAsset
-local CurrentVariant = "Yellow"
+local CrystalAsset
 
-local function setVariant(asset, variant)
-    CurrentVariant = variant
-    local details = {
-        Yellow = {
-            Description = "Yellow Key variant. This is the same asset card with a different selected variant.",
-            Tags = {"Key", "Yellow"},
-            Info = {
-                {Label = "Variant", Value = "Yellow", Icon = "●"},
-                {Label = "Rarity", Value = "Common", Icon = "◆"},
-            },
-        },
-        Green = {
-            Description = "Green Key variant. The asset itself remains the same; only its variant data changes.",
-            Tags = {"Key", "Green"},
-            Info = {
-                {Label = "Variant", Value = "Green", Icon = "●"},
-                {Label = "Rarity", Value = "Uncommon", Icon = "◆"},
-            },
-        },
-        Orange = {
-            Description = "Orange Key variant. The asset itself remains the same; only its variant data changes.",
-            Tags = {"Key", "Orange"},
-            Info = {
-                {Label = "Variant", Value = "Orange", Icon = "●"},
-                {Label = "Rarity", Value = "Rare", Icon = "◆"},
-            },
-        },
-    }
-    local data = details[variant]
-    if asset and data then
-        asset:Update({
-            Name = "Key",
-            Type = "Item",
-            Version = variant,
-            Description = data.Description,
-            Tags = data.Tags,
-            Info = data.Info,
-        })
-        print("[Preview Test] Selected variant:", variant)
+local function makePart(parent, name, size, position, color, shape, material)
+    local part = Instance.new("Part")
+    part.Name = name
+    part.Anchored = true
+    part.CanCollide = false
+    part.Size = size
+    part.Position = position
+    part.Color = color
+    part.Shape = shape or Enum.PartType.Block
+    part.Material = material or Enum.Material.SmoothPlastic
+    part.Parent = parent
+    return part
+end
+
+local function crystalBuild(color, accent)
+    return function(model)
+        makePart(model, "Crystal Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), color, Enum.PartType.Ball, Enum.Material.Neon)
+        local top = makePart(model, "Top Shard", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.7, 0), accent, Enum.PartType.Block, Enum.Material.Glass)
+        top.CFrame = CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(45))
+        local left = makePart(model, "Left Orb", Vector3.new(0.55, 0.55, 0.55), Vector3.new(-1.2, -0.6, 0), accent, Enum.PartType.Ball, Enum.Material.Neon)
+        local right = makePart(model, "Right Orb", Vector3.new(0.55, 0.55, 0.55), Vector3.new(1.2, -0.6, 0), accent, Enum.PartType.Ball, Enum.Material.Neon)
     end
+end
+
+local function treeBuild(model)
+    makePart(model, "Trunk", Vector3.new(1.2, 4, 1.2), Vector3.new(0, -1, 0), Color3.fromRGB(112, 76, 48), Enum.PartType.Cylinder)
+    makePart(model, "Leaves", Vector3.new(4.5, 4.5, 4.5), Vector3.new(0, 2, 0), Color3.fromRGB(62, 166, 92), Enum.PartType.Ball, Enum.Material.Grass)
+    makePart(model, "Fruit", Vector3.new(0.65, 0.65, 0.65), Vector3.new(1.1, 1.1, -1.2), Color3.fromRGB(240, 174, 62), Enum.PartType.Ball, Enum.Material.Neon)
+end
+
+local function robotBuild(model)
+    makePart(model, "Body", Vector3.new(2.2, 2.6, 1.3), Vector3.new(0, 0, 0), Color3.fromRGB(92, 105, 128))
+    makePart(model, "Head", Vector3.new(1.7, 1.5, 1.5), Vector3.new(0, 2.1, 0), Color3.fromRGB(150, 165, 190), Enum.PartType.Block, Enum.Material.Metal)
+    makePart(model, "Left Eye", Vector3.new(0.28, 0.28, 0.15), Vector3.new(-0.4, 2.2, -0.78), Color3.fromRGB(70, 210, 255), Enum.PartType.Ball, Enum.Material.Neon)
+    makePart(model, "Right Eye", Vector3.new(0.28, 0.28, 0.15), Vector3.new(0.4, 2.2, -0.78), Color3.fromRGB(70, 210, 255), Enum.PartType.Ball, Enum.Material.Neon)
+    makePart(model, "Left Arm", Vector3.new(0.6, 2.2, 0.7), Vector3.new(-1.5, 0, 0), Color3.fromRGB(110, 125, 150))
+    makePart(model, "Right Arm", Vector3.new(0.6, 2.2, 0.7), Vector3.new(1.5, 0, 0), Color3.fromRGB(110, 125, 150))
 end
 
 local function createPreview()
     if Preview and Preview.IsOpen and Preview:IsOpen() then
-        Preview:Open({Tab = "Items", Asset = "Key"})
+        Preview:Open({Tab = "Items", Asset = "Energy Crystal"})
         return
     end
 
     Preview = Library:Preview({
         Title = "Preview Test",
-        Icon = "⬡",
+        Icon = "box",
         TabName = "Preview",
     })
 
     if not Preview or Preview.IsStub then
-        warn("[Preview Test] Preview failed to initialize. Check the JustLib warnings.")
+        warn("[Preview Test] Preview failed to initialize. Check JustLib warnings.")
         return
     end
 
-    local Models = Preview:Tab({Name = "Models", Icon = "⬡"})
-    local Items = Preview:Tab({Name = "Items", Icon = "▦"})
+    local Models = Preview:Tab({Name = "Models", Icon = "trees"})
+    local Items = Preview:Tab({Name = "Items", Icon = "gem"})
 
     Models:Asset({
         Name = "Oak Tree",
-        Type = "Model",
+        Icon = "trees",
+        Type = "Environment Model",
         Creator = "Preview Test",
         Version = "1.0",
-        Description = "A sample model asset used to inspect the card and details layout.",
-        Tags = {"Nature", "Model"},
+        Description = "A small stylized tree built from actual 3D parts. This is a generated preview, not an image placeholder.",
+        Tags = {"Nature", "Environment", "3D"},
         Info = {
-            {Label = "Parts", Value = "12", Icon = "▤"},
-            {Label = "Size", Value = "Medium", Icon = "◫"},
+            {Label = "Parts", Value = "3", Icon = "boxes"},
+            {Label = "Category", Value = "Environment", Icon = "leaf"},
         },
-        Image = "rbxassetid://6031094678",
+        Build = treeBuild,
     })
 
-    KeyAsset = Items:Asset({
-        Name = "Key",
-        Type = "Item",
+    Models:Asset({
+        Name = "Mini Robot",
+        Icon = "bot",
+        Type = "Character Model",
         Creator = "Preview Test",
-        Version = "Yellow",
-        Description = "Yellow Key variant.",
-        Tags = {"Key", "Yellow"},
+        Version = "1.0",
+        Description = "A small robot assembled from separate body parts.",
+        Tags = {"Robot", "Character", "3D"},
         Info = {
-            {Label = "Variant", Value = "Yellow", Icon = "●"},
-            {Label = "Rarity", Value = "Common", Icon = "◆"},
+            {Label = "Parts", Value = "6", Icon = "boxes"},
+            {Label = "Category", Value = "Character", Icon = "bot"},
         },
-        Image = "rbxassetid://6031094678",
+        Build = robotBuild,
     })
 
-    KeyAsset:Action({
-        Name = "Yellow Key",
-        Icon = "●",
-        Callback = function(asset)
-            setVariant(asset, "Yellow")
-        end,
+    CrystalAsset = Items:Asset({
+        Name = "Energy Crystal",
+        Icon = "gem",
+        Type = "Collectible",
+        Creator = "Preview Test",
+        Description = "Choose a variant below. The 3D model, color, details and selected state change together.",
+        Tags = {"Collectible", "Magic", "3D"},
+        Variants = {
+            {
+                Name = "Ruby",
+                Icon = "circle",
+                Version = "Ruby",
+                Description = "Ruby energy crystal. A hot red core with a bright glass shard.",
+                Tags = {"Collectible", "Ruby", "Fire"},
+                Build = crystalBuild(Color3.fromRGB(225, 48, 72), Color3.fromRGB(255, 174, 74)),
+                Info = {
+                    {Label = "Variant", Value = "Ruby", Icon = "gem"},
+                    {Label = "Element", Value = "Fire", Icon = "flame"},
+                    {Label = "Rarity", Value = "Rare", Icon = "award"},
+                },
+            },
+            {
+                Name = "Sapphire",
+                Icon = "circle",
+                Version = "Sapphire",
+                Description = "Sapphire energy crystal. A cool blue core with icy highlights.",
+                Tags = {"Collectible", "Sapphire", "Ice"},
+                Build = crystalBuild(Color3.fromRGB(48, 125, 238), Color3.fromRGB(112, 225, 255)),
+                Info = {
+                    {Label = "Variant", Value = "Sapphire", Icon = "gem"},
+                    {Label = "Element", Value = "Ice", Icon = "snowflake"},
+                    {Label = "Rarity", Value = "Epic", Icon = "award"},
+                },
+            },
+            {
+                Name = "Emerald",
+                Icon = "circle",
+                Version = "Emerald",
+                Description = "Emerald energy crystal. A vivid green core with luminous accents.",
+                Tags = {"Collectible", "Emerald", "Nature"},
+                Build = crystalBuild(Color3.fromRGB(44, 190, 112), Color3.fromRGB(170, 255, 126)),
+                Info = {
+                    {Label = "Variant", Value = "Emerald", Icon = "gem"},
+                    {Label = "Element", Value = "Nature", Icon = "sprout"},
+                    {Label = "Rarity", Value = "Legendary", Icon = "award"},
+                },
+            },
+        },
     })
-    KeyAsset:Action({
-        Name = "Green Key",
-        Icon = "●",
+
+    CrystalAsset:Action({
+        Name = "Reset Variant",
+        Icon = "rotate-ccw",
         Callback = function(asset)
-            setVariant(asset, "Green")
-        end,
-    })
-    KeyAsset:Action({
-        Name = "Orange Key",
-        Icon = "●",
-        Callback = function(asset)
-            setVariant(asset, "Orange")
+            asset:SetVariant("Ruby")
         end,
     })
 
-    KeyAsset:Toggle({
-        Name = "Enable Key",
+    CrystalAsset:Toggle({
+        Name = "Enable Crystal",
         Default = true,
-        Flag = "PreviewTest_KeyEnabled",
+        Flag = "PreviewTest_CrystalEnabled",
         Callback = function(value)
-            print("[Preview Test] Key enabled:", value)
+            print("[Preview Test] Crystal enabled:", value)
         end,
     })
 
-    KeyAsset:Slider({
-        Name = "Key Scale",
+    CrystalAsset:Slider({
+        Name = "Crystal Scale",
         Min = 0.5,
         Max = 3,
         Step = 0.1,
         Default = 1,
         Suffix = "x",
-        Flag = "PreviewTest_KeyScale",
+        Flag = "PreviewTest_CrystalScale",
         Callback = function(value)
-            print("[Preview Test] Key scale:", value)
+            print("[Preview Test] Crystal scale:", value)
         end,
     })
 
-    KeyAsset:Button({
+    CrystalAsset:Button({
         Name = "Apply Variant",
         Icon = "check",
         Callback = function()
-            print("[Preview Test] Applied variant:", CurrentVariant)
+            print("[Preview Test] Applied variant:", CrystalAsset._variantName or "Ruby")
         end,
     })
 
@@ -211,7 +237,7 @@ local function createPreview()
         end,
     })
 
-    Preview:Open({Tab = "Items", Asset = "Key"})
+    Preview:Open({Tab = "Items", Asset = "Energy Crystal", Page = "preview"})
     print("[Preview Test] Preview opened.")
 end
 
@@ -222,26 +248,26 @@ Section1:Button({
 })
 
 Section1:Button({
-    Name = "Switch to Yellow",
-    Icon = "circle",
+    Name = "Switch to Ruby",
+    Icon = "gem",
     Callback = function()
-        if KeyAsset then setVariant(KeyAsset, "Yellow") end
+        if CrystalAsset then CrystalAsset:SetVariant("Ruby") end
     end,
 })
 
 Section2:Button({
-    Name = "Switch to Green",
-    Icon = "circle",
+    Name = "Switch to Sapphire",
+    Icon = "gem",
     Callback = function()
-        if KeyAsset then setVariant(KeyAsset, "Green") end
+        if CrystalAsset then CrystalAsset:SetVariant("Sapphire") end
     end,
 })
 
 Section2:Button({
-    Name = "Switch to Orange",
-    Icon = "circle",
+    Name = "Switch to Emerald",
+    Icon = "gem",
     Callback = function()
-        if KeyAsset then setVariant(KeyAsset, "Orange") end
+        if CrystalAsset then CrystalAsset:SetVariant("Emerald") end
     end,
 })
 
@@ -269,4 +295,4 @@ Section3:Slider({
 
 Window:Settings()
 
-print("[Preview Test] Loaded. Open the Preview tab and press Open Preview.")
+print("[Preview Test] Loaded. Open Preview and press Open Preview.")
