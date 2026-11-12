@@ -26,6 +26,8 @@ node build.js --check
 
 The build check compares the checked-in `JustLib.lua` byte-for-byte with the concatenated source fragments.
 
+`modules/guide.lua` defines the guided-requirements flow, target-state checks, pulsing highlights, navigation handoff, and group rules. Its factory receives the UI and task/tween helpers explicitly; `GUIDE` and `groupRules` are exposed to the existing control and window fragments.
+
 `modules/backgrounds.lua` defines the UI background registry, attachment/rendering logic, and sprite-sheet animation loop. It receives the tracked task runner and UI primitives explicitly, and exposes the registry as `BG` for the existing UI fragments.
 
 `modules/icons.lua` defines the icon pack, override, rendering, and refresh subsystem. Its factory receives the library instance and UI primitives explicitly, and exposes the icon constructor through a narrow API.
