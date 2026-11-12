@@ -71,7 +71,7 @@ local function createWorkspaceModule(deps)
     local currentHubId = "JustLib"
     local guiRoots = {}
     local function scopedGuiName(baseName, hubId)
-        local safe = tostring(hubId or "JustLib"):gsub('[/:*?"<>|]', "_"):gsub("[%c]", "_")
+        local safe = tostring(hubId or "JustLib"):gsub('[\\/:*?"<>|]', "_"):gsub("[%c]", "_")
         return "JL_" .. safe .. "_" .. tostring(baseName or "UI")
     end
     local function registerHubGui(gui, baseName)
