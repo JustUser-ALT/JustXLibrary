@@ -11,6 +11,12 @@ if not Library then
     return
 end
 
+if Library.LoadIconPack then
+    pcall(function()
+        Library:LoadIconPack()
+    end)
+end
+
 local Window = Library:Window({
     Title = "JustLib Preview Test",
     Config = "JustLib_PreviewTest",
