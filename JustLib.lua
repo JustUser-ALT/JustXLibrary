@@ -4535,6 +4535,7 @@ refreshWorkspaceTabs = function()
     if not bar or not bar.Parent then return end
     local activeEntry = _workspace.ActiveHubId and _workspace.Hubs[_workspace.ActiveHubId]
     local activeWindow = activeEntry and activeEntry.win
+    local activeOpen = activeEntry and type(activeEntry.isOpen) == "function" and activeEntry.isOpen() == true
     if activeWindow and activeWindow.Parent then
         bar.Parent = activeWindow
         local windowWidth = activeWindow.Size.X.Offset
@@ -4543,7 +4544,7 @@ refreshWorkspaceTabs = function()
     else
         bar.Parent = gui
     end
-    bar.Visible = #entries >= 2 and activeWindow ~= nil
+    bar.Visible = #entries >= 2 and activeWindow ~= nil and activeOpen
     local scroll = bar:FindFirstChild("HubList")
     if not scroll then return end
     for _, child in ipairs(scroll:GetChildren()) do
