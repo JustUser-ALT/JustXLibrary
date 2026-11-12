@@ -720,6 +720,128 @@ local function createThemesModule(deps)
     function JL:GetTheme() return JL._currentTheme end
     return themes
 end
+-- Lifecycle module factory. Owns tracked resources, async tasks, connections, and tweens.
+local function createLifecycleModule(deps)
+    local TS = deps.TweenService
+    local TweenInfo = deps.TweenInfo
+    local Enum = deps.Enum
+    local Task = deps.Task
+    local Typeof = deps.Typeof
+    local PCall = deps.PCall
+    local Pack = deps.Pack
+    local Unpack = deps.Unpack
+    local Error = deps.Error
+    local Type = deps.Type
+    local Pairs = deps.Pairs
+    local IsDisposed = deps.IsDisposed
+    local connections = {}
+    local resources = {}
+    local threads = {}
+    local tweens = {}
+
+    local function cleanupResource(resource, cleanup)
+        PCall(function()
+            if cleanup then cleanup(resource); return end
+            local kind = Typeof(resource)
+            if kind == "RBXScriptConnection" then resource:Disconnect()
+            elseif kind == "Instance" then resource:Destroy()
+            elseif kind == "thread" then Task.cancel(resource)
+            elseif Type(resource) == "function" then resource()
+            elseif Type(resource) == "table" then
+                if resource.Destroy then resource:Destroy()
+                elseif resource.Disconnect then resource:Disconnect()
+                elseif resource.Cancel then resource:Cancel() end
+            end
+        end)
+    end
+
+    local function trackedRunner(record, callback)
+        return function(...)
+            if IsDisposed() then threads[record] = nil; return end
+            local result = Pack(PCall(callback, ...))
+            threads[record] = nil
+            if not result[1] then Error(result[2], 0) end
+            return Unpack(result, 2, result.n)
+        end
+    end
+
+    local function trackedSpawn(callback, ...)
+        if IsDisposed() then return nil end
+        local record = {}; threads[record] = true
+        record.thread = Task.spawn(trackedRunner(record, callback), ...)
+        return record.thread
+    end
+
+    local function trackedDelay(seconds, callback, ...)
+        if IsDisposed() then return nil end
+        local record = {}; threads[record] = true
+        record.thread = Task.delay(seconds, trackedRunner(record, callback), ...)
+        return record.thread
+    end
+
+    local function trackedDefer(callback, ...)
+        if IsDisposed() then return nil end
+        local record = {}; threads[record] = true
+        record.thread = Task.defer(trackedRunner(record, callback), ...)
+        return record.thread
+    end
+
+    local function keep(connection)
+        if connection then connections[#connections + 1] = connection end
+        return connection
+    end
+
+    local function createTween(...)
+        local tween = TS:Create(...)
+        local record = {tween = tween}
+        tweens[record] = true
+        record.connection = tween.Completed:Connect(function()
+            tweens[record] = nil
+            if record.connection then PCall(function() record.connection:Disconnect() end) end
+        end)
+        return tween
+    end
+
+    local function tw(object, properties, duration, style, direction)
+        createTween(object, TweenInfo.new(duration or .2, style or Enum.EasingStyle.Quart, direction or Enum.EasingDirection.Out), properties):Play()
+    end
+
+    local function cleanupResources()
+        for record in Pairs(tweens) do
+            tweens[record] = nil
+            if record.connection then PCall(function() record.connection:Disconnect() end) end
+            if record.tween then
+                PCall(function() record.tween:Cancel() end)
+                PCall(function() record.tween:Destroy() end)
+            end
+        end
+        for record in Pairs(threads) do
+            if record.thread then PCall(Task.cancel, record.thread) end
+            threads[record] = nil
+        end
+        for i = #resources, 1, -1 do
+            local item = resources[i]
+            resources[i] = nil
+            if item then PCall(cleanupResource, item.resource, item.cleanup) end
+        end
+    end
+
+    return {
+        Connections = connections,
+        Resources = resources,
+        Threads = threads,
+        Tweens = tweens,
+        CleanupResource = cleanupResource,
+        CleanupResources = cleanupResources,
+        Keep = keep,
+        TrackedSpawn = trackedSpawn,
+        TrackedDelay = trackedDelay,
+        TrackedDefer = trackedDefer,
+        CreateTween = createTween,
+        Tween = tw
+    }
+end
+
 -- UI primitives module factory. Shared low-level UI helpers are injected explicitly.
 local function createUIPrimitivesModule(deps)
     local UIS = deps.UserInputService
@@ -735,20 +857,6 @@ local function createUIPrimitivesModule(deps)
     local pcall = deps.PCall
     local math = deps.Math
     local function touchLast() return UIS:GetLastInputType() == Enum.UserInputType.Touch end
-    local _tweens = {}
-    local function createTween(...)
-        local tween = TS:Create(...)
-        local record = {tween = tween}
-        _tweens[record] = true
-        record.connection = tween.Completed:Connect(function()
-            _tweens[record] = nil
-            if record.connection then pcall(function() record.connection:Disconnect() end) end
-        end)
-        return tween
-    end
-    local function tw(o,p,t,s,d)
-        createTween(o, TweenInfo.new(t or .2, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out), p):Play()
-    end
     local function corner(r,p) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,r); c.Parent = p; return c end
     local function stroke(col,t,p) local s = Instance.new("UIStroke"); s.Color = col; s.Thickness = t; s.Parent = p; return s end
     local function pad(l,r,t,b,p)
@@ -856,72 +964,32 @@ local ACCENTS = {
 }
 local _ai = 0
 local function nxAc() _ai = _ai + 1; return ACCENTS[((_ai - 1) % #ACCENTS) + 1] end
-local _conns = {}
-local _resources = {}
-local _threads = {}
 local _disposed = false
-local function cleanupResource(resource, cleanup)
-    pcall(function()
-        if cleanup then cleanup(resource); return end
-        local kind = typeof(resource)
-        if kind == "RBXScriptConnection" then resource:Disconnect()
-        elseif kind == "Instance" then resource:Destroy()
-        elseif kind == "thread" then task.cancel(resource)
-        elseif type(resource) == "function" then resource()
-        elseif type(resource) == "table" then
-            if resource.Destroy then resource:Destroy()
-            elseif resource.Disconnect then resource:Disconnect()
-            elseif resource.Cancel then resource:Cancel() end
-        end
-    end)
-end
-local function trackedRunner(record, callback)
-    return function(...)
-        if _disposed then _threads[record] = nil; return end
-        local result = table.pack(pcall(callback, ...))
-        _threads[record] = nil
-        if not result[1] then error(result[2], 0) end
-        return table.unpack(result, 2, result.n)
-    end
-end
-local function trackedSpawn(callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.spawn(trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function trackedDelay(seconds, callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.delay(seconds, trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function trackedDefer(callback, ...)
-    if _disposed then return nil end
-    local record = {}; _threads[record] = true
-    record.thread = task.defer(trackedRunner(record, callback), ...)
-    return record.thread
-end
-local function cleanupResources()
-    for record in pairs(_tweens) do
-        _tweens[record] = nil
-        if record.connection then pcall(function() record.connection:Disconnect() end) end
-        if record.tween then
-            pcall(function() record.tween:Cancel() end)
-            pcall(function() record.tween:Destroy() end)
-        end
-    end
-    for record in pairs(_threads) do
-        if record.thread then pcall(task.cancel, record.thread) end
-        _threads[record] = nil
-    end
-    for i = #_resources, 1, -1 do
-        local item = _resources[i]
-        _resources[i] = nil
-        if item then pcall(cleanupResource, item.resource, item.cleanup) end
-    end
-end
-local function keep(c) if c then _conns[#_conns + 1] = c end; return c end
+local Lifecycle = createLifecycleModule({
+    TweenService = TS,
+    TweenInfo = TweenInfo,
+    Enum = Enum,
+    Task = task,
+    Typeof = typeof,
+    PCall = pcall,
+    Pack = table.pack,
+    Unpack = table.unpack,
+    Error = error,
+    Type = type,
+    Pairs = pairs,
+    IsDisposed = function() return _disposed end
+})
+local _conns = Lifecycle.Connections
+local _resources = Lifecycle.Resources
+local _threads = Lifecycle.Threads
+local cleanupResource = Lifecycle.CleanupResource
+local cleanupResources = Lifecycle.CleanupResources
+local keep = Lifecycle.Keep
+local trackedSpawn = Lifecycle.TrackedSpawn
+local trackedDelay = Lifecycle.TrackedDelay
+local trackedDefer = Lifecycle.TrackedDefer
+local createTween = Lifecycle.CreateTween
+local tw = Lifecycle.Tween
 function JL:Track(resource, cleanup)
     if resource == nil then return nil end
     if _disposed then cleanupResource(resource, cleanup); return resource end
