@@ -2,15 +2,13 @@ local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Ver
 JL._registry = {}; JL._noSave = {}
 
 -- Shared workspace metadata survives repeated script injections.
--- Multi-hub UI is intentionally not enabled until each hub has an isolated runtime context.
 local _workspace = shared._JLWorkspace
 if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
-    _workspace = {Version = 1, Hubs = {}, ActiveHubId = nil, JoinPolicy = nil}
+    _workspace = {Version = 1, Hubs = {}, ActiveHubId = nil, MultiHubTabsEnabled = true}
     shared._JLWorkspace = _workspace
 end
 if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
-if _workspace.JoinPromptEnabled == nil then _workspace.JoinPromptEnabled = true end
-if _workspace.JoinSettingsLoaded ~= true then
+if _workspace.MultiHubTabsLoaded ~= true then
     local loaded
     if type(readfile) == "function" then
         local ok, raw = pcall(readfile, "JustX/HubSettings.lua")
@@ -22,18 +20,17 @@ if _workspace.JoinSettingsLoaded ~= true then
             end
         end
     end
-    if type(loaded) == "table" then
-        _workspace.JoinPromptEnabled = loaded.PromptEnabled ~= false
-        local policy = loaded.Policy
-        if policy == "Join" or policy == "Restart" then
-            _workspace.JoinPolicy = policy
-        else
-            _workspace.JoinPolicy = nil
-        end
+    if type(loaded) == "table" and type(loaded.MultiHubTabs) == "boolean" then
+        _workspace.MultiHubTabsEnabled = loaded.MultiHubTabs
+    elseif _workspace.MultiHubTabsEnabled == nil then
+        _workspace.MultiHubTabsEnabled = true
     end
-    _workspace.JoinSettingsLoaded = true
+    _workspace.MultiHubTabsLoaded = true
 end
-local function saveJoinSettings()
+_workspace.JoinPolicy = nil
+_workspace.JoinPromptEnabled = nil
+_workspace.JoinSettingsLoaded = nil
+local function saveWorkspaceSettings()
     if type(writefile) ~= "function" then return false end
     if type(isfolder) == "function" then
         local ok, exists = pcall(isfolder, "JustX")
@@ -43,10 +40,7 @@ local function saveJoinSettings()
     elseif type(makefolder) == "function" then
         pcall(makefolder, "JustX")
     end
-    local policy = _workspace.JoinPolicy
-    if policy ~= "Join" and policy ~= "Restart" then policy = nil end
-    local data = "return {PromptEnabled=" .. tostring(_workspace.JoinPromptEnabled ~= false)
-        .. ",Policy=" .. (policy and string.format("%q", policy) or "nil") .. "}"
+    local data = "return {MultiHubTabs=" .. tostring(_workspace.MultiHubTabsEnabled ~= false) .. "}"
     local ok = pcall(writefile, "JustX/HubSettings.lua", data)
     return ok
 end
@@ -1493,7 +1487,7 @@ function JL:Confirm(opts)
     opts = opts or {}
     return confirmDialog(opts.Title or "Are you sure?", opts.Desc or "", opts)
 end
-local function restartPrompt()
+local function restartPrompt(titleText, descriptionText, actionText)
     local CoreGui = game:GetService("CoreGui")
     local sg4 = registerHubGui(Instance.new("ScreenGui"), "Restart"); sg4.ResetOnSpawn = false; sg4.IgnoreGuiInset = true; sg4.DisplayOrder = 1000
     local okp = pcall(function() sg4.Parent = CoreGui end); if not okp or not sg4.Parent then sg4.Parent = PG end
@@ -1509,10 +1503,10 @@ local function restartPrompt()
     local ig = Instance.new("UIGradient"); ig.Rotation = 100; ig.Color = ColorSequence.new(ACCENTS[1]:Lerp(Color3.new(1,1,1),0.15), ACCENTS[1]:Lerp(Color3.new(0,0,0),0.4)); ig.Parent = iconCircle
     local ic = mkIcon(iconCircle, "refresh-cw", 28, 4); ic.AnchorPoint = Vector2.new(0.5,0.5); ic.Position = UDim2.new(0.5,0,0.5,0)
     if ic:IsA("TextLabel") then ic.TextColor3 = Color3.new(1,1,1) else ic.ImageColor3 = Color3.new(1,1,1) end
-    newTxt({Parent=card,Text="Hub Already Running",Font=GB,Size=16,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-30,0,20),Pos=UDim2.new(0,15,0,130)})
-    newTxt({Parent=card,Text="Another JustLib hub is already open. Restart it to continue, or cancel to leave the existing one running.",Font=GM,Size=11,Color=C.dim,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-36,0,44),Pos=UDim2.new(0,18,0,154)})
+    newTxt({Parent=card,Text=titleText or "Hub Already Running",Font=GB,Size=16,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-30,0,20),Pos=UDim2.new(0,15,0,130)})
+    newTxt({Parent=card,Text=descriptionText or "Another JustLib hub is already open.",Font=GM,Size=11,Color=C.dim,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-36,0,44),Pos=UDim2.new(0,18,0,154)})
     local restartBtn = Instance.new("TextButton"); restartBtn.Size = UDim2.new(1,-32,0,38); restartBtn.Position = UDim2.new(0,16,1,-86); restartBtn.BackgroundColor3 = ACCENTS[1]; restartBtn.BorderSizePixel = 0; restartBtn.AutoButtonColor = false; restartBtn.Text = ""; restartBtn.Parent = card; corner(9,restartBtn)
-    newTxt({Parent=restartBtn,Text="Restart Hub",Font=GB,Size=13,Color=Color3.new(1,1,1),XAlign=Enum.TextXAlignment.Center})
+    newTxt({Parent=restartBtn,Text=actionText or "Reload",Font=GB,Size=13,Color=Color3.new(1,1,1),XAlign=Enum.TextXAlignment.Center})
     local cancelBtn = Instance.new("TextButton"); cancelBtn.Size = UDim2.new(1,-32,0,32); cancelBtn.Position = UDim2.new(0,16,1,-40); cancelBtn.BackgroundTransparency = 1; cancelBtn.AutoButtonColor = false; cancelBtn.Text = ""; cancelBtn.Parent = card
     newTxt({Parent=cancelBtn,Text="Cancel",Font=GB,Size=12,Color=C.dim,XAlign=Enum.TextXAlignment.Center})
     local result = nil
@@ -4665,6 +4659,7 @@ refreshWorkspaceTabs = function()
             activeStroke.Parent = button
         end
         button.MouseButton1Click:Connect(function()
+            if _workspace.ActiveHubId == item.Id then return end
             if _workspace.Hubs[item.Id] and _workspace.Hubs[item.Id].alive then
                 _workspace.SetActiveHub(item.Id, true)
                 refreshWorkspaceTabs()
@@ -4691,50 +4686,39 @@ function JL:Window(opts)
             end
         end)
     end
-    -- Resolve conflicts by identity, not by the globally active hub pointer.
-    -- Re-injecting the same HubId keeps the legacy restart flow; a different
-    -- HubId may coexist after explicit user confirmation.
+    -- Resolve reloads by HubId. Different hubs coexist only while Multi-Hub Tabs is enabled.
     local sameHub = _workspace.Hubs[hubId]
     if sameHub and sameHub.alive then
-        local restart = restartPrompt()
-        if not restart then return nil end
+        local reload = restartPrompt(
+            "Tab Already Running",
+            "Looks like "" .. hubTitle .. "" is already running. Are you sure you want to reload it?",
+            "Reload Tab"
+        )
+        if not reload then return nil end
         if type(sameHub.destroy) == "function" then
             local ok, err = pcall(sameHub.destroy)
             if not ok then warn("[JustLib] Previous hub cleanup failed: " .. tostring(err)) end
         end
-    else
-        local hasOtherHub = false
-        for otherId, entry in pairs(_workspace.Hubs) do
-            if otherId ~= hubId and entry and entry.alive then
-                hasOtherHub = true
-                break
+    elseif _workspace.MultiHubTabsEnabled == false then
+        local previousHubs = {}
+        local previousTitle = "another hub"
+        for _, entry in pairs(_workspace.Hubs) do
+            if entry and entry.alive and type(entry.destroy) == "function" then
+                previousHubs[#previousHubs + 1] = entry
+                if previousTitle == "another hub" then
+                    previousTitle = tostring(entry.Title or entry.HubId or previousTitle)
+                end
             end
         end
-        if hasOtherHub then
-            local joinPolicy = _workspace.JoinPromptEnabled == false and _workspace.JoinPolicy or nil
-            if joinPolicy == "Restart" then
-                if not restartPrompt() then return nil end
-                local previousHubs = {}
-                for _,entry in pairs(_workspace.Hubs) do
-                    if entry and entry.alive and type(entry.destroy) == "function" then
-                        previousHubs[#previousHubs + 1] = entry
-                    end
-                end
-                for _,entry in ipairs(previousHubs) do
-                    pcall(entry.destroy)
-                end
-            elseif joinPolicy ~= "Join" then
-                local join, dontShow = confirmDialog(
-                    "Add Hub to Library?",
-                    hubTitle .. " can be added as another tab while your existing hub stays open.",
-                    {ConfirmText = "Add Hub", CancelText = "Cancel", CheckboxText = "Do Not Show"}
-                )
-                if dontShow then
-                    _workspace.JoinPolicy = join and "Join" or "Restart"
-                    _workspace.JoinPromptEnabled = false
-                    saveJoinSettings()
-                end
-                if not join then return nil end
+        if #previousHubs > 0 then
+            local replace = restartPrompt(
+                "Hub Already Running",
+                "Since the "Multi-Hub Tabs" toggle is disabled, "" .. previousTitle .. "" will be overwritten by "" .. hubTitle .. "".",
+                "Replace Hub"
+            )
+            if not replace then return nil end
+            for _, entry in ipairs(previousHubs) do
+                pcall(entry.destroy)
             end
         end
     end
@@ -6978,14 +6962,10 @@ function JL:Window(opts)
                 if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
             end
         end)
-        addSwitch(pP, "Add Hub Confirmation", "Show the Add Hub prompt again. Turning this on clears the remembered Do Not Show choice.", "_hub_join_prompt", _workspace.JoinPromptEnabled ~= false, function(v)
-            _workspace.JoinPromptEnabled = v == true
-            if v then
-                _workspace.JoinPolicy = nil
-            elseif _workspace.JoinPolicy == nil then
-                _workspace.JoinPolicy = "Join"
-            end
-            saveJoinSettings()
+        cfgSet("_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false)
+        addSwitch(pP, "Multi-Hub Tabs", "Allows different HubIds to stay open together as separate tabs. When disabled, a new hub replaces the currently running hub.", "_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false, function(v)
+            _workspace.MultiHubTabsEnabled = v == true
+            saveWorkspaceSettings()
         end)
         local profileNameBox
         do
