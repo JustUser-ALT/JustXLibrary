@@ -8,6 +8,7 @@ const parts = [
   "src/modules/workspace.lua",
   "src/modules/icons.lua",
   "src/modules/backgrounds.lua",
+  "src/modules/guide.lua",
   "src/00-core.lua",
   "src/modules/config.lua",
   "src/10-config.lua",
