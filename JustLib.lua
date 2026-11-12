@@ -9,6 +9,18 @@ if type(_workspace) ~= "table" or _workspace.Version ~= 1 then
     shared._JLWorkspace = _workspace
 end
 if type(_workspace.Hubs) ~= "table" then _workspace.Hubs = {} end
+local _currentHubId = "JustLib"
+local _hubGuiRoots = {}
+local function scopedGuiName(baseName, hubId)
+    local safe = tostring(hubId or "JustLib"):gsub("[\\/:*?\"<>|]", "_"):gsub("[%c]", "_")
+    return "JL_" .. safe .. "_" .. tostring(baseName or "UI")
+end
+local function registerHubGui(gui, baseName)
+    if not gui then return nil end
+    gui.Name = scopedGuiName(baseName, _currentHubId)
+    _hubGuiRoots[#_hubGuiRoots + 1] = gui
+    return gui
+end
 local function resolveHubIdentity(opts)
     local raw = opts.HubId
     if raw == nil or tostring(raw):match("^%s*$") then raw = opts.Config end
@@ -1192,7 +1204,7 @@ do
         local camObj = workspace.CurrentCamera
         local vpY = camObj and camObj.ViewportSize.Y or 720
         local startY = top and MARGIN or (vpY - MARGIN - h)
-        local sg2=Instance.new("ScreenGui"); sg2.Name="JLNotif"; sg2.Parent=CoreGui; sg2.ClipToDeviceSafeArea=false; sg2.ResetOnSpawn=false
+        local sg2=registerHubGui(Instance.new("ScreenGui"), "Notif"); sg2.Parent=CoreGui; sg2.ClipToDeviceSafeArea=false; sg2.ResetOnSpawn=false
         local f=Instance.new("Frame"); f.BorderSizePixel=0; f.BackgroundColor3=Color3.fromRGB(0,0,0); f.Size=UDim2.new(0,W,0,h); f.Position=UDim2.new(0,startX,0,startY); f.Parent=sg2; corner(8,f)
         f:SetAttribute("JLNoRepaint", true)
         local te=Instance.new("Frame"); te.ZIndex=0; te.BorderSizePixel=0; te.BackgroundColor3=col; te.Size=UDim2.new(0,20,0,h); te.Position=UDim2.new(0,-3,0,0); te.Parent=f; corner(8,te)
@@ -1299,7 +1311,7 @@ end
 local function confirmDialog(promptTitle,promptDesc,opts)
     opts = opts or {}
     local CoreGui = game:GetService("CoreGui")
-    local sg3 = Instance.new("ScreenGui"); sg3.Name = "JLConfirm"; sg3.ResetOnSpawn = false; sg3.IgnoreGuiInset = true; sg3.DisplayOrder = 1000
+    local sg3 = registerHubGui(Instance.new("ScreenGui"), "Confirm"); sg3.ResetOnSpawn = false; sg3.IgnoreGuiInset = true; sg3.DisplayOrder = 1000
     local okp = pcall(function() sg3.Parent = CoreGui end); if not okp or not sg3.Parent then sg3.Parent = PG end
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sg3
     local shell,card,showPopup,hidePopup = mkPopup(bd,280,150)
@@ -1324,7 +1336,7 @@ local function confirmDialog(promptTitle,promptDesc,opts)
 end
 local function unloadDialog()
     local CoreGui = game:GetService("CoreGui")
-    local sgU = Instance.new("ScreenGui"); sgU.Name = "JLUnload"; sgU.ResetOnSpawn = false; sgU.IgnoreGuiInset = true; sgU.DisplayOrder = 1000
+    local sgU = registerHubGui(Instance.new("ScreenGui"), "Unload"); sgU.ResetOnSpawn = false; sgU.IgnoreGuiInset = true; sgU.DisplayOrder = 1000
     local okp = pcall(function() sgU.Parent = CoreGui end); if not okp or not sgU.Parent then sgU.Parent = PG end
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sgU
     local shell,card,showPopup,hidePopup = mkPopup(bd,340,222)
@@ -1376,7 +1388,7 @@ function JL:Confirm(opts)
 end
 local function restartPrompt()
     local CoreGui = game:GetService("CoreGui")
-    local sg4 = Instance.new("ScreenGui"); sg4.Name = "JLRestart"; sg4.ResetOnSpawn = false; sg4.IgnoreGuiInset = true; sg4.DisplayOrder = 1000
+    local sg4 = registerHubGui(Instance.new("ScreenGui"), "Restart"); sg4.ResetOnSpawn = false; sg4.IgnoreGuiInset = true; sg4.DisplayOrder = 1000
     local okp = pcall(function() sg4.Parent = CoreGui end); if not okp or not sg4.Parent then sg4.Parent = PG end
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sg4
     local shell,card,showPopup,hidePopup = mkPopup(bd,260,300)
@@ -1542,7 +1554,7 @@ end
 local spPlayersCache = {}
 local function buildSubPlacesUI(universeId, places)
     local CoreGui = game:GetService("CoreGui")
-    local sgP = Instance.new("ScreenGui"); sgP.Name = "JLSubPlaces"; sgP.ResetOnSpawn = false; sgP.IgnoreGuiInset = true; sgP.DisplayOrder = 1000
+    local sgP = registerHubGui(Instance.new("ScreenGui"), "SubPlaces"); sgP.ResetOnSpawn = false; sgP.IgnoreGuiInset = true; sgP.DisplayOrder = 1000
     local okp = pcall(function() sgP.Parent = CoreGui end); if not okp or not sgP.Parent then sgP.Parent = PG end
     local alive = true
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sgP
@@ -1906,7 +1918,7 @@ function JL:KeySystem(kopts)
         end
     end
     local CoreGui = game:GetService("CoreGui")
-    local sgK = Instance.new("ScreenGui"); sgK.Name = "JLKeySystem"; sgK.ResetOnSpawn = false; sgK.IgnoreGuiInset = true; sgK.DisplayOrder = 1000
+    local sgK = registerHubGui(Instance.new("ScreenGui"), "KeySystem"); sgK.ResetOnSpawn = false; sgK.IgnoreGuiInset = true; sgK.DisplayOrder = 1000
     local okp = pcall(function() sgK.Parent = CoreGui end); if not okp or not sgK.Parent then sgK.Parent = PG end
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sgK
     local CW,CH = 580,352
@@ -2183,7 +2195,7 @@ function JL:OpenSubscriptions()
     if #SUB.order == 0 then JL:Notify({Title = "Subscriptions", Desc = "No subscriptions are configured", Type = "Warn", Duration = 3}); return end
     if SUB._gui and SUB._gui.Parent then return end
     local CoreGui = game:GetService("CoreGui")
-    local sgS = Instance.new("ScreenGui"); sgS.Name = "JLSubscriptions"; sgS.ResetOnSpawn = false; sgS.IgnoreGuiInset = true; sgS.DisplayOrder = 1000
+    local sgS = registerHubGui(Instance.new("ScreenGui"), "Subscriptions"); sgS.ResetOnSpawn = false; sgS.IgnoreGuiInset = true; sgS.DisplayOrder = 1000
     local okp = pcall(function() sgS.Parent = CoreGui end); if not okp or not sgS.Parent then sgS.Parent = PG end
     SUB._gui = sgS
     local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sgS
@@ -4313,6 +4325,7 @@ function JL:Window(opts)
     opts = opts or {}
     local hubId = resolveHubIdentity(opts)
     local hubTitle = tostring(opts.Title or hubId)
+    _currentHubId = hubId
     local hubEntry
     _disposed = false
     JL._perfEnabled = opts.DebugPerformance == true
@@ -4450,7 +4463,7 @@ function JL:Window(opts)
         if isfile(path) then return (pcall(delfile, path)) end
         return false
     end
-    local sg = Instance.new("ScreenGui"); sg.Name = hubGuiName(hubId, false); sg.ResetOnSpawn = false; sg.IgnoreGuiInset = true
+    local sg = registerHubGui(Instance.new("ScreenGui"), "Main"); sg.ResetOnSpawn = false; sg.IgnoreGuiInset = true
     sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; sg.DisplayOrder = 999
     local ok = pcall(function() sg.Parent = game:GetService("CoreGui") end); if not ok then sg.Parent = PG end
     local _dead = false
@@ -4778,6 +4791,11 @@ function JL:Window(opts)
             JL._extraRoots[k] = nil
         end
         JL._preview = nil
+        for i = #_hubGuiRoots, 1, -1 do
+            local root = _hubGuiRoots[i]
+            _hubGuiRoots[i] = nil
+            if root then pcall(function() root:Destroy() end) end
+        end
         pcall(function() if sg and sg.Parent then sg:Destroy() end end)
         _cpSg = nil
         if JL._destroyActive == destroyHub then JL._destroyActive = nil end
@@ -5960,7 +5978,7 @@ function JL:Window(opts)
     function RM.build()
         if RM.built then return end
         RM.built = true
-        local gui = Instance.new("ScreenGui"); gui.Name = hubGuiName(hubId, true); gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 998
+        local gui = registerHubGui(Instance.new("ScreenGui"), "Remote"); gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 998
         local okp = pcall(function() gui.Parent = game:GetService("CoreGui") end); if not okp or not gui.Parent then gui.Parent = PG end
         RM.gui = gui
         table.insert(JL._extraRoots, gui)
@@ -7028,8 +7046,7 @@ function JL:Window(opts)
             local function showLatestUpdate()
                 if not latestEntry or not latestVersion then return end
                 local _,description,version,changes = entryText(latestEntry)
-                local updateGui = Instance.new("ScreenGui")
-                updateGui.Name = "JustLibUpdate"
+                local updateGui = registerHubGui(Instance.new("ScreenGui"), "Update")
                 updateGui.ResetOnSpawn = false
                 updateGui.IgnoreGuiInset = true
                 updateGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
