@@ -2156,7 +2156,7 @@ function M:_build()
 
 	local searchBox = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(8, 40), Size = U2(1, -122, 0, 30),
+		Position = UDim2.fromOffset(8, 40), Size = U2(1, -154, 0, 30),
 	}, card)
 	corner(searchBox, 7)
 	stroke(searchBox, C.border, 1)
