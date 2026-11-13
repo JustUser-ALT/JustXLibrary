@@ -631,6 +631,7 @@ function JL:Window(opts)
     topBar.BorderSizePixel = 0
     topBar.Parent = win
     topBar.ZIndex = 70
+    corner(12,topBar)
     local topBarDivider = Instance.new("Frame")
     topBarDivider.Name = "JLTopBarDivider"
     topBarDivider.Size = UDim2.new(1,0,0,2)
