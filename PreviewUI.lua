@@ -1252,7 +1252,7 @@ end
 
 -- Actions: все контролы ассета, его вкладки и самого Preview
 PAGES.actions = {
-	id = "actions", name = "Actions", icon = "☰",
+	id = "actions", name = "Controllers", icon = "☰",
 	build = function(parent, asset, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
@@ -2040,7 +2040,7 @@ function M:_fitGrid()
 	local minCell = self._minCell or 140
 	local cols = math.max(1, math.floor((usable + gap) / (minCell + gap)))
 	local cw = math.floor((usable - gap * (cols - 1)) / cols)
-	local th = math.clamp(math.floor(cw * 0.62), 60, 150)
+	local th = math.clamp(math.floor(cw * 0.44), 60, 120)
 	if self._cw == cw and self._th == th and self._cols == cols then
 		return
 	end
@@ -2085,6 +2085,12 @@ function M:_repaintExtras()
 			tb.PlaceholderColor3 = C.dim
 		end
 	end
+	if self._nav then self._nav.BackgroundColor3 = C.panel end
+	if self._card then self._card.BackgroundColor3 = C.panel end
+	if self._drawerPanel then self._drawerPanel.BackgroundColor3 = C.panel end
+	if self._heading then self._heading.TextColor3 = C.txt end
+	if self._dTitle then self._dTitle.TextColor3 = C.txt end
+	if self._dType then self._dType.TextColor3 = C.dim end
 	self:_styleSidebar()
 	self:_styleDrawerTabs(true)
 	self:_markSelected(true)
