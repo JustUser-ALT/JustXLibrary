@@ -7245,6 +7245,11 @@ function JL:Window(opts)
         addSwitch(pA, "Sidebar Labels", "Tab names under the sidebar icons. Takes effect the next time the hub starts", "_sidebar_labels", opts.SidebarLabels == true, function()
             JL:Notify({Title = "Sidebar", Desc = "Restart the hub to apply", Type = "Info", Duration = 3})
         end)
+        cfgSet("_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false)
+        addSwitch(pA, "Multi-Hub Tabs", "Allows different HubIds to stay open together as separate tabs. When disabled, a new hub replaces the currently running hub.", "_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false, function(v)
+            _workspace.MultiHubTabsEnabled = v == true
+            saveWorkspaceSettings()
+        end)
         local pT = pA
         rowOrd = rowOrd + 1
         local themeIntro = Instance.new("Frame"); themeIntro.Size = UDim2.new(1,0,0,26); themeIntro.BackgroundTransparency = 1; themeIntro.LayoutOrder = rowOrd; themeIntro.Parent = pT
@@ -7401,11 +7406,6 @@ function JL:Window(opts)
                 if JL._remoteRefresh then pcall(JL._remoteRefresh) end
                 if JL._remoteRestorePos then pcall(JL._remoteRestorePos) end
             end
-        end)
-        cfgSet("_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false)
-        addSwitch(pP, "Multi-Hub Tabs", "Allows different HubIds to stay open together as separate tabs. When disabled, a new hub replaces the currently running hub.", "_multihub_tabs", _workspace.MultiHubTabsEnabled ~= false, function(v)
-            _workspace.MultiHubTabsEnabled = v == true
-            saveWorkspaceSettings()
         end)
         local profileNameBox
         do
