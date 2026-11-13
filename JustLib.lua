@@ -5735,6 +5735,7 @@ function JL:Window(opts)
     topBarDividerMask.BorderSizePixel = 0
     topBarDividerMask.Parent = topBar
     topBarDividerMask.ZIndex = 72
+    corner(12,topBarDividerMask)
     local searchButton = Instance.new("Frame")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,132,0,28)
