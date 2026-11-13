@@ -161,7 +161,7 @@ local function createIconsModule(deps)
     local function iconImageId(value)
         local value = tostring(value or "")
         if value:match("^%d+$") then return "rbxassetid://" .. value end
-        if value:match("^rbxassetid://") or value:match("^https?://") then return value end
+        if value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://") then return value end
         return nil
     end
     local function applyIcon(entry)
