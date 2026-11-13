@@ -5716,13 +5716,25 @@ function JL:Window(opts)
     corner(12,topBar)
     local topBarDivider = Instance.new("Frame")
     topBarDivider.Name = "JLTopBarDivider"
-    topBarDivider.Size = UDim2.new(1,-24,0,2)
-    topBarDivider.Position = UDim2.new(0,12,1,-2)
-    topBarDivider.BackgroundColor3 = C.border
+    topBarDivider.Size = UDim2.new(1,0,0,24)
+    topBarDivider.Position = UDim2.new(0,0,1,-24)
+    topBarDivider.BackgroundTransparency = 1
     topBarDivider.BorderSizePixel = 0
     topBarDivider.Parent = topBar
     topBarDivider.ZIndex = 71
-    corner(1,topBarDivider)
+    corner(12,topBarDivider)
+    local topBarDividerStroke = Instance.new("UIStroke")
+    topBarDividerStroke.Color = C.border
+    topBarDividerStroke.Thickness = 1
+    topBarDividerStroke.Parent = topBarDivider
+    local topBarDividerMask = Instance.new("Frame")
+    topBarDividerMask.Name = "JLTopBarDividerMask"
+    topBarDividerMask.Size = UDim2.new(1,0,0,12)
+    topBarDividerMask.Position = UDim2.new(0,0,0,18)
+    topBarDividerMask.BackgroundColor3 = C.sidebar
+    topBarDividerMask.BorderSizePixel = 0
+    topBarDividerMask.Parent = topBar
+    topBarDividerMask.ZIndex = 72
     local searchButton = Instance.new("Frame")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,132,0,28)
