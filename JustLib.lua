@@ -5716,8 +5716,8 @@ function JL:Window(opts)
     corner(12,topBar)
     local topBarDivider = Instance.new("Frame")
     topBarDivider.Name = "JLTopBarDivider"
-    topBarDivider.Size = UDim2.new(1,0,0,24)
-    topBarDivider.Position = UDim2.new(0,0,1,-24)
+    topBarDivider.Size = UDim2.new(1,0,1,0)
+    topBarDivider.Position = UDim2.new(0,0,0,0)
     topBarDivider.BackgroundTransparency = 1
     topBarDivider.BorderSizePixel = 0
     topBarDivider.Parent = topBar
@@ -5729,8 +5729,8 @@ function JL:Window(opts)
     topBarDividerStroke.Parent = topBarDivider
     local topBarDividerMask = Instance.new("Frame")
     topBarDividerMask.Name = "JLTopBarDividerMask"
-    topBarDividerMask.Size = UDim2.new(1,0,0,12)
-    topBarDividerMask.Position = UDim2.new(0,0,0,18)
+    topBarDividerMask.Size = UDim2.new(1,0,0,30)
+    topBarDividerMask.Position = UDim2.new(0,0,0,0)
     topBarDividerMask.BackgroundColor3 = C.sidebar
     topBarDividerMask.BorderSizePixel = 0
     topBarDividerMask.Parent = topBar
