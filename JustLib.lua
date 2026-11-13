@@ -842,7 +842,6 @@ local function createLifecycleModule(deps)
         Tween = tw
     }
 end
-
 -- UI primitives module factory. Shared low-level UI helpers are injected explicitly.
 local function createUIPrimitivesModule(deps)
     local UIS = deps.UserInputService
@@ -5736,6 +5735,46 @@ function JL:Window(opts)
     topBarDividerMask.Parent = topBar
     topBarDividerMask.ZIndex = 72
     corner(12,topBarDividerMask)
+    local topBarVersion = newTxt({Parent=topBar,Text="v" .. JL.Version,Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(0,36,1,0),Pos=UDim2.new(0,10,0,0),Z=80})
+    topBarVersion.TextTruncate = Enum.TextTruncate.AtEnd
+    local subscriptionBadge = Instance.new("TextButton")
+    subscriptionBadge.Name = "JLSubscriptionBadge"
+    subscriptionBadge.Size = UDim2.new(0,38,0,20)
+    subscriptionBadge.Position = UDim2.new(0,52,0,11)
+    subscriptionBadge.BackgroundColor3 = C.panel
+    subscriptionBadge.BorderSizePixel = 0
+    subscriptionBadge.AutoButtonColor = false
+    subscriptionBadge.Text = "Free"
+    subscriptionBadge.Font = GB
+    subscriptionBadge.TextSize = 9
+    subscriptionBadge.TextColor3 = C.dim
+    subscriptionBadge.TextTruncate = Enum.TextTruncate.AtEnd
+    subscriptionBadge.Parent = topBar
+    subscriptionBadge.ZIndex = 80
+    corner(7,subscriptionBadge)
+    local subscriptionBadgeStroke = stroke(C.border,1,subscriptionBadge)
+    local function refreshSubscriptionBadge()
+        local info = JL:GetSubscriptionInfo()
+        local label = info.Name or "Free"
+        local tierColor = info.Tier and info.Tier.Color or C.dim
+        local maxWidth = math.clamp(CWW - 248 - 52 - 8,38,72)
+        local textWidth = math.ceil(measureTextW(label,9,GB,120)) + 12
+        subscriptionBadge.Size = UDim2.new(0,math.min(maxWidth,math.max(38,textWidth)),0,20)
+        subscriptionBadge.Text = label
+        subscriptionBadge.TextColor3 = tierColor
+        subscriptionBadgeStroke.Color = info.Tier and tierColor or C.border
+    end
+    refreshSubscriptionBadge()
+    JL:OnTierChanged(refreshSubscriptionBadge)
+    subscriptionBadge.MouseEnter:Connect(function()
+        if not touchLast() then tw(subscriptionBadge,{BackgroundColor3 = C.btnHov},.1) end
+    end)
+    subscriptionBadge.MouseLeave:Connect(function()
+        tw(subscriptionBadge,{BackgroundColor3 = C.panel},.1)
+    end)
+    subscriptionBadge.MouseButton1Click:Connect(function()
+        JL:OpenSubscriptions()
+    end)
     local searchButton = Instance.new("Frame")
     searchButton.Name = "JLGlobalSearchButton"
     searchButton.Size = UDim2.new(0,132,0,28)
