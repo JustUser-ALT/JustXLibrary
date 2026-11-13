@@ -65,7 +65,7 @@ local B, C, ACCENTS -- заполняются в M.new (берутся у JustLi
 
 local M = {}
 M.__index = M
-M.Version = "3.0"
+M.Version = "4.0"
 
 --------------------------------------------------------------------
 -- helpers
