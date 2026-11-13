@@ -1928,6 +1928,7 @@ function M:_teardown(removeTab)
 		pcall(function() t:Remove() end)
 	end
 	self._root, self._nav, self._card, self._drawer, self._titleL = nil, nil, nil, nil, nil
+	self._drawerPanel, self._drawerScale = nil, nil
 	self._navList, self._grid, self._gridLayout, self._d = nil, nil, nil, nil
 	self._dTitle, self._dType, self._dTabs, self._dPages, self._pageRoot, self._indicator = nil, nil, nil, nil, nil, nil
 	self._cards, self._sideRefs, self._tabRefs, self._curPages = {}, {}, {}, {}
@@ -1998,17 +1999,9 @@ end
 
 -- Позиции трёх колонок для закрытой / открытой панели.
 -- Когда панель открыта и места мало, список слева уезжает за край: сетка остаётся достаточно широкой.
-function M:_states(open)
+function M:_states()
 	local W = self._W
-	local DW = self._DW
-	if open then
-		local roomWithNav = W - (NAVW + GAP) - GAP - DW
-		if roomWithNav >= 300 then
-			return { navX = 0, cardX = NAVW + GAP, cardW = roomWithNav, drawerX = W - DW }
-		end
-		return { navX = -(NAVW + GAP), cardX = 0, cardW = W - DW - GAP, drawerX = W - DW }
-	end
-	return { navX = 0, cardX = NAVW + GAP, cardW = W - (NAVW + GAP), drawerX = W + GAP }
+	return { navX = 0, cardX = NAVW + GAP, cardW = math.max(220, W - NAVW - GAP), drawerX = 0 }
 end
 
 function M:_relayout()
@@ -2017,16 +2010,21 @@ function M:_relayout()
 	end
 	local W, H = self:_dims()
 	self._W, self._H = W, H
-	self._DW = math.clamp(math.floor(W * 0.42), 230, 300)
-	local st = self:_states(self._drawerOpen == true)
+	local st = self:_states()
 	self._cardW = st.cardW
 	self._nav.Size = U2(0, NAVW, 1, 0)
 	self._card.Size = U2(0, st.cardW, 1, 0)
-	self._drawer.Size = U2(0, self._DW, 1, 0)
-	if not self._sliding then
-		self._nav.Position = U2(0, st.navX, 0, 0)
-		self._card.Position = U2(0, st.cardX, 0, 0)
-		self._drawer.Position = U2(0, st.drawerX, 0, 0)
+	self._nav.Position = U2(0, st.navX, 0, 0)
+	self._card.Position = U2(0, st.cardX, 0, 0)
+	if self._drawer then
+		self._drawer.Size = U2(1, 0, 1, 0)
+	end
+	if self._drawerPanel then
+		local mw = math.clamp(math.min(W - 24, 620), 300, 620)
+		local mh = math.clamp(math.min(H - 24, 430), 260, 430)
+		self._drawerPanel.Size = UDim2.fromOffset(mw, mh)
+		self._drawerPanel.Position = U2(0.5, 0, 0.5, 0)
+		self._dPages.Size = U2(1, -20, 1, -112)
 	end
 	self:_fitGrid()
 end
@@ -2121,9 +2119,9 @@ function M:_build()
 	self._cw, self._th, self._cols = nil, nil, nil
 	self:_cacheSettings()
 	self._W, self._H = self:_dims()
-	self._DW = math.clamp(math.floor(self._W * 0.42), 230, 300)
+	self._cardW = math.max(220, self._W - NAVW - GAP)
 
-	-- левая колонка: название + список вкладок Preview (как навигация в Settings) -------------
+	-- Левая навигация: вкладки, которые создал разработчик через Preview:Tab().
 	local nav = new("Frame", { Name = "PvNav", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, NAVW, 1, 0) }, root)
 	corner(nav, 10)
 	stroke(nav, C.border, 1)
@@ -2146,27 +2144,28 @@ function M:_build()
 	}, navList)
 	self._navList = navList
 
-	-- центральная карточка: поиск + фильтр + сетка + крестик ---------------------------------
-	local card = new("Frame", { Name = "PvCard", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, 470, 1, 0) }, root)
+	-- Основной Asset Browser: поиск, фильтр и адаптивная сетка карточек.
+	local card = new("Frame", { Name = "PvBrowser", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, self._cardW, 1, 0) }, root)
 	corner(card, 10)
 	stroke(card, C.border, 1)
 	self._card = card
+	local heading = txt("TextLabel", {
+		Text = "Asset Browser", Font = GB, TextSize = 17, Position = UDim2.fromOffset(12, 9), Size = U2(1, -24, 0, 22),
+	}, card)
+	self._heading = heading
 
 	local searchBox = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(8, 8), Size = U2(1, -(8 + 6 + 96 + 6 + 28 + 8), 0, 28),
+		Position = UDim2.fromOffset(8, 40), Size = U2(1, -122, 0, 30),
 	}, card)
 	corner(searchBox, 7)
 	stroke(searchBox, C.border, 1)
-	local lens = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 8), Size = UDim2.fromOffset(11, 11) }, searchBox)
+	local lens = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 9), Size = UDim2.fromOffset(11, 11) }, searchBox)
 	corner(lens, 6)
 	stroke(lens, C.dim, 1.5)
-	new("Frame", {
-		BackgroundColor3 = C.dim, BorderSizePixel = 0, Rotation = 45,
-		Position = UDim2.fromOffset(18, 19), Size = UDim2.fromOffset(6, 2),
-	}, searchBox)
+	new("Frame", { BackgroundColor3 = C.dim, BorderSizePixel = 0, Rotation = 45, Position = UDim2.fromOffset(18, 20), Size = UDim2.fromOffset(6, 2) }, searchBox)
 	local searchInput = txt("TextBox", {
-		PlaceholderText = "Search...", PlaceholderColor3 = C.dim, TextSize = 12, ClearTextOnFocus = false,
+		PlaceholderText = "Search assets...", PlaceholderColor3 = C.dim, TextSize = 12, ClearTextOnFocus = false,
 		Position = UDim2.fromOffset(30, 0), Size = U2(1, -38, 1, 0),
 	}, searchBox)
 	table.insert(self._phs, searchInput)
@@ -2177,21 +2176,18 @@ function M:_build()
 
 	local ddButton = txt("TextButton", {
 		BackgroundTransparency = 0, BackgroundColor3 = C.input,
-		AnchorPoint = V2(1, 0), Position = U2(1, -(8 + 28 + 6), 0, 8), Size = UDim2.fromOffset(96, 28),
+		AnchorPoint = V2(1, 0), Position = U2(1, -42, 0, 40), Size = UDim2.fromOffset(94, 30),
 	}, card)
 	corner(ddButton, 7)
 	stroke(ddButton, C.border, 1)
 	local ddText = txt("TextLabel", {
-		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(10, 0), Size = U2(1, -26, 1, 0),
+		Text = "All", Font = GM, TextSize = 11, Position = UDim2.fromOffset(9, 0), Size = U2(1, -24, 1, 0),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, ddButton)
-	txt("TextLabel", {
-		Text = "▾", TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
-		AnchorPoint = V2(1, 0), Position = U2(1, -4, 0, 0), Size = UDim2.fromOffset(18, 28),
-	}, ddButton)
+	txt("TextLabel", { Text = "▾", TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(1, 0), Position = U2(1, -3, 0, 0), Size = UDim2.fromOffset(18, 30) }, ddButton)
 	local ddList = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0, Visible = false, ZIndex = 30,
-		AnchorPoint = V2(1, 0), Position = U2(1, -(8 + 28 + 6), 0, 40), Size = UDim2.fromOffset(96, 40),
+		AnchorPoint = V2(1, 0), Position = U2(1, -42, 0, 74), Size = UDim2.fromOffset(94, 40),
 	}, card)
 	corner(ddList, 7)
 	stroke(ddList, C.border, 1)
@@ -2201,17 +2197,16 @@ function M:_build()
 		ddList.Visible = not ddList.Visible
 	end)
 
-	-- крестик: удаляет вкладку Preview целиком (другие вкладки JustLib остаются)
 	local closeBtn = txt("TextButton", {
 		BackgroundTransparency = 0, BackgroundColor3 = C.input, AnchorPoint = V2(1, 0),
-		Position = U2(1, -8, 0, 8), Size = UDim2.fromOffset(28, 28),
+		Position = U2(1, -8, 0, 40), Size = UDim2.fromOffset(28, 30),
 	}, card)
 	corner(closeBtn, 7)
 	stroke(closeBtn, C.border, 1)
 	local xLines = {}
 	for _, rot in ipairs({ 45, -45 }) do
 		local l = new("Frame", {
-			AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 2),
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0), Size = UDim2.fromOffset(12, 2),
 			Rotation = rot, BackgroundColor3 = C.dim, BorderSizePixel = 0,
 		}, closeBtn)
 		corner(l, 1)
@@ -2219,15 +2214,11 @@ function M:_build()
 	end
 	closeBtn.MouseEnter:Connect(function()
 		if not touchLast() then
-			for _, l in ipairs(xLines) do
-				tw(l, { BackgroundColor3 = C.danger }, 0.12)
-			end
+			for _, l in ipairs(xLines) do tw(l, { BackgroundColor3 = C.danger }, 0.12) end
 		end
 	end)
 	closeBtn.MouseLeave:Connect(function()
-		for _, l in ipairs(xLines) do
-			tw(l, { BackgroundColor3 = C.dim }, 0.12)
-		end
+		for _, l in ipairs(xLines) do tw(l, { BackgroundColor3 = C.dim }, 0.12) end
 	end)
 	closeBtn.Activated:Connect(function()
 		self:Close()
@@ -2235,7 +2226,7 @@ function M:_build()
 
 	local grid = new("ScrollingFrame", {
 		Name = "PvGrid", BackgroundTransparency = 1, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(4, 44), Size = U2(1, -8, 1, -48),
+		Position = UDim2.fromOffset(4, 78), Size = U2(1, -8, 1, -82),
 		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1], ScrollingDirection = Enum.ScrollingDirection.Y,
 	}, card)
@@ -2243,53 +2234,58 @@ function M:_build()
 	self._gridLayout = new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(140, 134), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder,
 	}, grid)
-	-- запас вокруг карточек: рамка и подъём карточки при наведении не обрезаются краями
 	pad(grid, 4, 4, 4, 12)
 	self._grid = grid
-
 	local emptyL = txt("TextLabel", {
-		Text = "Nothing found", TextSize = 13, TextColor3 = C.dim, Visible = false,
-		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 90), Size = UDim2.fromOffset(240, 20),
+		Text = "No assets found", TextSize = 13, TextColor3 = C.dim, Visible = false,
+		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 112), Size = UDim2.fromOffset(240, 20),
 	}, card)
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
 
-	-- выезжающая панель справа ---------------------------------------------------------------
-	local drawer = new("Frame", {
-		Name = "PvDrawer", BackgroundColor3 = C.panel, BorderSizePixel = 0, Active = true, ZIndex = 2, Visible = false,
-		Size = U2(0, self._DW, 1, 0), Position = U2(0, self._W + GAP, 0, 0),
+	-- Details overlay: встроен в ту же вкладку и не создаёт отдельный ScreenGui.
+	local overlay = txt("TextButton", {
+		Name = "PvDetailsOverlay", Text = "", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1,
+		Size = U2(1, 0, 1, 0), Visible = false, ZIndex = 50,
 	}, root)
-	corner(drawer, 10)
-	stroke(drawer, C.border, 1)
-	self._drawer = drawer
-	self._dTitle = txt("TextLabel", {
-		Font = GB, TextSize = 15, Position = UDim2.fromOffset(14, 8), Size = U2(1, -50, 0, 20), TextTruncate = Enum.TextTruncate.AtEnd,
-	}, drawer)
-	self._dType = txt("TextLabel", {
-		TextSize = 11, TextColor3 = C.dim, Position = UDim2.fromOffset(14, 29), Size = U2(1, -50, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd,
-	}, drawer)
-	local collapse = txt("TextButton", {
-		Text = "›", Font = GB, TextSize = 22, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
-		AnchorPoint = V2(1, 0.5), Position = U2(1, -6, 0, 26), Size = UDim2.fromOffset(28, 28),
-	}, drawer)
-	collapse.MouseEnter:Connect(function()
-		if not touchLast() then
-			tw(collapse, { TextColor3 = C.txt }, 0.12)
-		end
-	end)
-	collapse.MouseLeave:Connect(function()
-		tw(collapse, { TextColor3 = C.dim }, 0.12)
-	end)
-	collapse.Activated:Connect(function()
+	self._drawer = overlay
+	overlay.Activated:Connect(function()
 		self:CloseDrawer()
 	end)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 0, 1) }, drawer)
-	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 55), Size = U2(1, -16, 0, 42) }, drawer)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 98), Size = U2(1, 0, 0, 1) }, drawer)
-	self._dPages = new("Frame", {
-		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(0, 100), Size = U2(1, 0, 1, -102),
-	}, drawer)
+	local modal = new("Frame", {
+		Name = "PvDetails", AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(560, 360), BackgroundColor3 = C.panel, BorderSizePixel = 0,
+		ZIndex = 51, Active = true,
+	}, overlay)
+	corner(modal, 12)
+	stroke(modal, C.border, 1)
+	self._drawerPanel = modal
+	self._drawerScale = new("UIScale", { Scale = 0.94 }, modal)
 
-	-- общий цикл для всех 3D-превью: плавно на любом FPS (на скрытой вкладке не работает)
+	self._dTitle = txt("TextLabel", {
+		Font = GB, TextSize = 16, Position = UDim2.fromOffset(14, 9), Size = U2(1, -54, 0, 20),
+		TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 52,
+	}, modal)
+	self._dType = txt("TextLabel", {
+		TextSize = 10, TextColor3 = C.dim, Position = UDim2.fromOffset(14, 30), Size = U2(1, -54, 0, 14),
+		TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 52,
+	}, modal)
+	local modalClose = txt("TextButton", {
+		Text = "×", Font = GB, TextSize = 21, TextColor3 = C.dim, BackgroundColor3 = C.input,
+		AnchorPoint = V2(1, 0), Position = U2(1, -9, 0, 9), Size = UDim2.fromOffset(30, 30), ZIndex = 53,
+	}, modal)
+	corner(modalClose, 7)
+	stroke(modalClose, C.border, 1)
+	modalClose.Activated:Connect(function()
+		self:CloseDrawer()
+	end)
+	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 48), Size = U2(1, 0, 0, 1), ZIndex = 52 }, modal)
+	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 52), Size = U2(1, -16, 0, 42), ZIndex = 52 }, modal)
+	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 96), Size = U2(1, 0, 0, 1), ZIndex = 52 }, modal)
+	self._dPages = new("Frame", {
+		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(10, 100), Size = U2(1, -20, 1, -112), ZIndex = 52,
+	}, modal)
+
+	-- Общий цикл 3D-превью. Работает только пока вкладка видима.
 	self._cons[#self._cons + 1] = RunService.RenderStepped:Connect(function(dt)
 		if not self._root or not self._root.Visible then
 			return
@@ -2299,7 +2295,6 @@ function M:_build()
 		end
 	end)
 
-	-- первичная отрисовка ------------------------------------------------------------------
 	self:_relayout()
 	self:_renderSidebar()
 	self:_syncCards()
@@ -2308,21 +2303,16 @@ function M:_build()
 		local last = S("last", "")
 		if type(last) == "string" then
 			local tn = last:match("^[^|]*")
-			if tn and self:GetTab(tn) then
-				startTab = self:GetTab(tn)
-			end
+			if tn and self:GetTab(tn) then startTab = self:GetTab(tn) end
 		end
 		local pg = S("page", "")
-		if type(pg) == "string" and pg ~= "" then
-			self._page = pg
-		end
+		if type(pg) == "string" and pg ~= "" then self._page = pg end
 	end
 	self._restoring = true
 	self:_activate(startTab)
 	self._restoring = false
 	return true
 end
-
 --------------------------------------------------------------------
 -- список слева
 --------------------------------------------------------------------
@@ -2811,43 +2801,36 @@ function M:_setDrawer(open)
 		return
 	end
 	self._drawerOpen = open
-	local st = self:_states(open)
-	local nav, card, drawer = self._nav, self._card, self._drawer
-	-- ширину карточки меняем сразу (сетка перестраивается и «выскакивает» плавно), а сдвигаем плавно
-	self._cardW = st.cardW
-	card.Size = U2(0, st.cardW, 1, 0)
-	self:_fitGrid()
-	self:_popGrid()
-	if open then
-		drawer.Visible = true
-	end
 	self._slideTok = (self._slideTok or 0) + 1
 	local tok = self._slideTok
-	if not S("anim", true) then
-		nav.Position = U2(0, st.navX, 0, 0)
-		card.Position = U2(0, st.cardX, 0, 0)
-		drawer.Position = U2(0, st.drawerX, 0, 0)
-		if not open then
-			drawer.Visible = false
-			self:_cleanupPage()
+	local overlay, panel, scale = self._drawer, self._drawerPanel, self._drawerScale
+	if open then
+		self:_refreshDrawer(true)
+		overlay.Visible = true
+		if S("anim", true) then
+			overlay.BackgroundTransparency = 1
+			scale.Scale = 0.94
+			tw(overlay, { BackgroundTransparency = 0.42 }, 0.2)
+			tw(scale, { Scale = 1 }, 0.28, QUINT)
+		else
+			overlay.BackgroundTransparency = 0.42
+			scale.Scale = 1
 		end
 		return
 	end
-	self._sliding = true
-	local info = TweenInfo.new(open and 0.5 or 0.42, QUINT, OUT)
-	TS:Create(nav, info, { Position = U2(0, st.navX, 0, 0) }):Play()
-	TS:Create(card, info, { Position = U2(0, st.cardX, 0, 0) }):Play()
-	TS:Create(drawer, info, { Position = U2(0, st.drawerX, 0, 0) }):Play()
-	B.delay(open and 0.52 or 0.44, function()
-		if self._slideTok ~= tok or not self._drawer then
-			return
-		end
-		self._sliding = false
-		if not open then
-			self._drawer.Visible = false
-			self:_cleanupPage()
-		end
-	end)
+	if S("anim", true) then
+		tw(overlay, { BackgroundTransparency = 1 }, 0.16)
+		tw(scale, { Scale = 0.96 }, 0.16)
+		B.delay(0.18, function()
+			if self._slideTok == tok and self._drawer then
+				self._drawer.Visible = false
+				self:_cleanupPage()
+			end
+		end)
+	else
+		overlay.Visible = false
+		self:_cleanupPage()
+	end
 end
 
 function M:_controlsFor(asset)
