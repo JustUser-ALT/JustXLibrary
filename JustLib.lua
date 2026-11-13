@@ -7394,7 +7394,7 @@ function JL:Window(opts)
         addSwitch(pV, "Auto Rotate", "Spins the model on the Preview page. Drag to rotate by hand, scroll or pinch to zoom", "_pv_autorotate", true, function() pvApply() end)
         addSlider(pV, "Rotate Speed", "Degrees per second for Auto Rotate", "_pv_rotspeed", 40, 5, 180, 5, "°/s", function() pvApply() end)
         addSlider(pV, "Card Size", "Minimum width of the cards in the grid", "_pv_card", 140, 100, 240, 10, "px", function() pvApply() end)
-        addSwitch(pV, "Animations", "Slide-out panel and card animations", "_pv_anim", true, function() end)
+        addSwitch(pV, "Animations", "Modal and asset card animations", "_pv_anim", true, function() end)
         addSwitch(pV, "Remember Last Tab", "Reopens the Preview tab on the tab and page you used last", "_pv_remember", true, function() end)
         addButton(pV, "Open Preview", "Creates the Preview tab if it does not exist and switches to it", "Open", false, function()
             if JL._preview then JL._preview:Open() else JL:Notify({Title = "Preview UI", Desc = "No Preview created. Use JL:Preview()", Type = "Warn", Duration = 3}) end
