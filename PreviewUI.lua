@@ -1916,6 +1916,7 @@ function M:_teardown(removeTab)
 	self._tab = nil
 	self:_closeMenu()
 	self:_cleanupPage()
+	self:_clearLargePreview()
 	for _, c in ipairs(self._cons) do
 		pcall(function() c:Disconnect() end)
 	end
@@ -1930,6 +1931,7 @@ function M:_teardown(removeTab)
 	self._root, self._nav, self._card, self._drawer, self._titleL = nil, nil, nil, nil, nil
 	self._navList, self._grid, self._gridLayout, self._d = nil, nil, nil, nil
 	self._dTitle, self._dType, self._dTabs, self._dPages, self._pageRoot, self._indicator = nil, nil, nil, nil, nil, nil
+	self._dLeft, self._dRight, self._dRightPage = nil, nil, nil
 	self._cards, self._sideRefs, self._tabRefs, self._curPages = {}, {}, {}, {}
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._activeTab, self._selected, self._drawerOpen, self._page = nil, nil, false, nil
@@ -2814,6 +2816,7 @@ end
 -- панель справа (drawer)
 --------------------------------------------------------------------
 function M:_animateAssetIntoDetail()
+	if not S("anim", true) then return end
 	local asset = self._selected
 	local card = asset and self._cards[asset]
 	local thumb = card and card.thumb
