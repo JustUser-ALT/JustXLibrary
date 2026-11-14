@@ -70,7 +70,69 @@ end
 
 local function openPreview()
     if Preview and Preview.alive and Preview:IsOpen() then
-        Preview:Open("Models")
+        -- Global test controls: these appear in the Controllers page for every selected asset.
+    Preview:Divider({ Label = "Basic controls" })
+    Preview:Button({
+        Name = "Test Button",
+        Icon = "mouse-pointer-click",
+        Callback = function()
+            print("[Preview Test] Button clicked.")
+        end,
+    })
+    Preview:Toggle({
+        Name = "Test Toggle",
+        Default = true,
+        Callback = function(value)
+            print("[Preview Test] Toggle:", value)
+        end,
+    })
+    Preview:Dropdown({
+        Name = "Single Dropdown",
+        Options = { "Option A", "Option B", "Option C" },
+        Default = "Option B",
+        Callback = function(value)
+            print("[Preview Test] Dropdown:", value)
+        end,
+    })
+    Preview:Dropdown({
+        Name = "MultiSelect Dropdown",
+        Options = { "Ruby", "Sapphire", "Emerald", "Amethyst" },
+        MultiSelect = true,
+        MaxSelect = 3,
+        Default = { "Ruby", "Emerald" },
+        Callback = function(values)
+            print("[Preview Test] MultiSelect:", table.concat(values, ", "))
+        end,
+    })
+    Preview:Slider({
+        Name = "Test Slider",
+        Min = 0,
+        Max = 100,
+        Step = 1,
+        Default = 35,
+        Suffix = "%",
+        Callback = function(value)
+            print("[Preview Test] Slider:", value)
+        end,
+    })
+    Preview:ColorPicker({
+        Name = "Test Color",
+        Default = Color3.fromRGB(80, 170, 255),
+        Callback = function(color)
+            print("[Preview Test] Color:", color)
+        end,
+    })
+    Preview:Textbox({
+        Name = "Test Textbox",
+        Placeholder = "Enter some text...",
+        Default = "Preview test",
+        Callback = function(value)
+            print("[Preview Test] Textbox:", value)
+        end,
+    })
+    Preview:Label({ Text = "All supported Preview controls are listed above." })
+
+    Preview:Open("Models")
         return
     end
 
