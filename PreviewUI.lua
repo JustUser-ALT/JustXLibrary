@@ -2824,8 +2824,8 @@ function M:_animateAssetIntoDetail()
 	local rootPos = self._root.AbsolutePosition
 	local fromPos = (thumb.AbsolutePosition - rootPos) / scale
 	local fromSize = thumb.AbsoluteSize / scale
-	local targetPos = (self._dRightPage.AbsolutePosition - rootPos) / scale
-	local targetSize = self._dRightPage.AbsoluteSize / scale
+	local targetPos = Vector2.new(self._dRight.Position.X.Offset, 62)
+	local targetSize = self._dRight.AbsoluteSize / scale
 	if targetSize.X < 40 or targetSize.Y < 40 then
 		return
 	end
