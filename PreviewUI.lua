@@ -1390,37 +1390,79 @@ PAGES.preview = {
 		local variants = a._variants or {}
 		local variantBar
 		if #variants > 1 then
-			variantBar = new("ScrollingFrame", {
-				BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 6),
-				Size = U2(1, -20, 0, 32), CanvasSize = U2(0, 0, 0, 0),
-				AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
-				ScrollingDirection = Enum.ScrollingDirection.X,
+			variantBar = new("Frame", {
+				Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(190, 32), ZIndex = 30,
 			}, parent)
-			local layout = new("UIListLayout", {
-				FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6),
-				SortOrder = Enum.SortOrder.LayoutOrder,
+			local selectedIndex = a._variantIndex or 1
+			local selectedVariant = variants[selectedIndex]
+			local trigger = txt("TextButton", {
+				Name = "VariantDropdownButton", Text = "", TextXAlignment = Enum.TextXAlignment.Left,
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.05,
+				Size = UDim2.fromScale(1, 1), ZIndex = 31,
 			}, variantBar)
+			corner(trigger, 7)
+			stroke(trigger, C.border, 1)
+			local title = txt("TextLabel", {
+				Text = "Version", Font = GM, TextSize = 9, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(9, 2), Size = U2(1, -32, 0, 11), ZIndex = 32,
+			}, trigger)
+			local current = txt("TextLabel", {
+				Text = tostring(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
+				Font = GB, TextSize = 11, TextColor3 = C.txt,
+				Position = UDim2.fromOffset(9, 13), Size = U2(1, -34, 0, 16),
+				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
+			}, trigger)
+			local arrow = txt("TextLabel", {
+				Text = "⌄", Font = GB, TextSize = 16, TextColor3 = C.dim,
+				TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -27, 0, 0),
+				Size = UDim2.fromOffset(20, 32), ZIndex = 32,
+			}, trigger)
+			local menu = new("Frame", {
+				Name = "VariantOptions", BackgroundColor3 = C.input, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(0, 36), Size = UDim2.fromOffset(190, math.min(#variants * 30 + 8, 128)),
+				Visible = false, ZIndex = 35,
+			}, variantBar)
+			corner(menu, 7)
+			stroke(menu, C.border, 1)
+			pad(menu, 4, 4, 4, 4)
+			new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
+			local optionButtons = {}
+			local function closeMenu()
+				menu.Visible = false
+				arrow.Text = "⌄"
+			end
 			for i, variant in ipairs(variants) do
-				local selected = i == (a._variantIndex or 1)
-				local button = txt("TextButton", {
-					Text = tostring(variant.Name or ("Variant " .. i)), Font = GM, TextSize = 11,
-					TextColor3 = selected and ACCENTS[1] or C.dim,
-					BackgroundColor3 = selected and C.badge or C.btnBg, BackgroundTransparency = selected and 0 or 0.15,
-					Size = UDim2.fromOffset(math.clamp(58 + #tostring(variant.Name or ("Variant " .. i)) * 5, 82, 126), 28),
-					LayoutOrder = i,
-				}, variantBar)
-				corner(button, 7)
-				local border = stroke(button, selected and ACCENTS[1] or C.border, selected and 1.5 or 1)
-				if variant.Icon then
-					local ic = mkIcon(button, variant.Icon, 13, selected and ACCENTS[1] or C.dim)
-					ic.Position = UDim2.fromOffset(7, 7)
-					button.TextXAlignment = Enum.TextXAlignment.Left
-					button.Text = "  " .. button.Text
+				local option = txt("TextButton", {
+					Text = "", BackgroundColor3 = ACCENTS[1],
+					BackgroundTransparency = i == selectedIndex and 0.84 or 1,
+					Size = U2(1, 0, 0, 28), LayoutOrder = i, ZIndex = 36,
+				}, menu)
+				corner(option, 5)
+				local optionName = tostring(variant.Name or ("Variant " .. i))
+				txt("TextLabel", {
+					Text = optionName, Font = i == selectedIndex and GB or GM, TextSize = 11,
+					TextColor3 = i == selectedIndex and ACCENTS[1] or C.txt,
+					Position = UDim2.fromOffset(8, 0), Size = U2(1, -30, 1, 0),
+					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 37,
+				}, option)
+				if i == selectedIndex then
+					txt("TextLabel", {
+						Text = "✓", Font = GB, TextSize = 11, TextColor3 = ACCENTS[1],
+						TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -24, 0, 0),
+						Size = UDim2.fromOffset(18, 28), ZIndex = 37,
+					}, option)
 				end
-				button.Activated:Connect(function()
+				option.Activated:Connect(function()
+					closeMenu()
 					a:SetVariant(i)
 				end)
+				optionButtons[#optionButtons + 1] = option
 			end
+			trigger.Activated:Connect(function()
+				menu.Visible = not menu.Visible
+				arrow.Text = menu.Visible and "⌃" or "⌄"
+			end)
 		end
 		-- Use one full-width rounded preview surface instead of nested inset frames.
 		local topOffset = variantBar and 44 or 0
