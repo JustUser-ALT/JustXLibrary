@@ -2838,7 +2838,10 @@ function M:_animateAssetIntoDetail()
 	end
 	local function reveal(root, delayTime)
 		if not root then return end
-		local objects = root:GetDescendants()
+		local objects = { root }
+		for _, child in ipairs(root:GetDescendants()) do
+			objects[#objects + 1] = child
+		end
 		for _, obj in ipairs(objects) do
 			if obj:IsA("UIStroke") then
 				local target = obj.Transparency
