@@ -3089,10 +3089,7 @@ function M:_controlsFor(asset)
 end
 
 function M:_pagesFor(asset)
-	local out = {}
-	if #self:_controlsFor(asset) > 0 then
-		out[#out + 1] = PAGES.controllers
-	end
+	local out = { PAGES.controllers }
 	if hasInfo(asset) then
 		out[#out + 1] = PAGES.info
 	end
