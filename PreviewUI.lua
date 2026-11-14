@@ -1417,9 +1417,11 @@ PAGES.preview = {
 			end
 		end
 		local topOffset = variantBar and 44 or 8
+		-- The old Auto Rotate / Reset row was removed; keep only a small bottom margin.
+		local bottomMargin = 12
 		local box = new("Frame", {
 			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(10, topOffset),
-			Size = U2(1, -20, 1, variantBar and -92 or -56),
+			Size = U2(1, -20, 1, -(topOffset + bottomMargin)),
 		}, parent)
 		corner(box, 9)
 		stroke(box, C.border, 1)
