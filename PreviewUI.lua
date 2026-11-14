@@ -2832,6 +2832,7 @@ function M:_setDrawer(open)
 		if self._dRightPage then self._dRightPage.Visible = true end
 	else
 		self:_cleanupPage()
+		self:_clearLargePreview()
 	end
 	self._slideTok = (self._slideTok or 0) + 1
 	local tok = self._slideTok
@@ -2905,14 +2906,6 @@ function M:_cleanupPage()
 	if self._pageRoot then
 		pcall(function() self._pageRoot:Destroy() end)
 		self._pageRoot = nil
-	end
-	if self._detailPreviewCleanup then
-		pcall(self._detailPreviewCleanup)
-		self._detailPreviewCleanup = nil
-	end
-	if self._dRightPage then
-		for _, child in ipairs(self._dRightPage:GetChildren()) do child:Destroy() end
-		self._dRightPage.Visible = false
 	end
 end
 
@@ -3030,6 +3023,17 @@ function M:_showPage(id, animate)
 	self:_styleDrawerTabs(not changed and not animate)
 	if changed and S("remember", true) then
 		B.cfgSet("_pv_page", page.id)
+	end
+end
+
+function M:_clearLargePreview()
+	if self._detailPreviewCleanup then
+		pcall(self._detailPreviewCleanup)
+		self._detailPreviewCleanup = nil
+	end
+	if self._dRightPage then
+		for _, child in ipairs(self._dRightPage:GetChildren()) do child:Destroy() end
+		self._dRightPage.Visible = false
 	end
 end
 
