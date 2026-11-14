@@ -42,7 +42,7 @@
 	X:Dropdown({ Name, Options, MultiSelect, MaxSelect, Default, Flag, Callback(v) })
 	X:ColorPicker({ Name, Default, Flag, Callback(color) })
 	X:Slider({ Name, Min, Max, Step, Default, Suffix, Flag, Callback(v) })
-	X:Input({ Name, Placeholder, Default, Flag, Callback(text) })
+	X:Textbox({ Name, Placeholder, Default, Flag, Callback(text) })  -- Input остаётся алиасом
 	X:Label({ Text })     X:Divider({ Label })
 	Каждый контрол возвращает объект: :Get() :Set(v) :Remove()   Flag пишется в конфиг JustLib.
 ]]
