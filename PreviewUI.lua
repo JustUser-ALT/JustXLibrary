@@ -1484,9 +1484,8 @@ PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
-		local topOffset = 0
 		-- Use one full-width rounded preview surface instead of nested inset frames.
-		local topOffset = variantBar and 44 or 0
+		local topOffset = 0
 		local box = new("Frame", {
 			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
 			Size = U2(1, 0, 1, -topOffset),
