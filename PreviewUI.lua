@@ -1420,6 +1420,33 @@ PAGES.preview = {
 		}, parent)
 		corner(box, 9)
 		stroke(box, C.border, 1)
+		-- Expand the preview over the complete detail drawer; the same control exits fullscreen.
+		local fullButton = txt("TextButton", {
+			Name = "PreviewFullscreen", Text = "", BackgroundColor3 = C.btnBg,
+			BackgroundTransparency = 0.08, AnchorPoint = V2(1, 0),
+			Position = U2(1, -8, 0, 8), Size = UDim2.fromOffset(34, 34), ZIndex = 20,
+		}, box)
+		corner(fullButton, 8)
+		stroke(fullButton, C.border, 1)
+		local expandIcon = mkIcon(fullButton, "maximize-2", 16, C.txt)
+		expandIcon.AnchorPoint = V2(0.5, 0.5)
+		expandIcon.Position = U2(0.5, 0, 0.5, 0)
+		expandIcon.ZIndex = 21
+		local collapseIcon = mkIcon(fullButton, "minimize-2", 16, C.txt)
+		collapseIcon.AnchorPoint = V2(0.5, 0.5)
+		collapseIcon.Position = U2(0.5, 0, 0.5, 0)
+		collapseIcon.ZIndex = 21
+		local function syncFullscreenIcon()
+			local active = pv._previewFullscreen == true
+			expandIcon.Visible = not active
+			collapseIcon.Visible = active
+		end
+		syncFullscreenIcon()
+		fullButton.Activated:Connect(function()
+			pv:_setPreviewFullscreen(not pv._previewFullscreen)
+			syncFullscreenIcon()
+		end)
+
 		local inner = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, box)
 		pad(inner, 10, 10, 10, 10)
 		local h = makeThumb(inner, a)
@@ -1968,6 +1995,8 @@ function M:_teardown(removeTab)
 	self._navList, self._grid, self._gridLayout, self._d = nil, nil, nil, nil
 	self._dTitle, self._dType, self._dTabs, self._dPages, self._pageRoot, self._indicator = nil, nil, nil, nil, nil, nil
 	self._dLeft, self._dRight, self._dRightPage = nil, nil, nil
+	self._dCollapse, self._dHeaderLine = nil, nil
+	self._previewFullscreen = false
 	self._cards, self._sideRefs, self._tabRefs, self._curPages = {}, {}, {}, {}
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._activeTab, self._selected, self._drawerOpen, self._page = nil, nil, false, nil
@@ -2017,6 +2046,32 @@ end
 --------------------------------------------------------------------
 -- раскладка и настройки (страница "Preview UI" в Settings JustLib)
 --------------------------------------------------------------------
+function M:_applyPreviewFullscreen()
+	if not self._dRight or not self._dLeft then
+		return
+	end
+	local active = self._previewFullscreen == true
+	self._dLeft.Visible = not active
+	if self._dTitle then self._dTitle.Visible = not active end
+	if self._dType then self._dType.Visible = not active end
+	if self._dCollapse then self._dCollapse.Visible = not active end
+	if self._dHeaderLine then self._dHeaderLine.Visible = not active end
+	if active then
+		self._dRight.Position = U2(0, 0, 0, 0)
+		self._dRight.Size = U2(1, 0, 1, 0)
+	else
+		local leftW = math.clamp(math.floor(self._W * 0.39), 190, 330)
+		self._dRight.Position = U2(0, leftW + 1, 0, 62)
+		self._dRight.Size = U2(1, -leftW - 1, 1, -62)
+	end
+end
+
+function M:_setPreviewFullscreen(enabled)
+	self._previewFullscreen = enabled == true
+	self:_applyPreviewFullscreen()
+	return self._previewFullscreen
+end
+
 function M:_cacheSettings()
 	self._auto = S("autorotate", true) == true
 	self._speed = math.rad(tonumber(S("rotspeed", 40)) or 40)
@@ -2063,6 +2118,7 @@ function M:_relayout()
 		self._dRight.Size = U2(1, -leftW - 1, 1, -62)
 		self._dTabs.Size = U2(1, -20, 0, 42)
 		self._dPages.Size = U2(1, 0, 1, -102)
+		self:_applyPreviewFullscreen()
 	end
 	if not self._sliding then
 		self._nav.Position = U2(0, st.navX, 0, 0)
@@ -2312,6 +2368,7 @@ function M:_build()
 		Text = "‹", Font = GB, TextSize = 22, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
 		AnchorPoint = V2(1, 0.5), Position = U2(1, -6, 0, 26), Size = UDim2.fromOffset(28, 28),
 	}, drawer)
+	self._dCollapse = collapse
 	collapse.MouseEnter:Connect(function()
 		if not touchLast() then
 			tw(collapse, { TextColor3 = C.txt }, 0.12)
@@ -2323,7 +2380,10 @@ function M:_build()
 	collapse.Activated:Connect(function()
 		self:CloseDrawer()
 	end)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 0, 1) }, drawer)
+	self._dHeaderLine = new("Frame", {
+		BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 0, 1),
+	}, drawer)
 	local leftW = math.clamp(math.floor(self._W * 0.39), 190, 330)
 	local left = new("Frame", { Name = "PvDetailInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 62), Size = U2(0, leftW, 1, -62) }, drawer)
 	self._dLeft = left
@@ -3145,6 +3205,7 @@ function M:_showPage(id, animate)
 end
 
 function M:_clearLargePreview()
+	self:_setPreviewFullscreen(false)
 	if self._detailPreviewCleanup then
 		pcall(self._detailPreviewCleanup)
 		self._detailPreviewCleanup = nil
