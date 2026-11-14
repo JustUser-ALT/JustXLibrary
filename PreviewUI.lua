@@ -481,14 +481,15 @@ local function makeViewport(parent, src)
 	end
 
 	local vp = new("ViewportFrame", {
-		BackgroundColor3 = C.panel, BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
-		Ambient = rgb(170, 170, 188), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.4, -1, 0.8),
+		-- Keep the preview stage visibly brighter than the surrounding dark UI.
+		BackgroundColor3 = rgb(43, 47, 59), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
+		Ambient = rgb(220, 220, 230), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.35, -1, 0.55),
 	}, parent)
 	new("UIGradient", {
 		Rotation = 90,
 		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, C.badge),
-			ColorSequenceKeypoint.new(1, C.panel),
+			ColorSequenceKeypoint.new(0, rgb(61, 66, 81)),
+			ColorSequenceKeypoint.new(1, rgb(37, 41, 52)),
 		}),
 	}, vp)
 	model.Parent = vp
@@ -500,7 +501,7 @@ local function makeViewport(parent, src)
 	local floorSize = math.max(radius * 4, 8)
 	local floor = new("Part", {
 		Name = "PreviewStageFloor", Anchored = true, CanCollide = false, CastShadow = true,
-		Material = Enum.Material.Slate, Color = C.btnBg,
+		Material = Enum.Material.SmoothPlastic, Color = rgb(78, 83, 99),
 		Size = V3(floorSize, 0.12, floorSize),
 		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.06, center.Z),
 	}, vp)
