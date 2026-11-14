@@ -502,13 +502,7 @@ local function makeViewport(parent, src)
 		Name = "PreviewStageFloor", Anchored = true, CanCollide = false, CastShadow = true,
 		Material = Enum.Material.Slate, Color = C.btnBg,
 		Size = V3(floorSize, 0.12, floorSize),
-		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.07, center.Z),
-	}, vp)
-	local plinth = new("Part", {
-		Name = "PreviewStageBase", Anchored = true, CanCollide = false, CastShadow = true,
-		Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = C.badge,
-		Size = V3(0.16, math.max(radius * 1.65, 2), math.max(radius * 1.65, 2)),
-		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.16, center.Z) * ANG(0, 0, math.rad(90)),
+		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.06, center.Z),
 	}, vp)
 	local cam = new("Camera", { FieldOfView = fov }, vp)
 	vp.CurrentCamera = cam
@@ -1432,6 +1426,7 @@ PAGES.preview = {
 		local inner = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, box)
 		pad(inner, 10, 10, 10, 10)
 		local h = makeThumb(inner, a)
+		if h then h.manualOnly = true end
 
 		-- Инструменты вынесены прямо на 3D-сцену, как в референсе.
 		local mode = "rotate"
@@ -2350,7 +2345,7 @@ function M:_build()
 			return
 		end
 		for h, st in pairs(self._viewers) do
-			h.step(dt, self._auto and not st.dragging and os.clock() > st.resumeAt, self._speed)
+			h.step(dt, self._auto and not h.manualOnly and not st.dragging and os.clock() > st.resumeAt, self._speed)
 		end
 	end)
 
