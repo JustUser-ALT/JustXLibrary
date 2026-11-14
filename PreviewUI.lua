@@ -1267,7 +1267,7 @@ end
 
 -- Actions: все контролы ассета, его вкладки и самого Preview
 PAGES.actions = {
-	id = "actions", name = "Actions", icon = "☰",
+	id = "actions", name = "Actions", icon = "sliders-horizontal",
 	build = function(parent, asset, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
@@ -1293,7 +1293,7 @@ PAGES.actions = {
 
 -- Info: название, автор, аватарка, даты и любые свои строки
 PAGES.info = {
-	id = "info", name = "Info", icon = "ℹ",
+	id = "info", name = "Info", icon = "info",
 	build = function(parent, a, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, content)
@@ -1336,11 +1336,11 @@ PAGES.info = {
 				order = order + 1
 			end
 		end
-		add("☺", "Creator", a.Creator)
-		add("▤", "Created", a.Created)
-		add("⛶", "Size", a.Size)
-		add("◈", "Version", a.Version)
-		add("▦", "Category", a.Cat)
+		add("user-round", "Creator", a.Creator)
+		add("calendar-days", "Created", a.Created)
+		add("box", "Size", a.Size)
+		add("git-branch", "Version", a.Version)
+		add("tag", "Category", a.Cat)
 		for _, r in ipairs(a.Info or {}) do
 			add(r.Icon or "•", r.Label or "", r.Value or "")
 		end
@@ -1378,7 +1378,7 @@ PAGES.info = {
 
 -- Preview: плавное 3D (камера крутится вокруг модели, инерция при перетаскивании, зум колесом/щипком)
 PAGES.preview = {
-	id = "preview", name = "Preview", icon = "⬡",
+	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
 		local variants = a._variants or {}
@@ -1439,34 +1439,40 @@ PAGES.preview = {
 			FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}, tools)
-		local function toolButton(icon, order, selected, callback)
+		local function toolButton(iconName, order, selected, callback)
 			local b = txt("TextButton", {
-				Text = icon, Font = GB, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Center,
-				TextYAlignment = Enum.TextYAlignment.Center,
-				TextColor3 = selected and C.txt or C.dim,
-				BackgroundColor3 = selected and ACCENTS[1] or C.btnBg,
+				Text = "", BackgroundColor3 = selected and ACCENTS[1] or C.btnBg,
 				BackgroundTransparency = 0.04, Size = UDim2.fromOffset(42, 38),
 				LayoutOrder = order, ZIndex = 13,
 			}, tools)
 			corner(b, 9)
 			stroke(b, selected and ACCENTS[1] or C.border, 1)
+			local ic = mkIcon(b, iconName, 19, selected and C.txt or C.dim)
+			ic.AnchorPoint = V2(0.5, 0.5)
+			ic.Position = U2(0.5, 0, 0.5, 0)
+			ic.ZIndex = 14
 			b.Activated:Connect(callback)
-			return b
+			return b, ic
 		end
 		local rotateButton, zoomButton
+		local rotateIcon, zoomIcon
 		local function setMode(nextMode)
 			mode = nextMode
-			for button, active in pairs({ [rotateButton] = mode == "rotate", [zoomButton] = mode == "zoom" }) do
+			for button, state in pairs({
+				[rotateButton] = { active = mode == "rotate", icon = rotateIcon },
+				[zoomButton] = { active = mode == "zoom", icon = zoomIcon },
+			}) do
 				if button then
+					local active = state.active
 					tw(button, {
 						BackgroundColor3 = active and ACCENTS[1] or C.btnBg,
-						TextColor3 = active and C.txt or C.dim,
 					}, 0.14)
+					setIconColor(state.icon, active and C.txt or C.dim)
 				end
 			end
 		end
-		rotateButton = toolButton("↻", 1, true, function() setMode("rotate") end)
-		zoomButton = toolButton("⌕", 2, false, function() setMode("zoom") end)
+		rotateButton, rotateIcon = toolButton("rotate-cw", 1, true, function() setMode("rotate") end)
+		zoomButton, zoomIcon = toolButton("zoom-in", 2, false, function() setMode("zoom") end)
 
 		if h then
 			local st = { dragging = false, resumeAt = 0, pinching = false }
