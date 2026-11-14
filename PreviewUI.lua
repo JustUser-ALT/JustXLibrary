@@ -188,42 +188,7 @@ local function cleanDropdownLabel(value)
 	return textValue:match("^%s*(.-)%s*$") or textValue
 end
 
-local function makeChevron(parent, direction, size, color, zIndex)
-	local holder = new("Frame", {
-		BackgroundTransparency = 1, BorderSizePixel = 0,
-		Size = UDim2.fromOffset(size, size), ZIndex = zIndex or 1,
-	}, parent)
-	local thickness = math.max(1, math.floor(size * 0.12))
-	local arm = math.max(7, math.floor(size * 0.56))
-	local offset = math.max(2, math.floor(arm * 0.30))
-	local parts
-	if direction == "down" then
-		parts = {
-			{ -offset, offset, 45 },
-			{ offset, offset, -45 },
-		}
-	elseif direction == "left" then
-		parts = {
-			{ offset, -offset, -45 },
-			{ offset, offset, 45 },
-		}
-	else
-		parts = {
-			{ -offset, -offset, 45 },
-			{ -offset, offset, -45 },
-		}
-	end
-	for _, part in ipairs(parts) do
-		new("Frame", {
-			BackgroundColor3 = color, BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5),
-			Position = U2(0.5, part[1], 0.5, part[2]),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = part[3],
-			ZIndex = zIndex or 1,
-		}, holder)
-	end
-	return holder
-end
+
 
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
@@ -1388,7 +1353,8 @@ local function buildVariantSelector(parent, a)
 				Position = UDim2.fromOffset(31, 13), Size = U2(1, -56, 0, 16),
 				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
 			}, trigger)
-			local arrow = makeChevron(trigger, "down", 12, C.dim, 32)
+			local arrow = mkIcon(trigger, "chevron-down", 13, C.dim)
+			arrow.ZIndex = 32
 			arrow.AnchorPoint = V2(0.5, 0.5)
 			arrow.Position = U2(1, -17, 0.5, 0)
 			local menu = new("Frame", {
@@ -2482,7 +2448,7 @@ function M:_build()
 		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(28, 0), Size = U2(1, -44, 1, 0),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, ddButton)
-	local filterArrow = makeChevron(ddButton, "down", 11, C.dim, 1)
+	local filterArrow = mkIcon(ddButton, "chevron-down", 12, C.dim)
 	filterArrow.AnchorPoint = V2(0.5, 0.5)
 	filterArrow.Position = U2(1, -13, 0.5, 0)
 	local ddList = new("Frame", {
