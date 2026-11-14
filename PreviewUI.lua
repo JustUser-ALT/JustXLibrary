@@ -1461,7 +1461,11 @@ PAGES.preview = {
 			local hit = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 5 }, box)
 			local function insideHit(pos)
 				local p, s = hit.AbsolutePosition, hit.AbsoluteSize
-				return pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+				local inPreview = pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+				if not inPreview then return false end
+				local bp, bs = fullButton.AbsolutePosition, fullButton.AbsoluteSize
+				local onFullscreenButton = pos.X >= bp.X and pos.X <= bp.X + bs.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs.Y
+				return not onFullscreenButton
 			end
 
 			-- Mouse: drag to rotate / zoom vertically, wheel to zoom.
@@ -3236,6 +3240,7 @@ function M:_buildLargePreview(asset, enabled)
 			warn("[PreviewUI] large preview failed: " .. tostring(cleanup))
 		end
 	else
+		self:_setPreviewFullscreen(false)
 		txt("TextLabel", {
 			Text = "No preview available", TextSize = 13, TextColor3 = C.dim,
 			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
