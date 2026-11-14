@@ -3241,9 +3241,11 @@ function M:_controlsFor(asset)
 end
 
 function M:_pagesFor(asset)
-	local out = { PAGES.controllers }
-	if hasInfo(asset) then
-		out[#out + 1] = PAGES.info
+	local out = { PAGES.info }
+	local controls = self:_controlsFor(asset)
+	local hasVariants = asset and type(asset._variants) == "table" and #asset._variants > 1
+	if #controls > 0 or hasVariants then
+		out[#out + 1] = PAGES.controllers
 	end
 	if hasPreview(asset) then
 		out[#out + 1] = PAGES.preview
