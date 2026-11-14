@@ -188,6 +188,39 @@ local function cleanDropdownLabel(value)
 	return textValue:match("^%s*(.-)%s*$") or textValue
 end
 
+local function makeChevron(parent, direction, size, color, zIndex)
+	local holder = new("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
+	}, parent)
+	local thickness = math.max(1, math.floor(size * 0.12))
+	local arm = math.floor(size * 0.34)
+	local first, second
+	if direction == "down" then
+		first = new("Frame", {
+			BackgroundColor3 = color, BorderSizePixel = 0,
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, -1),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = 45, ZIndex = zIndex or 1,
+		}, holder)
+		second = new("Frame", {
+			BackgroundColor3 = color, BorderSizePixel = 0,
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, -1),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = -45, ZIndex = zIndex or 1,
+		}, holder)
+	else
+		first = new("Frame", {
+			BackgroundColor3 = color, BorderSizePixel = 0,
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = direction == "left" and -45 or 45, ZIndex = zIndex or 1,
+		}, holder)
+		second = new("Frame", {
+			BackgroundColor3 = color, BorderSizePixel = 0,
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = direction == "left" and 45 or -45, ZIndex = zIndex or 1,
+		}, holder)
+	end
+	return holder
+end
+
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
 	local resolved = type(raw) == "table" and raw or nil
@@ -1351,11 +1384,9 @@ local function buildVariantSelector(parent, a)
 				Position = UDim2.fromOffset(31, 13), Size = U2(1, -56, 0, 16),
 				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
 			}, trigger)
-			local arrow = txt("TextLabel", {
-				Text = "⌄", Font = GB, TextSize = 16, TextColor3 = C.dim,
-				TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -27, 0, 0),
-				Size = UDim2.fromOffset(20, 32), ZIndex = 32,
-			}, trigger)
+			local arrow = makeChevron(trigger, "down", 12, C.dim, 32)
+			arrow.AnchorPoint = V2(0.5, 0.5)
+			arrow.Position = U2(1, -17, 0.5, 0)
 			local menu = new("Frame", {
 				Name = "VariantOptions", BackgroundColor3 = C.input, BorderSizePixel = 0,
 				Position = UDim2.fromOffset(0, 40), Size = U2(1, 0, 0, math.min(#variants * 30 + 8, 128)),
@@ -1368,7 +1399,7 @@ local function buildVariantSelector(parent, a)
 			local optionButtons = {}
 			local function closeMenu()
 				menu.Visible = false
-				arrow.Text = "⌄"
+				arrow.Visible = true
 			end
 			for i, variant in ipairs(variants) do
 				local option = txt("TextButton", {
@@ -2446,10 +2477,9 @@ function M:_build()
 		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(28, 0), Size = U2(1, -44, 1, 0),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, ddButton)
-	txt("TextLabel", {
-		Text = "▾", TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
-		AnchorPoint = V2(1, 0), Position = U2(1, -4, 0, 0), Size = UDim2.fromOffset(18, 28),
-	}, ddButton)
+	local filterArrow = makeChevron(ddButton, "down", 11, C.dim, 1)
+	filterArrow.AnchorPoint = V2(0.5, 0.5)
+	filterArrow.Position = U2(1, -13, 0.5, 0)
 	local ddList = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0, Visible = false, ZIndex = 30,
 		AnchorPoint = V2(1, 0), Position = U2(1, -(8 + 28 + 6), 0, 40), Size = UDim2.fromOffset(96, 40),
