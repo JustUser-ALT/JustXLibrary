@@ -485,6 +485,8 @@ local function makeViewport(parent, src)
 		BackgroundColor3 = rgb(68, 73, 88), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
 		Ambient = rgb(255, 255, 255), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.2, -1, 0.35),
 	}, parent)
+	-- Round the actual rendered surface too; rounding only its outer holder leaves square viewport corners.
+	corner(vp, 12)
 	-- No gradient overlay: it can tint the rendered 3D content and make the whole stage look dim.
 	model.Parent = vp
 
@@ -562,6 +564,7 @@ local function makeThumb(parent, asset)
 			BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
 			Image = normImage(asset.Image), ScaleType = Enum.ScaleType.Fit,
 		}, parent)
+		corner(img, 12)
 		img:SetAttribute("JLNoRepaint", true)
 		return nil
 	end
