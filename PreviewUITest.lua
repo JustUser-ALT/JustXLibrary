@@ -198,6 +198,36 @@ local function openPreview()
                 print("[Preview Test] " .. asset.Name .. " Color:", color)
             end,
         })
+        asset:Dropdown({
+            Name = "Single Dropdown",
+            Options = { "Option A", "Option B", "Option C" },
+            Default = "Option B",
+            Pinned = true,
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " Dropdown:", value)
+            end,
+        })
+        asset:Dropdown({
+            Name = "MultiSelect Dropdown",
+            Options = { "Ruby", "Sapphire", "Emerald", "Amethyst" },
+            MultiSelect = true,
+            MaxSelect = 3,
+            Default = { "Ruby", "Emerald" },
+            Pinned = true,
+            Callback = function(values)
+                print("[Preview Test] " .. asset.Name .. " MultiSelect:", table.concat(values, ", "))
+            end,
+        })
+        asset:Textbox({
+            Name = "Text Input",
+            Placeholder = "Enter some text...",
+            Default = "Preview test",
+            Pinned = true,
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " Textbox:", value)
+            end,
+        })
+        asset:Label({ Text = "Pinned controls are shared across versions." })
         asset:Button({
             Name = "Test action",
             Pinned = true,
