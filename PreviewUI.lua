@@ -194,13 +194,13 @@ local function makeChevron(parent, direction, size, color, zIndex)
 		Size = UDim2.fromOffset(size, size), ZIndex = zIndex or 1,
 	}, parent)
 	local thickness = math.max(1, math.floor(size * 0.12))
-	local arm = math.max(4, math.floor(size * 0.34))
-	local offset = math.floor(arm * 0.24)
+	local arm = math.max(7, math.floor(size * 0.56))
+	local offset = math.max(2, math.floor(arm * 0.30))
 	local parts
 	if direction == "down" then
 		parts = {
-			{ -offset, -offset, 45 },
-			{ offset, -offset, -45 },
+			{ -offset, offset, 45 },
+			{ offset, offset, -45 },
 		}
 	elseif direction == "left" then
 		parts = {
