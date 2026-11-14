@@ -271,6 +271,8 @@ local function createIconsModule(deps)
         if JL._iconPack and JL._iconPack[s] then return JL._iconPack[s] end
         return s
     end
+    -- Expose the resolver to modules created outside this factory (Preview).
+    JL._resolveIcon = resolveIcon
     local function mkIcon(parent,icon,sz,z)
         sz = sz or 20; z = z or 13
         local name = tostring(icon)
@@ -1580,7 +1582,7 @@ end)
 JL._remoteAttach = function() end -- заменяется, когда создаётся окно (Remote)
 JL._bridge = {
     C = C, ACCENTS = ACCENTS, cfgGet = cfgGet, cfgSet = cfgSet, cfgHas = cfgHas,
-    keep = keep, tw = tw, icon = resolveIcon,
+    keep = keep, tw = tw, icon = JL._resolveIcon,
     loadIconPack = function() return JL:LoadIconPack() end,
     hasIconPack = function() return JL._iconPack ~= nil end,
     track = function(resource, cleanup) return JL:Track(resource, cleanup) end,
