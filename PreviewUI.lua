@@ -1011,7 +1011,17 @@ local function makeControl(container, kind, o)
 	if container._isAsset then
 		def.pinned = o.Pinned ~= false
 		def.variantIndex = nil
-		if not def.pinned then
+		def.variantsPinned = nil
+		if type(o.VariantsPinned) == "table" and #o.VariantsPinned > 0 then
+			def.variantsPinned = {}
+			for _, target in ipairs(o.VariantsPinned) do
+				for i, variant in ipairs(container._variants or {}) do
+					if target == i or target == variant.Name then
+						def.variantsPinned[i] = true
+					end
+				end
+			end
+		elseif not def.pinned then
 			if o.Variant ~= nil then
 				for i, variant in ipairs(container._variants or {}) do
 					if variant.Name == o.Variant then
@@ -1537,6 +1547,41 @@ PAGES.preview = {
 			Size = U2(1, -inset * 2, 1, -inset * 2), ClipsDescendants = true,
 		}, box)
 		corner(inner, 9)
+
+		local variants = a._variants or {}
+		if #variants > 1 then
+			local pager = new("Frame", {
+				Name = "VariantPager", BackgroundColor3 = C.panel, BackgroundTransparency = 0.08,
+				AnchorPoint = V2(1, 1), Position = U2(1, -8, 1, -8),
+				Size = UDim2.fromOffset(132, 34), ZIndex = 25,
+			}, box)
+			corner(pager, 9)
+			stroke(pager, C.border, 1)
+			local function makePageButton(name, symbol, x, direction)
+				local button = txt("TextButton", {
+					Name = name, Text = symbol, Font = GB, TextSize = 18, TextColor3 = C.txt,
+					BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.25,
+					Position = UDim2.fromOffset(x, 3), Size = UDim2.fromOffset(28, 28), ZIndex = 26,
+				}, pager)
+				corner(button, 7)
+				button.Activated:Connect(function()
+					local nextIndex = (a._variantIndex or 1) + direction
+					if nextIndex >= 1 and nextIndex <= #variants then
+						a:SetVariant(nextIndex)
+					end
+				end)
+				return button
+			end
+			makePageButton("PreviousVariant", "‹", 3, -1)
+			local counter = txt("TextLabel", {
+				Name = "VariantCounter", Text = tostring(a._variantIndex or 1) .. "/" .. tostring(#variants),
+				Font = GM, TextSize = 12, TextColor3 = C.txt,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				Position = UDim2.fromOffset(34, 0), Size = UDim2.fromOffset(64, 34), ZIndex = 26,
+			}, pager)
+			makePageButton("NextVariant", "›", 101, 1)
+		end
+
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
 
@@ -3147,7 +3192,16 @@ function M:_controlsFor(asset)
 		if container and not seen[container] then
 			seen[container] = true
 			for _, d in ipairs(container._controls or {}) do
-				if not assetScoped or d.pinned ~= false or d.variantIndex == (asset and asset._variantIndex or 1) then
+				local visible = true
+				if assetScoped then
+					local currentIndex = asset and asset._variantIndex or 1
+					if d.variantsPinned then
+						visible = d.variantsPinned[currentIndex] == true
+					elseif d.pinned == false then
+						visible = d.variantIndex == currentIndex
+					end
+				end
+				if visible then
 					list[#list + 1] = d
 				end
 			end
