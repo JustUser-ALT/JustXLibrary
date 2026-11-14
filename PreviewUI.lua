@@ -2886,7 +2886,19 @@ function M:_animateAssetIntoDetail()
 			end
 		end
 		if overlay and overlay.Parent then
-			TS:Create(overlay, TweenInfo.new(0.2, QUINT, OUT), { BackgroundTransparency = 1 }):Play()
+			local fade = TweenInfo.new(0.2, QUINT, OUT)
+			TS:Create(overlay, fade, { BackgroundTransparency = 1 }):Play()
+			for _, obj in ipairs(overlay:GetDescendants()) do
+				if obj:IsA("ViewportFrame") or obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+					TS:Create(obj, fade, { ImageTransparency = 1 }):Play()
+				elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
+					TS:Create(obj, fade, { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+				elseif obj:IsA("Frame") then
+					TS:Create(obj, fade, { BackgroundTransparency = 1 }):Play()
+				elseif obj:IsA("UIStroke") then
+					TS:Create(obj, fade, { Transparency = 1 }):Play()
+				end
+			end
 		end
 	end)
 	B.delay(0.66, function()
