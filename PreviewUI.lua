@@ -2490,6 +2490,7 @@ function M:_build()
 	pad(ddList, 3, 3, 3, 3)
 	ddButton.Activated:Connect(function()
 		ddList.Visible = not ddList.Visible
+		filterArrow.Rotation = ddList.Visible and 180 or 0
 	end)
 
 	-- крестик: удаляет вкладку Preview целиком (другие вкладки JustLib остаются)
@@ -2542,7 +2543,7 @@ function M:_build()
 		Text = "Nothing found", TextSize = 13, TextColor3 = C.dim, Visible = false,
 		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 90), Size = UDim2.fromOffset(240, 20),
 	}, card)
-	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
+	self._d = { empty = emptyL, ddText = ddText, ddList = ddList, ddArrow = filterArrow }
 
 	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
 	local drawer = new("Frame", {
@@ -2901,6 +2902,7 @@ function M:_buildTypeList()
 		ob.Activated:Connect(function()
 			self._type = t
 			d.ddList.Visible = false
+			if d.ddArrow then d.ddArrow.Rotation = 0 end
 			self:_applyFilter()
 			self:_popGrid()
 		end)
