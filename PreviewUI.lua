@@ -481,17 +481,11 @@ local function makeViewport(parent, src)
 	end
 
 	local vp = new("ViewportFrame", {
-		-- Keep the preview stage visibly brighter than the surrounding dark UI.
-		BackgroundColor3 = rgb(43, 47, 59), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
-		Ambient = rgb(220, 220, 230), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.35, -1, 0.55),
+		-- Bright neutral studio lighting; preserve original asset colors without a dark overlay.
+		BackgroundColor3 = rgb(68, 73, 88), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
+		Ambient = rgb(255, 255, 255), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.2, -1, 0.35),
 	}, parent)
-	new("UIGradient", {
-		Rotation = 90,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, rgb(61, 66, 81)),
-			ColorSequenceKeypoint.new(1, rgb(37, 41, 52)),
-		}),
-	}, vp)
+	-- No gradient overlay: it can tint the rendered 3D content and make the whole stage look dim.
 	model.Parent = vp
 
 	local fov = 35
@@ -501,7 +495,7 @@ local function makeViewport(parent, src)
 	local floorSize = math.max(radius * 4, 8)
 	local floor = new("Part", {
 		Name = "PreviewStageFloor", Anchored = true, CanCollide = false, CastShadow = true,
-		Material = Enum.Material.SmoothPlastic, Color = rgb(78, 83, 99),
+		Material = Enum.Material.SmoothPlastic, Color = rgb(112, 117, 132),
 		Size = V3(floorSize, 0.12, floorSize),
 		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.06, center.Z),
 	}, vp)
@@ -1431,52 +1425,6 @@ PAGES.preview = {
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
 
-		-- Инструменты вынесены прямо на 3D-сцену, как в референсе.
-		local mode = "rotate"
-		local tools = new("Frame", {
-			Name = "PreviewTools", BackgroundTransparency = 1,
-			AnchorPoint = V2(0, 1), Position = U2(0, 14, 1, -14),
-			Size = UDim2.fromOffset(94, 38), ZIndex = 12,
-		}, box)
-		new("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}, tools)
-		local function toolButton(iconName, order, selected, callback)
-			local b = txt("TextButton", {
-				Text = "", BackgroundColor3 = selected and ACCENTS[1] or C.btnBg,
-				BackgroundTransparency = 0.04, Size = UDim2.fromOffset(42, 38),
-				LayoutOrder = order, ZIndex = 13,
-			}, tools)
-			corner(b, 9)
-			stroke(b, selected and ACCENTS[1] or C.border, 1)
-			local ic = mkIcon(b, iconName, 19, selected and C.txt or C.dim)
-			ic.AnchorPoint = V2(0.5, 0.5)
-			ic.Position = U2(0.5, 0, 0.5, 0)
-			ic.ZIndex = 14
-			b.Activated:Connect(callback)
-			return b, ic
-		end
-		local rotateButton, zoomButton
-		local rotateIcon, zoomIcon
-		local function setMode(nextMode)
-			mode = nextMode
-			for button, state in pairs({
-				[rotateButton] = { active = mode == "rotate", icon = rotateIcon },
-				[zoomButton] = { active = mode == "zoom", icon = zoomIcon },
-			}) do
-				if button then
-					local active = state.active
-					tw(button, {
-						BackgroundColor3 = active and ACCENTS[1] or C.btnBg,
-					}, 0.14)
-					setIconColor(state.icon, active and C.txt or C.dim)
-				end
-			end
-		end
-		rotateButton, rotateIcon = toolButton("rotate-cw", 1, true, function() setMode("rotate") end)
-		zoomButton, zoomIcon = toolButton("zoom-in", 2, false, function() setMode("zoom") end)
-
 		if h then
 			local st = { dragging = false, resumeAt = 0, pinching = false }
 			pv._viewers[h] = st
@@ -1499,14 +1447,9 @@ PAGES.preview = {
 					local now = os.clock()
 					local dx, dy = m.Position.X - lastX, m.Position.Y - lastY
 					local dt = math.max(now - lastT, 1 / 240)
-					if mode == "rotate" then
-						local rad = dx * 0.011
-						h.drag(rad)
-						h.vel = math.clamp(h.vel * 0.5 + (rad / dt) * 0.5, -14, 14)
-					else
-						h.zoomBy(1 + dy * 0.008)
-						h.vel = 0
-					end
+					local rad = dx * 0.011
+					h.drag(rad)
+					h.vel = math.clamp(h.vel * 0.5 + (rad / dt) * 0.5, -14, 14)
 					lastX, lastY, lastT = m.Position.X, m.Position.Y, now
 				end, function()
 					st.dragging = false
@@ -1575,11 +1518,7 @@ PAGES.preview = {
 				elseif #list == 1 then
 					local dx = i.Position.X - previous.X
 					local dy = i.Position.Y - previous.Y
-					if mode == "rotate" then
-						h.drag(dx * 0.011)
-					else
-						h.zoomBy(1 + dy * 0.008)
-					end
+					h.drag(dx * 0.011)
 				end
 			end)
 			local ended = UIS.TouchEnded:Connect(function(i)
