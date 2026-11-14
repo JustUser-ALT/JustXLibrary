@@ -182,6 +182,12 @@ local function dragLocked(inst, onMove, onEnd)
 	end)
 end
 
+local function cleanDropdownLabel(value)
+	local textValue = tostring(value or "")
+	textValue = textValue:gsub("%[%]", ""):gsub("%s%s+", " ")
+	return textValue:match("^%s*(.-)%s*$") or textValue
+end
+
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
 	local resolved = type(raw) == "table" and raw or nil
@@ -1340,7 +1346,7 @@ local function buildVariantSelector(parent, a)
 				Position = UDim2.fromOffset(31, 2), Size = U2(1, -54, 0, 11), ZIndex = 32,
 			}, trigger)
 			local current = txt("TextLabel", {
-				Text = tostring(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
+				Text = cleanDropdownLabel(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
 				Font = GB, TextSize = 11, TextColor3 = C.txt,
 				Position = UDim2.fromOffset(31, 13), Size = U2(1, -56, 0, 16),
 				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
@@ -1371,7 +1377,7 @@ local function buildVariantSelector(parent, a)
 					Size = U2(1, 0, 0, 28), LayoutOrder = i, ZIndex = 36,
 				}, menu)
 				corner(option, 5)
-				local optionName = tostring(variant.Name or ("Variant " .. i))
+				local optionName = cleanDropdownLabel(variant.Name or ("Variant " .. i))
 				txt("TextLabel", {
 					Text = optionName, Font = i == selectedIndex and GB or GM, TextSize = 11,
 					TextColor3 = i == selectedIndex and ACCENTS[1] or C.txt,
@@ -2857,7 +2863,7 @@ function M:_buildTypeList()
 	for i, t in ipairs(types) do
 		local on = (t == self._type)
 		local ob = txt("TextButton", {
-			Text = t, Font = GM, TextSize = 11, TextColor3 = on and ACCENTS[1] or C.txt, BackgroundColor3 = ACCENTS[1],
+			Text = cleanDropdownLabel(t), Font = GM, TextSize = 11, TextColor3 = on and ACCENTS[1] or C.txt, BackgroundColor3 = ACCENTS[1],
 			BackgroundTransparency = on and 0.85 or 1, Size = UDim2.fromOffset(90, 26), LayoutOrder = i, ZIndex = 31,
 		}, d.ddList)
 		pad(ob, 8, 0, 0, 0)
@@ -2869,7 +2875,7 @@ function M:_buildTypeList()
 			self:_popGrid()
 		end)
 	end
-	d.ddText.Text = self._type
+	d.ddText.Text = cleanDropdownLabel(self._type)
 end
 
 function M:_applyFilter()
