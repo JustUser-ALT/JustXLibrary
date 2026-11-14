@@ -1450,7 +1450,13 @@ PAGES.preview = {
 			syncFullscreenIcon()
 		end)
 
-		local inner = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, box)
+		-- Keep a slim visible border around the preview instead of letting the 3D surface touch the frame edge.
+		local inset = 6
+		local inner = new("Frame", {
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(inset, inset),
+			Size = U2(1, -inset * 2, 1, -inset * 2), ClipsDescendants = true,
+		}, box)
+		corner(inner, 9)
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
 
