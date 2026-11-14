@@ -481,14 +481,35 @@ local function makeViewport(parent, src)
 	end
 
 	local vp = new("ViewportFrame", {
-		BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = C.panel, BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
 		Ambient = rgb(170, 170, 188), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.4, -1, 0.8),
 	}, parent)
+	new("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, C.badge),
+			ColorSequenceKeypoint.new(1, C.panel),
+		}),
+	}, vp)
 	model.Parent = vp
 
 	local fov = 35
 	local radius = math.max(size.Magnitude * 0.5, 0.5)
 	local base = radius / math.sin(math.rad(fov / 2)) * 1.3
+	-- Небольшая 3D-подиум-платформа и пол под моделью вместо пустого чёрного фона.
+	local floorSize = math.max(radius * 4, 8)
+	local floor = new("Part", {
+		Name = "PreviewStageFloor", Anchored = true, CanCollide = false, CastShadow = true,
+		Material = Enum.Material.Slate, Color = C.btnBg,
+		Size = V3(floorSize, 0.12, floorSize),
+		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.07, center.Z),
+	}, vp)
+	local plinth = new("Part", {
+		Name = "PreviewStageBase", Anchored = true, CanCollide = false, CastShadow = true,
+		Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = C.badge,
+		Size = V3(0.16, math.max(radius * 1.65, 2), math.max(radius * 1.65, 2)),
+		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.16, center.Z) * ANG(0, 0, math.rad(90)),
+	}, vp)
 	local cam = new("Camera", { FieldOfView = fov }, vp)
 	vp.CurrentCamera = cam
 	local dir = V3(0.45, 0.4, -1).Unit
@@ -1412,48 +1433,45 @@ PAGES.preview = {
 		pad(inner, 10, 10, 10, 10)
 		local h = makeThumb(inner, a)
 
-		local autoBtn
-		local function refreshAuto()
-			if autoBtn and autoBtn.Parent then
-				autoBtn.Text = "Auto Rotate: " .. (S("autorotate", true) and "On" or "Off")
-			end
-		end
-		pv._previewRefresh = refreshAuto
-
-		local bar = new("Frame", { BackgroundTransparency = 1, Position = U2(0, 10, 1, -40), Size = U2(1, -20, 0, 26) }, parent)
-		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, bar)
-		local function chip(text, w, order, cb)
+		-- Инструменты вынесены прямо на 3D-сцену, как в референсе.
+		local mode = "rotate"
+		local tools = new("Frame", {
+			Name = "PreviewTools", BackgroundTransparency = 1,
+			AnchorPoint = V2(0, 1), Position = U2(0, 14, 1, -14),
+			Size = UDim2.fromOffset(94, 38), ZIndex = 12,
+		}, box)
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, tools)
+		local function toolButton(icon, order, selected, callback)
 			local b = txt("TextButton", {
-				Text = text, Font = GB, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Center,
-				BackgroundTransparency = 0, BackgroundColor3 = C.btnBg, Size = UDim2.fromOffset(w, 26), LayoutOrder = order,
-			}, bar)
-			corner(b, 6)
-			stroke(b, C.border, 1)
-			b.MouseEnter:Connect(function()
-				if not touchLast() then
-					tw(b, { BackgroundColor3 = C.btnHov }, 0.12)
-				end
-			end)
-			b.MouseLeave:Connect(function()
-				tw(b, { BackgroundColor3 = C.btnBg }, 0.12)
-			end)
-			b.Activated:Connect(cb)
+				Text = icon, Font = GB, TextSize = 20, TextXAlignment = Enum.TextXAlignment.Center,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				TextColor3 = selected and C.txt or C.dim,
+				BackgroundColor3 = selected and ACCENTS[1] or C.btnBg,
+				BackgroundTransparency = 0.04, Size = UDim2.fromOffset(42, 38),
+				LayoutOrder = order, ZIndex = 13,
+			}, tools)
+			corner(b, 9)
+			stroke(b, selected and ACCENTS[1] or C.border, 1)
+			b.Activated:Connect(callback)
 			return b
 		end
-		autoBtn = chip("", 118, 1, function()
-			B.cfgSet("_pv_autorotate", not S("autorotate", true))
-			pv:ApplySettings()
-		end)
-		refreshAuto()
-		chip("Reset", 54, 2, function()
-			if h then
-				h.reset()
+		local rotateButton, zoomButton
+		local function setMode(nextMode)
+			mode = nextMode
+			for button, active in pairs({ [rotateButton] = mode == "rotate", [zoomButton] = mode == "zoom" }) do
+				if button then
+					tw(button, {
+						BackgroundColor3 = active and ACCENTS[1] or C.btnBg,
+						TextColor3 = active and C.txt or C.dim,
+					}, 0.14)
+				end
 			end
-		end)
-		txt("TextLabel", {
-			Text = "Drag to rotate  ·  scroll / pinch to zoom", TextSize = 10, TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Center, Position = U2(0, 10, 1, -12), Size = U2(1, -20, 0, 12),
-		}, parent)
+		end
+		rotateButton = toolButton("↻", 1, true, function() setMode("rotate") end)
+		zoomButton = toolButton("⌕", 2, false, function() setMode("zoom") end)
 
 		if h then
 			local st = { dragging = false, resumeAt = 0, pinching = false }
@@ -1473,6 +1491,7 @@ PAGES.preview = {
 				st.dragging = true
 				h.vel = 0
 				local lastX, lastT = i.Position.X, os.clock()
+				st.lastY = i.Position.Y
 				beginDrag(function(m)
 					if st.pinching or #UIS:GetTouches() > 1 then
 						st.pinching = true
@@ -1482,10 +1501,17 @@ PAGES.preview = {
 					end
 					local now = os.clock()
 					local dx = m.Position.X - lastX
+					local dy = m.Position.Y - (st.lastY or m.Position.Y)
 					local dt = math.max(now - lastT, 1 / 240)
-					local rad = dx * 0.011
-					h.drag(rad)
-					h.vel = math.clamp(h.vel * 0.5 + (rad / dt) * 0.5, -14, 14)
+					if mode == "rotate" then
+						local rad = dx * 0.011
+						h.drag(rad)
+						h.vel = math.clamp(h.vel * 0.5 + (rad / dt) * 0.5, -14, 14)
+					else
+						h.zoomBy(1 + dy * 0.008)
+						h.vel = 0
+					end
+					st.lastY = m.Position.Y
 					lastX, lastT = m.Position.X, now
 				end, function()
 					st.dragging = false
