@@ -251,6 +251,15 @@ local function openPreview()
 
     for _, asset in ipairs(itemAssets or {}) do
         addCommonControllers(asset)
+        asset:Toggle({
+            Name = "Ruby + Sapphire shared effect",
+            Default = true,
+            Pinned = true,
+            VariantsPinned = { "Ruby", "Sapphire" },
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " Ruby/Sapphire shared effect:", value)
+            end,
+        })
         for _, variantName in ipairs({ "Ruby", "Sapphire", "Emerald" }) do
             asset:SetVariant(variantName)
             asset:Toggle({
