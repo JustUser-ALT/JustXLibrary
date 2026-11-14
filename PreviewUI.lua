@@ -1456,20 +1456,30 @@ PAGES.preview = {
 		}, parent)
 
 		if h then
-			local st = { dragging = false, resumeAt = 0 }
+			local st = { dragging = false, resumeAt = 0, pinching = false }
 			pv._viewers[h] = st
 			cleanups[#cleanups + 1] = function()
 				pv._viewers[h] = nil
 			end
 			local hit = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 5 }, box)
 			hit.InputBegan:Connect(function(i)
-				if not isPtr(i) then
+				if not isPtr(i) then return end
+				if i.UserInputType == Enum.UserInputType.Touch and #UIS:GetTouches() > 1 then
+					st.pinching = true
+					st.dragging = false
+					h.vel = 0
 					return
 				end
 				st.dragging = true
 				h.vel = 0
 				local lastX, lastT = i.Position.X, os.clock()
 				beginDrag(function(m)
+					if st.pinching or #UIS:GetTouches() > 1 then
+						st.pinching = true
+						st.dragging = false
+						h.vel = 0
+						return
+					end
 					local now = os.clock()
 					local dx = m.Position.X - lastX
 					local dt = math.max(now - lastT, 1 / 240)
@@ -1480,9 +1490,8 @@ PAGES.preview = {
 				end, function()
 					st.dragging = false
 					st.resumeAt = os.clock() + 1.2
-					if os.clock() - lastT > 0.08 then
-						h.vel = 0
-					end
+					if os.clock() - lastT > 0.08 or st.pinching then h.vel = 0 end
+					if #UIS:GetTouches() == 0 then st.pinching = false end
 				end)
 			end)
 			hit.InputChanged:Connect(function(i)
@@ -1494,8 +1503,15 @@ PAGES.preview = {
 			local pc = UIS.TouchPinch:Connect(function(_, scale, _, state)
 				if state == Enum.UserInputState.Begin then
 					pinchBase = h.tZoom
+					st.pinching = true
+					st.dragging = false
+					h.vel = 0
 				elseif state == Enum.UserInputState.Change then
 					h.tZoom = math.clamp(pinchBase / math.max(scale, 0.05), 0.45, 2.4)
+				elseif state == Enum.UserInputState.End then
+					st.pinching = false
+					st.resumeAt = os.clock() + 0.25
+					h.vel = 0
 				end
 			end)
 			cleanups[#cleanups + 1] = function()
@@ -2849,15 +2865,33 @@ function M:_animateAssetIntoDetail()
 	self._dRightPage.Visible = false
 	self._transitionToken = (self._transitionToken or 0) + 1
 	local token = self._transitionToken
-	local info = TweenInfo.new(0.46, QUINT, OUT)
+	local info = TweenInfo.new(0.62, QUINT, OUT)
 	TS:Create(overlay, info, {
 		Position = UDim2.fromOffset(targetPos.X, targetPos.Y),
 		Size = UDim2.fromOffset(targetSize.X, targetSize.Y),
 	}):Play()
-	B.delay(0.48, function()
+	-- Финальный crossfade: настоящий ViewportFrame проявляется под переходящим превью,
+	-- поэтому модель не «перескакивает» в новую область после окончания движения.
+	B.delay(0.42, function()
+		if self._transitionToken ~= token or not self._dRightPage then return end
+		self._dRightPage.Visible = true
+		for _, obj in ipairs(self._dRightPage:GetDescendants()) do
+			if obj:IsA("ViewportFrame") then
+				obj.ImageTransparency = 1
+				TS:Create(obj, TweenInfo.new(0.2, QUINT, OUT), { ImageTransparency = 0 }):Play()
+			elseif obj:IsA("Frame") then
+				local target = obj.BackgroundTransparency
+				obj.BackgroundTransparency = 1
+				TS:Create(obj, TweenInfo.new(0.2, QUINT, OUT), { BackgroundTransparency = target }):Play()
+			end
+		end
+		if overlay and overlay.Parent then
+			TS:Create(overlay, TweenInfo.new(0.2, QUINT, OUT), { BackgroundTransparency = 1 }):Play()
+		end
+	end)
+	B.delay(0.66, function()
 		if self._transitionToken ~= token then return end
 		if overlay and overlay.Parent then overlay:Destroy() end
-		if self._dRightPage and self._drawerOpen then self._dRightPage.Visible = true end
 	end)
 end
 
@@ -2877,7 +2911,7 @@ function M:_setDrawer(open)
 	self:_fitGrid()
 	if open then
 		drawer.Visible = true
-		if self._dRightPage then self._dRightPage.Visible = true end
+		if self._dRightPage then self._dRightPage.Visible = false end
 		self:_animateAssetIntoDetail()
 	else
 		self:_cleanupPage()
