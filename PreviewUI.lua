@@ -1287,12 +1287,93 @@ local function infoRow(parent, order, icon, label, value)
 	}, row)
 end
 
+local function buildVariantSelector(parent, a)
+	local variants = a._variants or {}
+	local variantBar
+		if #variants > 1 then
+			variantBar = new("Frame", {
+				Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 0, 36), ZIndex = 30, LayoutOrder = 0,
+			}, parent)
+			local selectedIndex = a._variantIndex or 1
+			local selectedVariant = variants[selectedIndex]
+			local trigger = txt("TextButton", {
+				Name = "VariantDropdownButton", Text = "", TextXAlignment = Enum.TextXAlignment.Left,
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.05,
+				Size = UDim2.fromScale(1, 1), ZIndex = 31,
+			}, variantBar)
+			corner(trigger, 7)
+			stroke(trigger, C.border, 1)
+			local title = txt("TextLabel", {
+				Text = "Version", Font = GM, TextSize = 9, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(9, 2), Size = U2(1, -32, 0, 11), ZIndex = 32,
+			}, trigger)
+			local current = txt("TextLabel", {
+				Text = tostring(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
+				Font = GB, TextSize = 11, TextColor3 = C.txt,
+				Position = UDim2.fromOffset(9, 13), Size = U2(1, -34, 0, 16),
+				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
+			}, trigger)
+			local arrow = txt("TextLabel", {
+				Text = "⌄", Font = GB, TextSize = 16, TextColor3 = C.dim,
+				TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -27, 0, 0),
+				Size = UDim2.fromOffset(20, 32), ZIndex = 32,
+			}, trigger)
+			local menu = new("Frame", {
+				Name = "VariantOptions", BackgroundColor3 = C.input, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(0, 40), Size = U2(1, 0, 0, math.min(#variants * 30 + 8, 128)),
+				Visible = false, ZIndex = 35,
+			}, variantBar)
+			corner(menu, 7)
+			stroke(menu, C.border, 1)
+			pad(menu, 4, 4, 4, 4)
+			new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
+			local optionButtons = {}
+			local function closeMenu()
+				menu.Visible = false
+				arrow.Text = "⌄"
+			end
+			for i, variant in ipairs(variants) do
+				local option = txt("TextButton", {
+					Text = "", BackgroundColor3 = ACCENTS[1],
+					BackgroundTransparency = i == selectedIndex and 0.84 or 1,
+					Size = U2(1, 0, 0, 28), LayoutOrder = i, ZIndex = 36,
+				}, menu)
+				corner(option, 5)
+				local optionName = tostring(variant.Name or ("Variant " .. i))
+				txt("TextLabel", {
+					Text = optionName, Font = i == selectedIndex and GB or GM, TextSize = 11,
+					TextColor3 = i == selectedIndex and ACCENTS[1] or C.txt,
+					Position = UDim2.fromOffset(8, 0), Size = U2(1, -30, 1, 0),
+					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 37,
+				}, option)
+				if i == selectedIndex then
+					txt("TextLabel", {
+						Text = "✓", Font = GB, TextSize = 11, TextColor3 = ACCENTS[1],
+						TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -24, 0, 0),
+						Size = UDim2.fromOffset(18, 28), ZIndex = 37,
+					}, option)
+				end
+				option.Activated:Connect(function()
+					closeMenu()
+					a:SetVariant(i)
+				end)
+				optionButtons[#optionButtons + 1] = option
+			end
+			trigger.Activated:Connect(function()
+				menu.Visible = not menu.Visible
+				arrow.Text = menu.Visible and "⌃" or "⌄"
+			end)
+		end
+end
+
 -- Actions: все контролы ассета, его вкладки и самого Preview
 PAGES.controllers = {
 	id = "controllers", name = "Controllers", icon = "sliders-horizontal",
 	build = function(parent, asset, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
+		buildVariantSelector(content, asset)
 		local list = pv:_controlsFor(asset)
 		for i, def in ipairs(list) do
 			local b = CtrlBuilders[def.kind]
@@ -1403,83 +1484,7 @@ PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
-		local variants = a._variants or {}
-		local variantBar
-		if #variants > 1 then
-			variantBar = new("Frame", {
-				Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
-				Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(190, 32), ZIndex = 30,
-			}, parent)
-			local selectedIndex = a._variantIndex or 1
-			local selectedVariant = variants[selectedIndex]
-			local trigger = txt("TextButton", {
-				Name = "VariantDropdownButton", Text = "", TextXAlignment = Enum.TextXAlignment.Left,
-				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.05,
-				Size = UDim2.fromScale(1, 1), ZIndex = 31,
-			}, variantBar)
-			corner(trigger, 7)
-			stroke(trigger, C.border, 1)
-			local title = txt("TextLabel", {
-				Text = "Version", Font = GM, TextSize = 9, TextColor3 = C.dim,
-				Position = UDim2.fromOffset(9, 2), Size = U2(1, -32, 0, 11), ZIndex = 32,
-			}, trigger)
-			local current = txt("TextLabel", {
-				Text = tostring(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
-				Font = GB, TextSize = 11, TextColor3 = C.txt,
-				Position = UDim2.fromOffset(9, 13), Size = U2(1, -34, 0, 16),
-				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
-			}, trigger)
-			local arrow = txt("TextLabel", {
-				Text = "⌄", Font = GB, TextSize = 16, TextColor3 = C.dim,
-				TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -27, 0, 0),
-				Size = UDim2.fromOffset(20, 32), ZIndex = 32,
-			}, trigger)
-			local menu = new("Frame", {
-				Name = "VariantOptions", BackgroundColor3 = C.input, BorderSizePixel = 0,
-				Position = UDim2.fromOffset(0, 36), Size = UDim2.fromOffset(190, math.min(#variants * 30 + 8, 128)),
-				Visible = false, ZIndex = 35,
-			}, variantBar)
-			corner(menu, 7)
-			stroke(menu, C.border, 1)
-			pad(menu, 4, 4, 4, 4)
-			new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
-			local optionButtons = {}
-			local function closeMenu()
-				menu.Visible = false
-				arrow.Text = "⌄"
-			end
-			for i, variant in ipairs(variants) do
-				local option = txt("TextButton", {
-					Text = "", BackgroundColor3 = ACCENTS[1],
-					BackgroundTransparency = i == selectedIndex and 0.84 or 1,
-					Size = U2(1, 0, 0, 28), LayoutOrder = i, ZIndex = 36,
-				}, menu)
-				corner(option, 5)
-				local optionName = tostring(variant.Name or ("Variant " .. i))
-				txt("TextLabel", {
-					Text = optionName, Font = i == selectedIndex and GB or GM, TextSize = 11,
-					TextColor3 = i == selectedIndex and ACCENTS[1] or C.txt,
-					Position = UDim2.fromOffset(8, 0), Size = U2(1, -30, 1, 0),
-					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 37,
-				}, option)
-				if i == selectedIndex then
-					txt("TextLabel", {
-						Text = "✓", Font = GB, TextSize = 11, TextColor3 = ACCENTS[1],
-						TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -24, 0, 0),
-						Size = UDim2.fromOffset(18, 28), ZIndex = 37,
-					}, option)
-				end
-				option.Activated:Connect(function()
-					closeMenu()
-					a:SetVariant(i)
-				end)
-				optionButtons[#optionButtons + 1] = option
-			end
-			trigger.Activated:Connect(function()
-				menu.Visible = not menu.Visible
-				arrow.Text = menu.Visible and "⌃" or "⌄"
-			end)
-		end
+		local topOffset = 0
 		-- Use one full-width rounded preview surface instead of nested inset frames.
 		local topOffset = variantBar and 44 or 0
 		local box = new("Frame", {
