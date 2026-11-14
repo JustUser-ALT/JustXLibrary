@@ -2813,6 +2813,51 @@ end
 --------------------------------------------------------------------
 -- панель справа (drawer)
 --------------------------------------------------------------------
+function M:_animateAssetIntoDetail()
+	local asset = self._selected
+	local card = asset and self._cards[asset]
+	local thumb = card and card.thumb
+	if not thumb or not thumb.Parent or not self._dRightPage then
+		return
+	end
+	local scale = curScale()
+	local rootPos = self._root.AbsolutePosition
+	local fromPos = (thumb.AbsolutePosition - rootPos) / scale
+	local fromSize = thumb.AbsoluteSize / scale
+	local targetPos = (self._dRightPage.AbsolutePosition - rootPos) / scale
+	local targetSize = self._dRightPage.AbsoluteSize / scale
+	if targetSize.X < 40 or targetSize.Y < 40 then
+		return
+	end
+	local overlay = new("Frame", {
+		Name = "PvAssetTransition", BackgroundColor3 = C.badge, BorderSizePixel = 0,
+		ClipsDescendants = true, Position = UDim2.fromOffset(fromPos.X, fromPos.Y),
+		Size = UDim2.fromOffset(fromSize.X, fromSize.Y), ZIndex = 20,
+	}, self._root)
+	corner(overlay, 9)
+	stroke(overlay, ACCENTS[1], 1.5)
+	for _, child in ipairs(thumb:GetChildren()) do
+		local ok, clone = pcall(function() return child:Clone() end)
+		if ok and clone then
+			clone.Parent = overlay
+			if clone:IsA("GuiObject") then clone.ZIndex = 21 end
+		end
+	end
+	self._dRightPage.Visible = false
+	self._transitionToken = (self._transitionToken or 0) + 1
+	local token = self._transitionToken
+	local info = TweenInfo.new(0.46, QUINT, OUT)
+	TS:Create(overlay, info, {
+		Position = UDim2.fromOffset(targetPos.X, targetPos.Y),
+		Size = UDim2.fromOffset(targetSize.X, targetSize.Y),
+	}):Play()
+	B.delay(0.48, function()
+		if self._transitionToken ~= token then return end
+		if overlay and overlay.Parent then overlay:Destroy() end
+		if self._dRightPage and self._drawerOpen then self._dRightPage.Visible = true end
+	end)
+end
+
 function M:_setDrawer(open)
 	if not self._drawer then
 		return
@@ -2830,6 +2875,7 @@ function M:_setDrawer(open)
 	if open then
 		drawer.Visible = true
 		if self._dRightPage then self._dRightPage.Visible = true end
+		self:_animateAssetIntoDetail()
 	else
 		self:_cleanupPage()
 		self:_clearLargePreview()
@@ -3048,7 +3094,7 @@ function M:_buildLargePreview(asset, enabled)
 	for _, child in ipairs(self._dRightPage:GetChildren()) do
 		child:Destroy()
 	end
-	self._dRightPage.Visible = true
+	self._dRightPage.Visible = self._drawerOpen == true
 	if enabled then
 		local ok, cleanup = pcall(PAGES.preview.build, self._dRightPage, asset, self)
 		if ok and type(cleanup) == "function" then
