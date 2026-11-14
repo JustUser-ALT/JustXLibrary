@@ -1428,11 +1428,11 @@ PAGES.preview = {
 		}, box)
 		corner(fullButton, 8)
 		stroke(fullButton, C.border, 1)
-		local expandIcon = mkIcon(fullButton, "maximize-2", 16, C.txt)
+		local expandIcon = mkIcon(fullButton, "maximize-2", 13, C.txt)
 		expandIcon.AnchorPoint = V2(0.5, 0.5)
 		expandIcon.Position = U2(0.5, 0, 0.5, 0)
 		expandIcon.ZIndex = 21
-		local collapseIcon = mkIcon(fullButton, "minimize-2", 16, C.txt)
+		local collapseIcon = mkIcon(fullButton, "minimize-2", 13, C.txt)
 		collapseIcon.AnchorPoint = V2(0.5, 0.5)
 		collapseIcon.Position = U2(0.5, 0, 0.5, 0)
 		collapseIcon.ZIndex = 21
@@ -2527,7 +2527,9 @@ function M:_activate(tab)
 		return
 	end
 	if self._drawerOpen then
-		self:CloseDrawer()
+		self._selected = nil
+		self:_markSelected()
+		self:_setDrawer(false, true)
 	end
 	self._activeTab = tab
 	self._type = "All"
@@ -2993,7 +2995,7 @@ function M:_animateAssetIntoDetail()
 	return true
 end
 
-function M:_setDrawer(open)
+function M:_setDrawer(open, instant)
 	if not self._drawer then
 		return
 	end
@@ -3017,6 +3019,14 @@ function M:_setDrawer(open)
 		self:_clearLargePreview()
 	end
 	self._slideTok = (self._slideTok or 0) + 1
+	if instant then
+		self._sliding = false
+		nav.Position = U2(0, st.navX, 0, 0)
+		card.Position = U2(0, st.cardX, 0, 0)
+		drawer.Position = U2(0, st.drawerX, 0, 0)
+		drawer.Visible = open
+		return
+	end
 	local tok = self._slideTok
 	if not S("anim", true) then
 		nav.Position = U2(0, st.navX, 0, 0)
