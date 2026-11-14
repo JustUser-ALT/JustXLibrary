@@ -275,7 +275,6 @@ local function openPreview()
     end
 
     Preview:Open("Models")
-    print("[Preview Test] Preview opened.")    Preview:Open("Models")
     print("[Preview Test] Preview opened.")
 end
 
