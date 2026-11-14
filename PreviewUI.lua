@@ -2832,79 +2832,77 @@ end
 -- панель справа (drawer)
 --------------------------------------------------------------------
 function M:_animateAssetIntoDetail()
-	if not S("anim", true) then return false end
-	local asset = self._selected
-	local card = asset and self._cards[asset]
-	local thumb = card and card.thumb
-	if not thumb or not thumb.Parent or not self._dRightPage then
+	if not S("anim", true) then
+		if self._dRightPage then self._dRightPage.Visible = true end
 		return false
 	end
-	local scale = curScale()
-	local rootPos = self._root.AbsolutePosition
-	local fromPos = (thumb.AbsolutePosition - rootPos) / scale
-	local fromSize = thumb.AbsoluteSize / scale
-	local targetPos = Vector2.new(self._dRight.Position.X.Offset, 62)
-	local targetSize = self._dRight.AbsoluteSize / scale
-	if targetSize.X < 40 or targetSize.Y < 40 then
-		return false
-	end
-	local overlay = new("Frame", {
-		Name = "PvAssetTransition", BackgroundColor3 = C.badge, BorderSizePixel = 0,
-		ClipsDescendants = true, Position = UDim2.fromOffset(fromPos.X, fromPos.Y),
-		Size = UDim2.fromOffset(fromSize.X, fromSize.Y), ZIndex = 20,
-	}, self._root)
-	corner(overlay, 9)
-	stroke(overlay, ACCENTS[1], 1.5)
-	for _, child in ipairs(thumb:GetChildren()) do
-		local ok, clone = pcall(function() return child:Clone() end)
-		if ok and clone then
-			clone.Parent = overlay
-			if clone:IsA("GuiObject") then clone.ZIndex = 21 end
-		end
-	end
-	self._dRightPage.Visible = false
-	self._transitionToken = (self._transitionToken or 0) + 1
-	local token = self._transitionToken
-	local info = TweenInfo.new(0.62, QUINT, OUT)
-	TS:Create(overlay, info, {
-		Position = UDim2.fromOffset(targetPos.X, targetPos.Y),
-		Size = UDim2.fromOffset(targetSize.X, targetSize.Y),
-	}):Play()
-	-- Финальный crossfade: настоящий ViewportFrame проявляется под переходящим превью,
-	-- поэтому модель не «перескакивает» в новую область после окончания движения.
-	B.delay(0.42, function()
-		if self._transitionToken ~= token or not self._dRightPage then return end
-		self._dRightPage.Visible = true
-		for _, obj in ipairs(self._dRightPage:GetDescendants()) do
-			if obj:IsA("ViewportFrame") then
-				obj.ImageTransparency = 1
-				TS:Create(obj, TweenInfo.new(0.2, QUINT, OUT), { ImageTransparency = 0 }):Play()
-			elseif obj:IsA("Frame") then
-				local target = obj.BackgroundTransparency
+	local function reveal(root, delayTime)
+		if not root then return end
+		local objects = root:GetDescendants()
+		for _, obj in ipairs(objects) do
+			if obj:IsA("UIStroke") then
+				local target = obj.Transparency
+				obj.Transparency = 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), { Transparency = target }):Play()
+					end
+				end)
+			elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+				local textTarget, bgTarget = obj.TextTransparency, obj.BackgroundTransparency
+				obj.TextTransparency, obj.BackgroundTransparency = 1, 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), {
+							TextTransparency = textTarget, BackgroundTransparency = bgTarget,
+						}):Play()
+					end
+				end)
+			elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+				local imageTarget, bgTarget = obj.ImageTransparency, obj.BackgroundTransparency
+				obj.ImageTransparency, obj.BackgroundTransparency = 1, 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.38, QUINT, OUT), {
+							ImageTransparency = imageTarget, BackgroundTransparency = bgTarget,
+						}):Play()
+					end
+				end)
+			elseif obj:IsA("ViewportFrame") or obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+				local bgTarget = obj.BackgroundTransparency
 				obj.BackgroundTransparency = 1
-				TS:Create(obj, TweenInfo.new(0.2, QUINT, OUT), { BackgroundTransparency = target }):Play()
-			end
-		end
-		if overlay and overlay.Parent then
-			local fade = TweenInfo.new(0.2, QUINT, OUT)
-			TS:Create(overlay, fade, { BackgroundTransparency = 1 }):Play()
-			for _, obj in ipairs(overlay:GetDescendants()) do
-				if obj:IsA("ViewportFrame") or obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-					TS:Create(obj, fade, { ImageTransparency = 1 }):Play()
-				elseif obj:IsA("TextLabel") or obj:IsA("TextButton") then
-					TS:Create(obj, fade, { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
-				elseif obj:IsA("Frame") then
-					TS:Create(obj, fade, { BackgroundTransparency = 1 }):Play()
-				elseif obj:IsA("UIStroke") then
-					TS:Create(obj, fade, { Transparency = 1 }):Play()
+				if obj:IsA("ViewportFrame") then
+					local imageTarget = obj.ImageTransparency
+					obj.ImageTransparency = 1
+					B.delay(delayTime or 0, function()
+						if obj.Parent then
+							TS:Create(obj, TweenInfo.new(0.42, QUINT, OUT), {
+								BackgroundTransparency = bgTarget, ImageTransparency = imageTarget,
+							}):Play()
+						end
+					end)
+				else
+					B.delay(delayTime or 0, function()
+						if obj.Parent then
+							TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), { BackgroundTransparency = bgTarget }):Play()
+						end
+					end)
 				end
 			end
 		end
-	end)
-	B.delay(0.66, function()
-		if self._transitionToken ~= token then return end
-		if overlay and overlay.Parent then overlay:Destroy() end
-	end)
+	end
+	if self._dRightPage then
+		self._dRightPage.Visible = true
+		local scale = new("UIScale", { Scale = 0.965 }, self._dRightPage)
+		TS:Create(scale, TweenInfo.new(0.48, QUINT, OUT), { Scale = 1 }):Play()
+		reveal(self._dRightPage, 0.02)
+	end
+	if self._dPages then
+		reveal(self._dPages, 0.08)
+	end
+	if self._dTitle then reveal(self._dTitle, 0.06) end
+	if self._dType then reveal(self._dType, 0.1) end
+	if self._dTabs then reveal(self._dTabs, 0.12) end
 	return true
 end
 
