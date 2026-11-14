@@ -2832,12 +2832,12 @@ end
 -- панель справа (drawer)
 --------------------------------------------------------------------
 function M:_animateAssetIntoDetail()
-	if not S("anim", true) then return end
+	if not S("anim", true) then return false end
 	local asset = self._selected
 	local card = asset and self._cards[asset]
 	local thumb = card and card.thumb
 	if not thumb or not thumb.Parent or not self._dRightPage then
-		return
+		return false
 	end
 	local scale = curScale()
 	local rootPos = self._root.AbsolutePosition
@@ -2846,7 +2846,7 @@ function M:_animateAssetIntoDetail()
 	local targetPos = Vector2.new(self._dRight.Position.X.Offset, 62)
 	local targetSize = self._dRight.AbsoluteSize / scale
 	if targetSize.X < 40 or targetSize.Y < 40 then
-		return
+		return false
 	end
 	local overlay = new("Frame", {
 		Name = "PvAssetTransition", BackgroundColor3 = C.badge, BorderSizePixel = 0,
@@ -2893,6 +2893,7 @@ function M:_animateAssetIntoDetail()
 		if self._transitionToken ~= token then return end
 		if overlay and overlay.Parent then overlay:Destroy() end
 	end)
+	return true
 end
 
 function M:_setDrawer(open)
@@ -2912,7 +2913,8 @@ function M:_setDrawer(open)
 	if open then
 		drawer.Visible = true
 		if self._dRightPage then self._dRightPage.Visible = false end
-		self:_animateAssetIntoDetail()
+		local animated = self:_animateAssetIntoDetail()
+		if not animated and self._dRightPage then self._dRightPage.Visible = true end
 	else
 		self:_cleanupPage()
 		self:_clearLargePreview()
