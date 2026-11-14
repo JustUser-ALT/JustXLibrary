@@ -193,23 +193,32 @@ local function makeChevron(parent, direction, size, color, zIndex)
 		BackgroundTransparency = 1, BorderSizePixel = 0,
 		Size = UDim2.fromOffset(size, size), ZIndex = zIndex or 1,
 	}, parent)
-	local thickness = math.max(1, math.floor(size * 0.14))
-	local arm = math.max(4, math.floor(size * 0.38))
-	local centerY = direction == "down" and -1 or 0
-	local firstRotation, secondRotation
+	local thickness = math.max(1, math.floor(size * 0.12))
+	local arm = math.max(4, math.floor(size * 0.34))
+	local offset = math.floor(arm * 0.24)
+	local parts
 	if direction == "down" then
-		firstRotation, secondRotation = 45, -45
+		parts = {
+			{ -offset, -offset, 45 },
+			{ offset, -offset, -45 },
+		}
 	elseif direction == "left" then
-		firstRotation, secondRotation = -45, 45
+		parts = {
+			{ offset, -offset, -45 },
+			{ offset, offset, 45 },
+		}
 	else
-		firstRotation, secondRotation = 45, -45
+		parts = {
+			{ -offset, -offset, 45 },
+			{ -offset, offset, -45 },
+		}
 	end
-	for _, rotation in ipairs({ firstRotation, secondRotation }) do
+	for _, part in ipairs(parts) do
 		new("Frame", {
 			BackgroundColor3 = color, BorderSizePixel = 0,
 			AnchorPoint = V2(0.5, 0.5),
-			Position = U2(0.5, 0, 0.5, centerY),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = rotation,
+			Position = U2(0.5, part[1], 0.5, part[2]),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = part[3],
 			ZIndex = zIndex or 1,
 		}, holder)
 	end
@@ -2400,6 +2409,7 @@ function M:_build()
 	self._tab = tab
 	local root = tab.Frame
 	self._root = root
+	root.ClipsDescendants = true
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._sideRefs, self._tabRefs, self._cards, self._curPages = {}, {}, {}, {}
 	self._drawerOpen, self._selected, self._page = false, nil, nil
