@@ -190,32 +190,27 @@ end
 
 local function makeChevron(parent, direction, size, color, zIndex)
 	local holder = new("Frame", {
-		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
+		BackgroundTransparency = 1, BorderSizePixel = 0,
+		Size = UDim2.fromOffset(size, size), ZIndex = zIndex or 1,
 	}, parent)
-	local thickness = math.max(1, math.floor(size * 0.12))
-	local arm = math.floor(size * 0.34)
-	local first, second
+	local thickness = math.max(1, math.floor(size * 0.14))
+	local arm = math.max(4, math.floor(size * 0.38))
+	local centerY = direction == "down" and -1 or 0
+	local firstRotation, secondRotation
 	if direction == "down" then
-		first = new("Frame", {
-			BackgroundColor3 = color, BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, -1),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = 45, ZIndex = zIndex or 1,
-		}, holder)
-		second = new("Frame", {
-			BackgroundColor3 = color, BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, -1),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = -45, ZIndex = zIndex or 1,
-		}, holder)
+		firstRotation, secondRotation = 45, -45
+	elseif direction == "left" then
+		firstRotation, secondRotation = -45, 45
 	else
-		first = new("Frame", {
+		firstRotation, secondRotation = 45, -45
+	end
+	for _, rotation in ipairs({ firstRotation, secondRotation }) do
+		new("Frame", {
 			BackgroundColor3 = color, BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = direction == "left" and -45 or 45, ZIndex = zIndex or 1,
-		}, holder)
-		second = new("Frame", {
-			BackgroundColor3 = color, BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
-			Size = UDim2.fromOffset(arm, thickness), Rotation = direction == "left" and 45 or -45, ZIndex = zIndex or 1,
+			AnchorPoint = V2(0.5, 0.5),
+			Position = U2(0.5, 0, 0.5, centerY),
+			Size = UDim2.fromOffset(arm, thickness), Rotation = rotation,
+			ZIndex = zIndex or 1,
 		}, holder)
 	end
 	return holder
@@ -2547,7 +2542,7 @@ function M:_build()
 
 	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
 	local drawer = new("Frame", {
-		Name = "PvDrawer", BackgroundColor3 = C.panel, BorderSizePixel = 0, Active = true, ZIndex = 2, Visible = false,
+		Name = "PvDrawer", BackgroundColor3 = C.panel, BorderSizePixel = 0, Active = true, ClipsDescendants = true, ZIndex = 2, Visible = false,
 		Size = U2(1, 0, 1, 0), Position = U2(0, self._W, 0, 0),
 	}, root)
 	corner(drawer, 10)
