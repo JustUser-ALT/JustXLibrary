@@ -70,69 +70,7 @@ end
 
 local function openPreview()
     if Preview and Preview.alive and Preview:IsOpen() then
-        -- Global test controls: these appear in the Controllers page for every selected asset.
-    Preview:Divider({ Label = "Basic controls" })
-    Preview:Button({
-        Name = "Test Button",
-        Icon = "mouse-pointer-click",
-        Callback = function()
-            print("[Preview Test] Button clicked.")
-        end,
-    })
-    Preview:Toggle({
-        Name = "Test Toggle",
-        Default = true,
-        Callback = function(value)
-            print("[Preview Test] Toggle:", value)
-        end,
-    })
-    Preview:Dropdown({
-        Name = "Single Dropdown",
-        Options = { "Option A", "Option B", "Option C" },
-        Default = "Option B",
-        Callback = function(value)
-            print("[Preview Test] Dropdown:", value)
-        end,
-    })
-    Preview:Dropdown({
-        Name = "MultiSelect Dropdown",
-        Options = { "Ruby", "Sapphire", "Emerald", "Amethyst" },
-        MultiSelect = true,
-        MaxSelect = 3,
-        Default = { "Ruby", "Emerald" },
-        Callback = function(values)
-            print("[Preview Test] MultiSelect:", table.concat(values, ", "))
-        end,
-    })
-    Preview:Slider({
-        Name = "Test Slider",
-        Min = 0,
-        Max = 100,
-        Step = 1,
-        Default = 35,
-        Suffix = "%",
-        Callback = function(value)
-            print("[Preview Test] Slider:", value)
-        end,
-    })
-    Preview:ColorPicker({
-        Name = "Test Color",
-        Default = Color3.fromRGB(80, 170, 255),
-        Callback = function(color)
-            print("[Preview Test] Color:", color)
-        end,
-    })
-    Preview:Textbox({
-        Name = "Test Textbox",
-        Placeholder = "Enter some text...",
-        Default = "Preview test",
-        Callback = function(value)
-            print("[Preview Test] Textbox:", value)
-        end,
-    })
-    Preview:Label({ Text = "All supported Preview controls are listed above." })
-
-    Preview:Open("Models")
+        Preview:Open("Models")
         return
     end
 
@@ -152,7 +90,7 @@ local function openPreview()
     Items = Preview:Tab({ Name = "Items", Icon = "package" })
     Preview:Tab({ Name = "All", Icon = "grid-2x2", ShowAll = true })
 
-    Models:Assets({
+    local modelAssets = Models:Assets({
         {
             Name = "Oak Tree",
             Type = "Environment Model",
@@ -186,7 +124,7 @@ local function openPreview()
         },
     })
 
-    Items:Assets({
+    local itemAssets = Items:Assets({
         {
             Name = "Energy Crystal",
             Type = "Collectible",
@@ -231,7 +169,74 @@ local function openPreview()
         },
     })
 
+    local function addCommonControllers(asset)
+        asset:Divider({ Label = "Shared settings", Pinned = true })
+        asset:Toggle({
+            Name = "Cast Shadows",
+            Default = true,
+            Pinned = true,
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " Cast Shadows:", value)
+            end,
+        })
+        asset:Slider({
+            Name = "Scale",
+            Min = 0.25,
+            Max = 2,
+            Step = 0.05,
+            Default = 1,
+            Pinned = true,
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " Scale:", value)
+            end,
+        })
+        asset:ColorPicker({
+            Name = "Color",
+            Default = Color3.fromRGB(80, 170, 120),
+            Pinned = true,
+            Callback = function(color)
+                print("[Preview Test] " .. asset.Name .. " Color:", color)
+            end,
+        })
+        asset:Button({
+            Name = "Test action",
+            Pinned = true,
+            Callback = function()
+                print("[Preview Test] " .. asset.Name .. " action pressed.")
+            end,
+        })
+    end
+
+    for _, asset in ipairs(modelAssets or {}) do
+        addCommonControllers(asset)
+        asset:Toggle({
+            Name = "Oak/Robot local option",
+            Default = false,
+            Pinned = false,
+            Callback = function(value)
+                print("[Preview Test] " .. asset.Name .. " local option:", value)
+            end,
+        })
+    end
+
+    for _, asset in ipairs(itemAssets or {}) do
+        addCommonControllers(asset)
+        for _, variantName in ipairs({ "Ruby", "Sapphire", "Emerald" }) do
+            asset:SetVariant(variantName)
+            asset:Toggle({
+                Name = variantName .. " special effect",
+                Default = variantName == "Ruby",
+                Pinned = false,
+                Callback = function(value)
+                    print("[Preview Test] " .. asset.Name .. " " .. variantName .. " effect:", value)
+                end,
+            })
+        end
+        asset:SetVariant(1)
+    end
+
     Preview:Open("Models")
+    print("[Preview Test] Preview opened.")    Preview:Open("Models")
     print("[Preview Test] Preview opened.")
 end
 
