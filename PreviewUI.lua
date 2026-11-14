@@ -1428,11 +1428,11 @@ PAGES.preview = {
 		}, box)
 		corner(fullButton, 8)
 		stroke(fullButton, C.border, 1)
-		local expandIcon = mkIcon(fullButton, "maximize-2", 13, C.txt)
+		local expandIcon = mkIcon(fullButton, "maximize-2", 11, C.txt)
 		expandIcon.AnchorPoint = V2(0.5, 0.5)
 		expandIcon.Position = U2(0.5, 0, 0.5, 0)
 		expandIcon.ZIndex = 21
-		local collapseIcon = mkIcon(fullButton, "minimize-2", 13, C.txt)
+		local collapseIcon = mkIcon(fullButton, "minimize-2", 11, C.txt)
 		collapseIcon.AnchorPoint = V2(0.5, 0.5)
 		collapseIcon.Position = U2(0.5, 0, 0.5, 0)
 		collapseIcon.ZIndex = 21
@@ -2204,6 +2204,12 @@ function M:_build()
 	end
 	local tab = win:Tab({
 		Name = self._opts.TabName or "Preview", Icon = self.Icon, Type = "Custom", Tooltip = self.Title,
+		OnDeselect = function()
+			if self._root then self._root.Visible = false end
+		end,
+		OnSelect = function()
+			if self._root then self._root.Visible = true end
+		end,
 		OnClose = function()
 			if self._tab then
 				self:_teardown(false)
