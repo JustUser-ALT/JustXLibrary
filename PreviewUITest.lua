@@ -1,181 +1,159 @@
---[[
-    JustXLibrary - Legacy Preview UI Test
-    Tests the restored PreviewUI.lua inside the real JustXLibrary window.
-    Run in Delta / client executor.
+-- JustXLibrary Legacy Preview UI Test
+-- Loader:
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUITest.lua"))()
 
-    This is a test harness only. It does not modify the library or PreviewUI.
-]]
+local Library = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua"
+))()
 
-local BASE = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-
-local function fetchModule(path)
-    local ok, body = pcall(function()
-        return game:HttpGet(BASE .. path)
-    end)
-    if not ok or type(body) ~= "string" or body == "" then
-        error("Download failed: " .. path .. " | " .. tostring(body))
-    end
-
-    local fn, compileError = loadstring(body)
-    if not fn then
-        error("Compile failed: " .. path .. " | " .. tostring(compileError))
-    end
-
-    local okRun, result = pcall(fn)
-    if not okRun then
-        error("Execution failed: " .. path .. " | " .. tostring(result))
-    end
-
-    return result
-end
-
-local JL = fetchModule("JustLib.lua")
-if type(JL) ~= "table" or type(JL.Window) ~= "function" then
-    error("JustLib.lua did not return a valid library table")
-end
-
--- Create the host window first: the legacy Preview is a tab inside this window.
-local Window = JL:Window({
-    Title = "Preview UI Test",
-    HubId = "PreviewUITest",
-    Settings = false,
-    LoadIcons = false,
-})
-
-if not Window then
-    error("JustLib:Window failed")
-end
-
-local Preview = JL:Preview({
-    Title = "Asset Preview",
-    Icon = "⬡",
-    TabName = "Preview",
-    Source = BASE .. "PreviewUI.lua",
-})
-
-if type(Preview) ~= "table" or Preview.IsStub then
-    JL:Notify({
-        Title = "Preview Test",
-        Desc = "PreviewUI failed to load. Check the executor console for the exact error.",
-        Type = "Error",
-        Duration = 8,
-    })
+if not Library then
+    warn("[Preview Test] JustLib failed to load.")
     return
 end
 
-local Models = Preview:Tab({ Name = "Models", Icon = "⬡" })
-local Items = Preview:Tab({ Name = "Items", Icon = "▦" })
-local All = Preview:Tab({ Name = "All", Icon = "✦", ShowAll = true })
+local Window = Library:Window({
+    Title = "Legacy Preview Test",
+    Config = "JustLib_LegacyPreviewTest",
+    Width = 560,
+    Height = 440,
+})
 
-Models:Assets({
-    {
-        Name = "Oak Tree",
-        Type = "Model",
-        Creator = "Preview Test",
-        Created = "14.11.2026",
-        Size = "1.5 MB",
-        Version = "1.0",
-        Description = "A sample model used to check the legacy Preview layout.",
-        Tags = { "Nature", "Environment", "Test" },
-        Info = {
-            { Label = "Parts", Value = "12", Icon = "▤" },
-            { Label = "Category", Value = "Nature", Icon = "◆" },
-        },
-        Build = function(model)
-            local trunk = Instance.new("Part")
-            trunk.Name = "Trunk"
-            trunk.Anchored = true
-            trunk.Size = Vector3.new(1.4, 5, 1.4)
-            trunk.Position = Vector3.new(0, 2.5, 0)
-            trunk.Color = Color3.fromRGB(105, 75, 48)
-            trunk.Parent = model
+if not Window then
+    warn("[Preview Test] Window creation failed.")
+    return
+end
 
-            local leaves = Instance.new("Part")
-            leaves.Name = "Leaves"
-            leaves.Anchored = true
-            leaves.Shape = Enum.PartType.Ball
-            leaves.Size = Vector3.new(5, 5, 5)
-            leaves.Position = Vector3.new(0, 6, 0)
-            leaves.Color = Color3.fromRGB(65, 135, 82)
-            leaves.Parent = model
-        end,
-        Actions = {
-            {
-                Name = "Test action",
-                Icon = "✓",
-                Callback = function()
-                    JL:Notify({ Title = "Preview Test", Desc = "Oak Tree action works.", Type = "Success", Duration = 3 })
-                end,
+Window:HomeTab({
+    WelcomeTitle = "Legacy Preview Test",
+    Changelog = {
+        {
+            Version = "Restored",
+            Title = "Old Preview UI",
+            Description = "Testing the restored Preview module inside the normal JustXLibrary window.",
+            Changes = {
+                "Original Preview module from the restored branch.",
+                "Multiple sample assets and 3D previews.",
+                "No Asset Browser replacement or standalone preview window.",
             },
         },
     },
-    {
-        Name = "Stone Pillar",
-        Type = "Model",
-        Creator = "Preview Test",
-        Description = "Second sample card for checking the asset grid and selection drawer.",
-        Tags = { "Stone", "Structure" },
-        Build = function(model)
-            local pillar = Instance.new("Part")
-            pillar.Name = "Pillar"
-            pillar.Anchored = true
-            pillar.Size = Vector3.new(2, 7, 2)
-            pillar.Position = Vector3.new(0, 3.5, 0)
-            pillar.Material = Enum.Material.Slate
-            pillar.Color = Color3.fromRGB(115, 120, 130)
-            pillar.Parent = model
-        end,
-    },
-    {
-        Name = "Neon Crystal",
-        Type = "Model",
-        Creator = "Preview Test",
-        Description = "A bright sample model for checking the 3D viewport.",
-        Tags = { "Decoration", "Neon" },
-        Build = function(model)
-            local crystal = Instance.new("Part")
-            crystal.Name = "Crystal"
-            crystal.Anchored = true
-            crystal.Size = Vector3.new(2, 4, 2)
-            crystal.Position = Vector3.new(0, 2, 0)
-            crystal.Material = Enum.Material.Neon
-            crystal.Color = Color3.fromRGB(90, 160, 255)
-            crystal.Parent = model
-        end,
-    },
 })
 
-Items:Assets({
-    {
-        Name = "Health Potion",
-        Type = "Tool",
-        Creator = "Preview Test",
-        Description = "Sample item card with tags and custom information.",
-        Tags = { "Consumable", "Test" },
-        Info = {
-            { Label = "Rarity", Value = "Rare", Icon = "✦" },
-            { Label = "Stack", Value = "10", Icon = "▤" },
+local HostTab = Window:Tab({ Name = "Test", Icon = "flask-conical" })
+local HostSection = HostTab:Section({ Title = "Preview test" })
+
+local Preview
+local Models
+local Items
+
+local function makePart(parent, name, size, position, color, shape, material)
+    local p = Instance.new("Part")
+    p.Name = name
+    p.Anchored = true
+    p.CanCollide = false
+    p.Size = size
+    p.Position = position
+    p.Color = color
+    p.Shape = shape or Enum.PartType.Block
+    p.Material = material or Enum.Material.SmoothPlastic
+    p.Parent = parent
+    return p
+end
+
+local function openPreview()
+    if Preview and Preview.alive and Preview:IsOpen() then
+        Preview:Open("Models")
+        return
+    end
+
+    Preview = Library:Preview({
+        Title = "Preview Test",
+        Icon = "box",
+        TabName = "Preview",
+        Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua",
+    })
+
+    if not Preview or Preview.IsStub then
+        warn("[Preview Test] Preview initialization failed. Check the executor console for the JustLib warning.")
+        return
+    end
+
+    Models = Preview:Tab({ Name = "Models", Icon = "trees" })
+    Items = Preview:Tab({ Name = "Items", Icon = "package" })
+    Preview:Tab({ Name = "All", Icon = "grid-2x2", ShowAll = true })
+
+    Models:Assets({
+        {
+            Name = "Oak Tree",
+            Type = "Environment Model",
+            Creator = "Preview Test",
+            Version = "1.0",
+            Description = "A sample tree made from actual 3D parts.",
+            Tags = { "Nature", "Environment", "3D" },
+            Info = {
+                { Label = "Parts", Value = "3", Icon = "boxes" },
+                { Label = "Category", Value = "Environment", Icon = "leaf" },
+            },
+            Build = function(model)
+                makePart(model, "Trunk", Vector3.new(1.2, 4, 1.2), Vector3.new(0, -1, 0), Color3.fromRGB(112, 76, 48), Enum.PartType.Cylinder)
+                makePart(model, "Leaves", Vector3.new(4.5, 4.5, 4.5), Vector3.new(0, 2, 0), Color3.fromRGB(62, 166, 92), Enum.PartType.Ball, Enum.Material.Grass)
+                makePart(model, "Fruit", Vector3.new(0.65, 0.65, 0.65), Vector3.new(1.1, 1.1, -1.2), Color3.fromRGB(240, 174, 62), Enum.PartType.Ball, Enum.Material.Neon)
+            end,
         },
-        Image = "rbxassetid://0",
-    },
-    {
-        Name = "Iron Sword",
-        Type = "Tool",
-        Creator = "Preview Test",
-        Description = "Another item to test scrolling and switching categories.",
-        Tags = { "Weapon", "Melee" },
-        Image = "rbxassetid://0",
-    },
+        {
+            Name = "Mini Robot",
+            Type = "Character Model",
+            Creator = "Preview Test",
+            Version = "1.0",
+            Description = "A small robot assembled from separate parts.",
+            Tags = { "Robot", "Character", "3D" },
+            Build = function(model)
+                makePart(model, "Body", Vector3.new(2.2, 2.6, 1.3), Vector3.new(0, 0, 0), Color3.fromRGB(92, 105, 128))
+                makePart(model, "Head", Vector3.new(1.7, 1.5, 1.5), Vector3.new(0, 2.1, 0), Color3.fromRGB(150, 165, 190), Enum.PartType.Block, Enum.Material.Metal)
+                makePart(model, "Left Eye", Vector3.new(0.28, 0.28, 0.15), Vector3.new(-0.4, 2.2, -0.78), Color3.fromRGB(70, 210, 255), Enum.PartType.Ball, Enum.Material.Neon)
+                makePart(model, "Right Eye", Vector3.new(0.28, 0.28, 0.15), Vector3.new(0.4, 2.2, -0.78), Color3.fromRGB(70, 210, 255), Enum.PartType.Ball, Enum.Material.Neon)
+            end,
+        },
+    })
+
+    Items:Assets({
+        {
+            Name = "Energy Crystal",
+            Type = "Collectible",
+            Creator = "Preview Test",
+            Description = "A sample neon crystal for testing the details drawer.",
+            Tags = { "Collectible", "Magic", "3D" },
+            Info = {
+                { Label = "Rarity", Value = "Epic", Icon = "award" },
+                { Label = "Element", Value = "Energy", Icon = "zap" },
+            },
+            Build = function(model)
+                makePart(model, "Crystal Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), Color3.fromRGB(48, 125, 238), Enum.PartType.Ball, Enum.Material.Neon)
+                local shard = makePart(model, "Crystal Shard", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.7, 0), Color3.fromRGB(112, 225, 255), Enum.PartType.Block, Enum.Material.Glass)
+                shard.CFrame = CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(45))
+            end,
+        },
+    })
+
+    Preview:Open("Models")
+    print("[Preview Test] Preview opened.")
+end
+
+HostSection:Button({
+    Name = "Open Legacy Preview",
+    Icon = "eye",
+    Callback = openPreview,
 })
 
-Preview:Toggle("Models")
-Preview:OnClosed(function()
-    -- The host window remains open; only the Preview tab is removed.
-end)
-
-JL:Notify({
-    Title = "Preview Test",
-    Desc = "Legacy Preview loaded. Check the tab size, cards, drawer, scrolling and mobile layout.",
-    Type = "Success",
-    Duration = 5,
+HostSection:Button({
+    Name = "Close Preview",
+    Icon = "x",
+    Callback = function()
+        if Preview then
+            Preview:Close()
+        end
+    end,
 })
+
+Window:Settings()
+print("[Preview Test] Host window loaded. Press Open Legacy Preview.")
