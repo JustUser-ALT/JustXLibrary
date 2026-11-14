@@ -2000,15 +2000,10 @@ end
 -- Когда панель открыта и места мало, список слева уезжает за край: сетка остаётся достаточно широкой.
 function M:_states(open)
 	local W = self._W
-	local DW = self._DW
 	if open then
-		local roomWithNav = W - (NAVW + GAP) - GAP - DW
-		if roomWithNav >= 300 then
-			return { navX = 0, cardX = NAVW + GAP, cardW = roomWithNav, drawerX = W - DW }
-		end
-		return { navX = -(NAVW + GAP), cardX = 0, cardW = W - DW - GAP, drawerX = W - DW }
+		return { navX = -(NAVW + GAP), cardX = -W, cardW = W, drawerX = 0 }
 	end
-	return { navX = 0, cardX = NAVW + GAP, cardW = W - (NAVW + GAP), drawerX = W + GAP }
+	return { navX = 0, cardX = NAVW + GAP, cardW = W - (NAVW + GAP), drawerX = W }
 end
 
 function M:_relayout()
@@ -2017,12 +2012,20 @@ function M:_relayout()
 	end
 	local W, H = self:_dims()
 	self._W, self._H = W, H
-	self._DW = math.clamp(math.floor(W * 0.42), 230, 300)
+	self._DW = W
 	local st = self:_states(self._drawerOpen == true)
 	self._cardW = st.cardW
 	self._nav.Size = U2(0, NAVW, 1, 0)
 	self._card.Size = U2(0, st.cardW, 1, 0)
-	self._drawer.Size = U2(0, self._DW, 1, 0)
+	self._drawer.Size = U2(1, 0, 1, 0)
+	if self._dLeft then
+		local leftW = math.clamp(math.floor(W * 0.39), 190, 330)
+		self._dLeft.Size = U2(0, leftW, 1, -62)
+		self._dRight.Position = U2(0, leftW + 1, 0, 62)
+		self._dRight.Size = U2(1, -leftW - 1, 1, -62)
+		self._dTabs.Size = U2(1, -20, 0, 42)
+		self._dPages.Size = U2(1, 0, 1, -102)
+	end
 	if not self._sliding then
 		self._nav.Position = U2(0, st.navX, 0, 0)
 		self._card.Position = U2(0, st.cardX, 0, 0)
@@ -2253,10 +2256,10 @@ function M:_build()
 	}, card)
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
 
-	-- выезжающая панель справа ---------------------------------------------------------------
+	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
 	local drawer = new("Frame", {
 		Name = "PvDrawer", BackgroundColor3 = C.panel, BorderSizePixel = 0, Active = true, ZIndex = 2, Visible = false,
-		Size = U2(0, self._DW, 1, 0), Position = U2(0, self._W + GAP, 0, 0),
+		Size = U2(1, 0, 1, 0), Position = U2(0, self._W, 0, 0),
 	}, root)
 	corner(drawer, 10)
 	stroke(drawer, C.border, 1)
@@ -2268,7 +2271,7 @@ function M:_build()
 		TextSize = 11, TextColor3 = C.dim, Position = UDim2.fromOffset(14, 29), Size = U2(1, -50, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd,
 	}, drawer)
 	local collapse = txt("TextButton", {
-		Text = "›", Font = GB, TextSize = 22, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
+		Text = "‹", Font = GB, TextSize = 22, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
 		AnchorPoint = V2(1, 0.5), Position = U2(1, -6, 0, 26), Size = UDim2.fromOffset(28, 28),
 	}, drawer)
 	collapse.MouseEnter:Connect(function()
@@ -2283,11 +2286,19 @@ function M:_build()
 		self:CloseDrawer()
 	end)
 	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 0, 1) }, drawer)
-	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 55), Size = U2(1, -16, 0, 42) }, drawer)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 98), Size = U2(1, 0, 0, 1) }, drawer)
+	local leftW = math.clamp(math.floor(self._W * 0.39), 190, 330)
+	local left = new("Frame", { Name = "PvDetailInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 62), Size = U2(0, leftW, 1, -62) }, drawer)
+	self._dLeft = left
+	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 0), Size = U2(1, -20, 0, 42) }, left)
+	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = U2(0, 0, 0, 48), Size = U2(1, 0, 0, 1) }, left)
 	self._dPages = new("Frame", {
-		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(0, 100), Size = U2(1, 0, 1, -102),
-	}, drawer)
+		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 1, -54),
+	}, left)
+	local right = new("Frame", { Name = "PvDetailPreview", BackgroundColor3 = C.badge, BorderSizePixel = 0 }, drawer)
+	self._dRight = right
+	corner(right, 10)
+	stroke(right, C.border, 1)
+	self._dRightPage = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false }, right)
 
 	-- общий цикл для всех 3D-превью: плавно на любом FPS (на скрытой вкладке не работает)
 	self._cons[#self._cons + 1] = RunService.RenderStepped:Connect(function(dt)
@@ -2813,13 +2824,14 @@ function M:_setDrawer(open)
 	self._drawerOpen = open
 	local st = self:_states(open)
 	local nav, card, drawer = self._nav, self._card, self._drawer
-	-- ширину карточки меняем сразу (сетка перестраивается и «выскакивает» плавно), а сдвигаем плавно
 	self._cardW = st.cardW
 	card.Size = U2(0, st.cardW, 1, 0)
 	self:_fitGrid()
-	self:_popGrid()
 	if open then
 		drawer.Visible = true
+		if self._dRightPage then self._dRightPage.Visible = true end
+	else
+		self:_cleanupPage()
 	end
 	self._slideTok = (self._slideTok or 0) + 1
 	local tok = self._slideTok
@@ -2827,26 +2839,18 @@ function M:_setDrawer(open)
 		nav.Position = U2(0, st.navX, 0, 0)
 		card.Position = U2(0, st.cardX, 0, 0)
 		drawer.Position = U2(0, st.drawerX, 0, 0)
-		if not open then
-			drawer.Visible = false
-			self:_cleanupPage()
-		end
+		if not open then drawer.Visible = false end
 		return
 	end
 	self._sliding = true
-	local info = TweenInfo.new(open and 0.5 or 0.42, QUINT, OUT)
+	local info = TweenInfo.new(open and 0.48 or 0.42, QUINT, OUT)
 	TS:Create(nav, info, { Position = U2(0, st.navX, 0, 0) }):Play()
 	TS:Create(card, info, { Position = U2(0, st.cardX, 0, 0) }):Play()
 	TS:Create(drawer, info, { Position = U2(0, st.drawerX, 0, 0) }):Play()
-	B.delay(open and 0.52 or 0.44, function()
-		if self._slideTok ~= tok or not self._drawer then
-			return
-		end
+	B.delay(open and 0.5 or 0.44, function()
+		if self._slideTok ~= tok or not self._drawer then return end
 		self._sliding = false
-		if not open then
-			self._drawer.Visible = false
-			self:_cleanupPage()
-		end
+		if not open then self._drawer.Visible = false end
 	end)
 end
 
@@ -2901,6 +2905,14 @@ function M:_cleanupPage()
 	if self._pageRoot then
 		pcall(function() self._pageRoot:Destroy() end)
 		self._pageRoot = nil
+	end
+	if self._detailPreviewCleanup then
+		pcall(self._detailPreviewCleanup)
+		self._detailPreviewCleanup = nil
+	end
+	if self._dRightPage then
+		for _, child in ipairs(self._dRightPage:GetChildren()) do child:Destroy() end
+		self._dRightPage.Visible = false
 	end
 end
 
@@ -3035,9 +3047,30 @@ function M:_refreshDrawer(animate)
 		sub = (sub ~= "" and (sub .. "  ·  ") or "") .. tostring(a.Creator)
 	end
 	self._dType.Text = sub
-	self._curPages = self:_pagesFor(a)
+	local pages = self:_pagesFor(a)
+	self._curPages = {}
+	local hasLargePreview = false
+	for _, p in ipairs(pages) do
+		if p.id == "preview" then
+			hasLargePreview = true
+		else
+			self._curPages[#self._curPages + 1] = p
+		end
+	end
+	if #self._curPages == 0 then
+		self._curPages[1] = { id = "empty", name = "Info", icon = "info", build = function(parent)
+			txt("TextLabel", { Text = "No additional information", TextColor3 = C.dim, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center, Size = U2(1, 0, 0, 30) }, parent)
+		end }
+	end
 	self:_renderDrawerTabs()
+	if not self._page then
+		self._page = self._curPages[1].id
+	end
+	local found = false
+	for _, p in ipairs(self._curPages) do if p.id == self._page then found = true end end
+	if not found then self._page = self._curPages[1].id end
 	self:_showPage(self._page, animate)
+	self:_buildLargePreview(a, hasLargePreview)
 end
 
 return M
