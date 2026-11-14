@@ -1008,6 +1008,22 @@ local function makeControl(container, kind, o)
 	o = o or {}
 	local pv = container._pv
 	local def = { kind = kind, o = o, _pv = pv, _container = container, name = o.Name or kind }
+	if container._isAsset then
+		def.pinned = o.Pinned ~= false
+		def.variantIndex = nil
+		if not def.pinned then
+			if o.Variant ~= nil then
+				for i, variant in ipairs(container._variants or {}) do
+					if variant.Name == o.Variant then
+						def.variantIndex = i
+						break
+					end
+				end
+			else
+				def.variantIndex = container._variantIndex or 1
+			end
+		end
+	end
 	local had = false
 
 	if kind == "Toggle" then
@@ -3113,16 +3129,18 @@ end
 
 function M:_controlsFor(asset)
 	local list, seen = {}, {}
-	local function addFrom(container)
+	local function addFrom(container, assetScoped)
 		if container and not seen[container] then
 			seen[container] = true
 			for _, d in ipairs(container._controls or {}) do
-				list[#list + 1] = d
+				if not assetScoped or d.pinned ~= false or d.variantIndex == (asset and asset._variantIndex or 1) then
+					list[#list + 1] = d
+				end
 			end
 		end
 	end
 	if asset then
-		addFrom(asset)
+		addFrom(asset, true)
 		addFrom(asset.tab)
 	end
 	addFrom(self._activeTab)
