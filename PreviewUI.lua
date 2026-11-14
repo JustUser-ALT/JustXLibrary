@@ -209,7 +209,7 @@ local function mkIcon(parent, icon, size, color)
 	if value:match("^%d+$") then
 		value = "rbxassetid://" .. value
 	end
-	if value:match("^rbxassetid://") or value:match("^https?://") then
+	if value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://") then
 		local image = new("ImageLabel", {
 			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
 			Image = value, ImageColor3 = color, ScaleType = Enum.ScaleType.Fit,
@@ -1565,6 +1565,10 @@ end
 function M.new(bridge, opts)
 	B, C, ACCENTS = bridge, bridge.C, bridge.ACCENTS
 	opts = opts or {}
+	-- Preview uses the same shared icon provider as the rest of JustXLibrary.
+	if B.loadIconPack and (not B.hasIconPack or not B.hasIconPack()) then
+		pcall(B.loadIconPack)
+	end
 	local self = setmetatable({}, M)
 	self._pv = self
 	self.alive = true
