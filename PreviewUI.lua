@@ -1221,12 +1221,20 @@ local function attachControls(obj)
 			return makeControl(selfObj, kind, o)
 		end
 	end
+	obj.Textbox = function(selfObj, o)
+		return makeControl(selfObj, "Input", o)
+	end
 end
 
 for _, kind in ipairs(KINDS) do
 	M[kind] = function(selfObj, o)
 		return makeControl(selfObj, kind, o)
 	end
+end
+
+-- Textbox is the public name; Input remains as a backward-compatible alias.
+M.Textbox = function(selfObj, o)
+	return makeControl(selfObj, "Input", o)
 end
 
 --------------------------------------------------------------------
@@ -1264,8 +1272,8 @@ local function infoRow(parent, order, icon, label, value)
 end
 
 -- Actions: все контролы ассета, его вкладки и самого Preview
-PAGES.actions = {
-	id = "actions", name = "Actions", icon = "sliders-horizontal",
+PAGES.controllers = {
+	id = "controllers", name = "Controllers", icon = "sliders-horizontal",
 	build = function(parent, asset, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
@@ -1426,7 +1434,7 @@ PAGES.preview = {
 		-- Expand the preview over the complete detail drawer; the same control exits fullscreen.
 		local fullButton = txt("TextButton", {
 			Name = "PreviewFullscreen", Text = "", BackgroundColor3 = C.btnBg,
-			BackgroundTransparency = 0.08, AnchorPoint = V2(1, 0),
+			BackgroundTransparency = 0.22, AnchorPoint = V2(1, 0),
 			Position = U2(1, -8, 0, 8), Size = UDim2.fromOffset(34, 34), ZIndex = 20,
 		}, box)
 		corner(fullButton, 8)
@@ -3083,7 +3091,7 @@ end
 function M:_pagesFor(asset)
 	local out = {}
 	if #self:_controlsFor(asset) > 0 then
-		out[#out + 1] = PAGES.actions
+		out[#out + 1] = PAGES.controllers
 	end
 	if hasInfo(asset) then
 		out[#out + 1] = PAGES.info
