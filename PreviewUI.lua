@@ -1411,14 +1411,14 @@ PAGES.preview = {
 				end)
 			end
 		end
-		local topOffset = variantBar and 44 or 8
-		-- The old Auto Rotate / Reset row was removed; keep only a small bottom margin.
-		local bottomMargin = 12
+		-- Use one full-width rounded preview surface instead of nested inset frames.
+		local topOffset = variantBar and 44 or 0
 		local box = new("Frame", {
-			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(10, topOffset),
-			Size = U2(1, -20, 1, -(topOffset + bottomMargin)),
+			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
+			Size = U2(1, 0, 1, -topOffset),
+			ClipsDescendants = true,
 		}, parent)
-		corner(box, 9)
+		corner(box, 12)
 		stroke(box, C.border, 1)
 		-- Expand the preview over the complete detail drawer; the same control exits fullscreen.
 		local fullButton = txt("TextButton", {
@@ -1448,7 +1448,6 @@ PAGES.preview = {
 		end)
 
 		local inner = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, box)
-		pad(inner, 10, 10, 10, 10)
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
 
