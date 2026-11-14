@@ -4731,7 +4731,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     return MS
 end
 -- ===== Preview UI loader =====
-JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/PreviewUI.lua"
+JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua"
 -- Если файл не нашёлся или сломан, показываем, ЧТО именно пришло (строка с ошибкой, размер, начало файла)
 local function previewDiag(body, err)
     local info = ""
