@@ -191,11 +191,37 @@ local function openPreview()
             Name = "Energy Crystal",
             Type = "Collectible",
             Creator = "Preview Test",
-            Description = "A sample neon crystal for testing the details drawer.",
+            Description = "A sample neon crystal for testing the details drawer and model-version selector.",
             Tags = { "Collectible", "Magic", "3D" },
             Info = {
                 { Label = "Rarity", Value = "Epic", Icon = "award" },
                 { Label = "Element", Value = "Energy", Icon = "zap" },
+            },
+            Variants = {
+                {
+                    Name = "Ruby",
+                    Version = "1.0",
+                    Build = function(model)
+                        makePart(model, "Ruby Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), Color3.fromRGB(235, 65, 88), Enum.PartType.Ball, Enum.Material.Neon)
+                        makePart(model, "Ruby Shard", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.7, 0), Color3.fromRGB(255, 150, 160), Enum.PartType.Block, Enum.Material.Glass).CFrame = CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(45))
+                    end,
+                },
+                {
+                    Name = "Sapphire",
+                    Version = "1.1",
+                    Build = function(model)
+                        makePart(model, "Sapphire Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), Color3.fromRGB(48, 125, 238), Enum.PartType.Ball, Enum.Material.Neon)
+                        makePart(model, "Sapphire Shard", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.7, 0), Color3.fromRGB(112, 225, 255), Enum.PartType.Block, Enum.Material.Glass).CFrame = CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(45))
+                    end,
+                },
+                {
+                    Name = "Emerald",
+                    Version = "1.2",
+                    Build = function(model)
+                        makePart(model, "Emerald Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), Color3.fromRGB(42, 190, 112), Enum.PartType.Ball, Enum.Material.Neon)
+                        makePart(model, "Emerald Shard", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.7, 0), Color3.fromRGB(145, 255, 190), Enum.PartType.Block, Enum.Material.Glass).CFrame = CFrame.new(0, 1.7, 0) * CFrame.Angles(0, math.rad(45), math.rad(45))
+                    end,
+                },
             },
             Build = function(model)
                 makePart(model, "Crystal Core", Vector3.new(2.2, 2.8, 2.2), Vector3.new(0, 0, 0), Color3.fromRGB(48, 125, 238), Enum.PartType.Ball, Enum.Material.Neon)
