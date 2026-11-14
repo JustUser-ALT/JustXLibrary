@@ -5511,6 +5511,9 @@ function JL:Window(opts)
     local function switchToTab(id)
         local prev = activeTabId
         if prev == id then return end
+        if prev and tabUI[prev] and type(tabUI[prev].onDeselect) == "function" then
+            pcall(tabUI[prev].onDeselect)
+        end
         local dir = (prev and id > prev) and 1 or -1
         for tid,fr in pairs(tabFrames) do
             if tid == id then
@@ -5525,6 +5528,9 @@ function JL:Window(opts)
         end
         for tid in pairs(tabUI) do styleTab(tid, tid == id) end
         activeTabId = id
+        if tabUI[id] and type(tabUI[id].onSelect) == "function" then
+            pcall(tabUI[id].onSelect)
+        end
         revealTab(id)
     end
     local blurObj
@@ -6057,7 +6063,7 @@ function JL:Window(opts)
         if labelsOn then tabLabel = newTxt({Parent=btn,Text=topts.Name or "",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-4,0,12),Pos=UDim2.new(0,2,0,28),Z=14}) end
         if ic:IsA("TextLabel") then ic.TextColor3 = C.dim else ic.ImageColor3 = C.dim end
         local ind = Instance.new("Frame"); ind.Size = UDim2.new(0,3,0,14); ind.Position = UDim2.new(0,-5,0.5,-7); ind.BackgroundColor3 = ACCENTS[1]; ind.BorderSizePixel = 0; ind.Visible = false; ind.Parent = btn; corner(2,ind)
-        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id))}
+        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id)), onSelect = topts.OnSelect, onDeselect = topts.OnDeselect}
         attachTip(btn, topts.Tooltip or topts.Name)
         local tabLock = attachLockHidden(btn, {Locked = topts.Locked, Hidden = topts.Hidden, LockedMessage = topts.LockedMessage, LockedTitle = topts.LockedTitle, Requires = topts.Requires, HiddenUntil = topts.HiddenUntil, OpenStore = topts.OpenStore})
         local tabFrame = Instance.new("Frame"); tabFrame.Size = UDim2.new(1,-2 * PADIN,1,-2 * PADIN - 36); tabFrame.Position = TABPOS
