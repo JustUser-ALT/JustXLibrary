@@ -1483,28 +1483,20 @@ PAGES.preview = {
 				pv._viewers[h] = nil
 			end
 			local hit = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 5 }, box)
+			local function insideHit(pos)
+				local p, s = hit.AbsolutePosition, hit.AbsoluteSize
+				return pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+			end
+
+			-- Mouse: drag to rotate / zoom vertically, wheel to zoom.
 			hit.InputBegan:Connect(function(i)
-				if not isPtr(i) then return end
-				if i.UserInputType == Enum.UserInputType.Touch and #UIS:GetTouches() > 1 then
-					st.pinching = true
-					st.dragging = false
-					h.vel = 0
-					return
-				end
+				if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 				st.dragging = true
 				h.vel = 0
-				local lastX, lastT = i.Position.X, os.clock()
-				st.lastY = i.Position.Y
+				local lastX, lastY, lastT = i.Position.X, i.Position.Y, os.clock()
 				beginDrag(function(m)
-					if st.pinching or #UIS:GetTouches() > 1 then
-						st.pinching = true
-						st.dragging = false
-						h.vel = 0
-						return
-					end
 					local now = os.clock()
-					local dx = m.Position.X - lastX
-					local dy = m.Position.Y - (st.lastY or m.Position.Y)
+					local dx, dy = m.Position.X - lastX, m.Position.Y - lastY
 					local dt = math.max(now - lastT, 1 / 240)
 					if mode == "rotate" then
 						local rad = dx * 0.011
@@ -1514,13 +1506,11 @@ PAGES.preview = {
 						h.zoomBy(1 + dy * 0.008)
 						h.vel = 0
 					end
-					st.lastY = m.Position.Y
-					lastX, lastT = m.Position.X, now
+					lastX, lastY, lastT = m.Position.X, m.Position.Y, now
 				end, function()
 					st.dragging = false
 					st.resumeAt = os.clock() + 1.2
-					if os.clock() - lastT > 0.08 or st.pinching then h.vel = 0 end
-					if #UIS:GetTouches() == 0 then st.pinching = false end
+					if os.clock() - lastT > 0.08 then h.vel = 0 end
 				end)
 			end)
 			hit.InputChanged:Connect(function(i)
@@ -1528,23 +1518,80 @@ PAGES.preview = {
 					h.zoomBy(1 - i.Position.Z * 0.1)
 				end
 			end)
-			local pinchBase = 1
-			local pc = UIS.TouchPinch:Connect(function(_, scale, _, state)
-				if state == Enum.UserInputState.Begin then
-					pinchBase = h.tZoom
+
+			-- Touch: track each finger explicitly. TouchPinch can be swallowed by GUI
+			-- input routing on some mobile clients, so calculate pinch distance ourselves.
+			local touches = {}
+			local touchAnchor, pinchDistance, pinchZoom
+			local function touchList()
+				local list = {}
+				for input, pos in pairs(touches) do
+					list[#list + 1] = { input = input, pos = pos }
+				end
+				return list
+			end
+			local function distance(a, b)
+				return (a - b).Magnitude
+			end
+			local function resetTouchAnchor()
+				local list = touchList()
+				if #list >= 2 then
+					st.pinching = true
+					st.dragging = false
+					pinchDistance = math.max(distance(list[1].pos, list[2].pos), 1)
+					pinchZoom = h.tZoom
+					h.vel = 0
+				elseif #list == 1 then
+					st.pinching = false
+					st.dragging = true
+					touchAnchor = list[1].pos
+					h.vel = 0
+				else
+					st.pinching = false
+					st.dragging = false
+					touchAnchor = nil
+					pinchDistance = nil
+				end
+			end
+			local began = UIS.TouchStarted:Connect(function(i)
+				if not insideHit(i.Position) then return end
+				touches[i] = i.Position
+				resetTouchAnchor()
+			end)
+			local moved = UIS.TouchMoved:Connect(function(i)
+				if not touches[i] then return end
+				local previous = touches[i]
+				touches[i] = i.Position
+				local list = touchList()
+				if #list >= 2 then
+					local currentDistance = math.max(distance(list[1].pos, list[2].pos), 1)
+					if pinchDistance then
+						h.tZoom = math.clamp(pinchZoom * pinchDistance / currentDistance, 0.45, 2.4)
+					end
 					st.pinching = true
 					st.dragging = false
 					h.vel = 0
-				elseif state == Enum.UserInputState.Change then
-					h.tZoom = math.clamp(pinchBase / math.max(scale, 0.05), 0.45, 2.4)
-				elseif state == Enum.UserInputState.End then
-					st.pinching = false
+				elseif #list == 1 then
+					local dx = i.Position.X - previous.X
+					local dy = i.Position.Y - previous.Y
+					if mode == "rotate" then
+						h.drag(dx * 0.011)
+					else
+						h.zoomBy(1 + dy * 0.008)
+					end
+				end
+			end)
+			local ended = UIS.TouchEnded:Connect(function(i)
+				if touches[i] then
+					touches[i] = nil
+					resetTouchAnchor()
 					st.resumeAt = os.clock() + 0.25
-					h.vel = 0
 				end
 			end)
 			cleanups[#cleanups + 1] = function()
-				pc:Disconnect()
+				began:Disconnect()
+				moved:Disconnect()
+				ended:Disconnect()
 			end
 		end
 		return function()
