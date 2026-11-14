@@ -1399,7 +1399,7 @@ local function buildVariantSelector(parent, a)
 			local optionButtons = {}
 			local function closeMenu()
 				menu.Visible = false
-				arrow.Visible = true
+				arrow.Rotation = 0
 			end
 			for i, variant in ipairs(variants) do
 				local option = txt("TextButton", {
@@ -1430,7 +1430,7 @@ local function buildVariantSelector(parent, a)
 			end
 			trigger.Activated:Connect(function()
 				menu.Visible = not menu.Visible
-				arrow.Text = menu.Visible and "⌃" or "⌄"
+				arrow.Rotation = menu.Visible and 180 or 0
 			end)
 		end
 end
