@@ -1558,9 +1558,11 @@ PAGES.preview = {
 			corner(pager, 9)
 			stroke(pager, C.border, 1)
 			local function makePageButton(name, symbol, x, direction)
+				local canMove = (a._variantIndex or 1) + direction >= 1 and (a._variantIndex or 1) + direction <= #variants
 				local button = txt("TextButton", {
-					Name = name, Text = symbol, Font = GB, TextSize = 18, TextColor3 = C.txt,
-					BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.25,
+					Name = name, Text = symbol, Font = GB, TextSize = 18,
+					TextColor3 = canMove and C.txt or C.dim,
+					BackgroundColor3 = C.btnBg, BackgroundTransparency = canMove and 0.25 or 0.62,
 					Position = UDim2.fromOffset(x, 3), Size = UDim2.fromOffset(28, 28), ZIndex = 26,
 				}, pager)
 				corner(button, 7)
