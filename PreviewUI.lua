@@ -3033,6 +3033,34 @@ function M:_showPage(id, animate)
 	end
 end
 
+function M:_buildLargePreview(asset, enabled)
+	if not self._dRightPage then
+		return
+	end
+	if self._detailPreviewCleanup then
+		pcall(self._detailPreviewCleanup)
+		self._detailPreviewCleanup = nil
+	end
+	for _, child in ipairs(self._dRightPage:GetChildren()) do
+		child:Destroy()
+	end
+	self._dRightPage.Visible = true
+	if enabled then
+		local ok, cleanup = pcall(PAGES.preview.build, self._dRightPage, asset, self)
+		if ok and type(cleanup) == "function" then
+			self._detailPreviewCleanup = cleanup
+		elseif not ok then
+			warn("[PreviewUI] large preview failed: " .. tostring(cleanup))
+		end
+	else
+		txt("TextLabel", {
+			Text = "No preview available", TextSize = 13, TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+			Size = U2(1, 0, 1, 0),
+		}, self._dRightPage)
+	end
+end
+
 function M:_refreshDrawer(animate)
 	if not self._drawer then
 		return
