@@ -11,6 +11,14 @@ if not Library then
     return
 end
 
+-- Load the shared Lucide icon provider before creating any UI.
+if type(Library.LoadIconPack) == "function" then
+    local iconOk = Library:LoadIconPack()
+    if not iconOk then
+        warn("[Preview Test] Icon pack could not be loaded; Preview will use text fallbacks.")
+    end
+end
+
 local Window = Library:Window({
     Title = "Legacy Preview Test",
     Config = "JustLib_LegacyPreviewTest",
