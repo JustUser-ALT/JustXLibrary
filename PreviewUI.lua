@@ -185,6 +185,10 @@ end
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
 	local resolved = type(raw) == "table" and raw or nil
+	local fallbackGlyphs = {
+		pin = "⌖", layers = "▱", filter = "▽", ["list-filter"] = "☷",
+		["sliders-horizontal"] = "☷", ["chevron-down"] = "⌄",
+	}
 	if type(raw) == "string" and B and B.icon then
 		local ok, value = pcall(B.icon, raw)
 		if ok then
@@ -218,7 +222,10 @@ local function mkIcon(parent, icon, size, color)
 		}, parent)
 		return image
 	end
-	local textValue = glyph or (type(raw) == "string" and raw or "")
+	local textValue = glyph
+	if type(textValue) ~= "string" or textValue == "" or textValue == "[]" or textValue == "□" then
+		textValue = fallbackGlyphs[type(raw) == "string" and raw or ""] or (type(raw) == "string" and raw or "")
+	end
 	local label = new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Text = tostring(textValue),
 		TextScaled = true, Font = font or GB, TextColor3 = color,
@@ -1274,7 +1281,8 @@ local function pageScroll(parent, pv)
 	local sf = new("ScrollingFrame", {
 		BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
 		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1], ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 2, ScrollBarImageColor3 = ACCENTS[1], ScrollBarImageTransparency = 0.35,
+		ScrollingDirection = Enum.ScrollingDirection.Y, ClipsDescendants = true,
 	}, parent)
 	table.insert(pv._scrollers, sf)
 	local content = new("Frame", {
@@ -1324,14 +1332,17 @@ local function buildVariantSelector(parent, a)
 			}, variantBar)
 			corner(trigger, 7)
 			stroke(trigger, C.border, 1)
+			local variantIcon = mkIcon(trigger, "layers", 15, C.dim)
+			variantIcon.Position = UDim2.fromOffset(9, 10)
+			variantIcon.ZIndex = 32
 			local title = txt("TextLabel", {
 				Text = "Version", Font = GM, TextSize = 9, TextColor3 = C.dim,
-				Position = UDim2.fromOffset(9, 2), Size = U2(1, -32, 0, 11), ZIndex = 32,
+				Position = UDim2.fromOffset(31, 2), Size = U2(1, -54, 0, 11), ZIndex = 32,
 			}, trigger)
 			local current = txt("TextLabel", {
 				Text = tostring(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
 				Font = GB, TextSize = 11, TextColor3 = C.txt,
-				Position = UDim2.fromOffset(9, 13), Size = U2(1, -34, 0, 16),
+				Position = UDim2.fromOffset(31, 13), Size = U2(1, -56, 0, 16),
 				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
 			}, trigger)
 			local arrow = txt("TextLabel", {
@@ -2423,8 +2434,10 @@ function M:_build()
 	}, card)
 	corner(ddButton, 7)
 	stroke(ddButton, C.border, 1)
+	local filterIcon = mkIcon(ddButton, "filter", 14, C.dim)
+	filterIcon.Position = UDim2.fromOffset(8, 7)
 	local ddText = txt("TextLabel", {
-		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(10, 0), Size = U2(1, -26, 1, 0),
+		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(28, 0), Size = U2(1, -44, 1, 0),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, ddButton)
 	txt("TextLabel", {
