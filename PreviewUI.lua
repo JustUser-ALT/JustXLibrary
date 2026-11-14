@@ -1290,11 +1290,21 @@ end
 local function buildVariantSelector(parent, a)
 	local variants = a._variants or {}
 	local variantBar
-		if #variants > 1 then
-			variantBar = new("Frame", {
-				Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
-				Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 0, 36), ZIndex = 30, LayoutOrder = 0,
-			}, parent)
+	if #variants > 1 then
+		local header = new("Frame", {
+			BackgroundTransparency = 1, Size = U2(1, 0, 0, 24), LayoutOrder = 0,
+		}, parent)
+		local pinIcon = mkIcon(header, "pin", 15, C.dim)
+		pinIcon.Position = UDim2.fromOffset(2, 4)
+		txt("TextLabel", {
+			Text = "Variants", Font = GB, TextSize = 12, TextColor3 = C.dim,
+			Position = UDim2.fromOffset(25, 0), Size = U2(1, -25, 1, 0),
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, header)
+		variantBar = new("Frame", {
+			Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
+			Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 0, 36), ZIndex = 30, LayoutOrder = 1,
+		}, parent)
 			local selectedIndex = a._variantIndex or 1
 			local selectedVariant = variants[selectedIndex]
 			local trigger = txt("TextButton", {
