@@ -3870,6 +3870,7 @@ function M:_renderGroupedCards(visible)
 	if not self._grid then
 		return
 	end
+	local oldCanvasPosition = self._grid.CanvasPosition
 	local visibleSet = {}
 	for _, asset in ipairs(visible) do
 		visibleSet[asset] = true
@@ -3917,7 +3918,7 @@ function M:_renderGroupedCards(visible)
 			Name = "Group_" .. tostring(groupIndex),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Size = UDim2.new(1, -8, 0, 28),
+			Size = UDim2.new(1, 0, 0, 28),
 			LayoutOrder = groupIndex,
 		}, self._grid)
 		self._groupFrames[#self._groupFrames + 1] = group
@@ -3941,8 +3942,8 @@ function M:_renderGroupedCards(visible)
 			Name = "GroupCards",
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Position = UDim2.fromOffset(4, 25),
-			Size = UDim2.new(1, -8, 0, 0),
+			Position = UDim2.fromOffset(0, 25),
+			Size = UDim2.new(1, 0, 0, 0),
 		}, group)
 		local layout = new("UIGridLayout", {
 			CellSize = UDim2.fromOffset(self._cw or 140, (self._th or 90) + 44),
@@ -3953,8 +3954,8 @@ function M:_renderGroupedCards(visible)
 		local function updateHeight()
 			if group.Parent and layout.Parent then
 				local height = layout.AbsoluteContentSize.Y
-				grid.Size = UDim2.new(1, -8, 0, height)
-				group.Size = UDim2.new(1, -8, 0, 25 + height + 4)
+				grid.Size = UDim2.new(1, 0, 0, height)
+				group.Size = UDim2.new(1, 0, 0, 25 + height + 4)
 			end
 		end
 		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateHeight)
@@ -3967,6 +3968,11 @@ function M:_renderGroupedCards(visible)
 		end
 		updateHeight()
 	end
+	B.delay(0.05, function()
+		if self._grid and self._grid.Parent then
+			self._grid.CanvasPosition = oldCanvasPosition
+		end
+	end)
 end
 
 function M:SetGrouping(key)
