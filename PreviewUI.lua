@@ -10,6 +10,16 @@
 	Preview:Close()         удаляет вкладку (то же делает крестик)
 	Preview:CloseDrawer()   Preview:Toggle(target)  Preview:IsOpen()  Preview:SetTitle(text)  Preview:Destroy()
 	Preview:OnClosed(fn)    Preview:GetTab(name)  Preview:GetTabs()  Preview:GetAsset(name)
+	-- динамические источники: GetItems() + Added/Changed/Removed signals
+	local Source = Preview:Source({
+		Name = "Players", Tab = Models,
+		GetItems = function() return game:GetService("Players"):GetPlayers() end,
+		Added = Players.PlayerAdded, Changed = characterChanged, Removed = Players.PlayerRemoving,
+		Key = function(player) return player.UserId end,
+		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
+	})
+	Source:Add(key, data)  Source:Update(key, patch)  Source:Get(key)
+	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
 	local Models = Preview:Tab({ Name = "Models", Icon = "⬡" })
@@ -1916,6 +1926,18 @@ function M:Source(o)
 			if ok and connection then source._connections[#source._connections + 1] = connection end
 		end
 	end
+	connect(o.Added, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Add(key, item) end
+	end)
+	connect(o.Changed, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Add(key, item) end
+	end)
+	connect(o.Removed, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Remove(key) end
+	end)
 	if type(o.GetItems) == "function" then
 		local ok, items = pcall(o.GetItems, source)
 		if ok and type(items) == "table" then
@@ -1927,14 +1949,6 @@ function M:Source(o)
 			warn("[PreviewUI] source GetItems failed: " .. tostring(items))
 		end
 	end
-	connect(o.Added, function(item)
-		local key = resolveKey(item)
-		if key ~= nil then source:Add(key, item) end
-	end)
-	connect(o.Removed, function(item)
-		local key = resolveKey(item)
-		if key ~= nil then source:Remove(key) end
-	end)
 	self._sources[#self._sources + 1] = source
 	return source
 end
