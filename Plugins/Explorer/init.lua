@@ -295,12 +295,13 @@ function Explorer.Init(context)
                     if active then make("UIStroke", { Color = accent, Thickness = 1 }, row) end
                     local indent = math.min(depth, maxDepth) * 13
                     local arrow = make("TextButton", {
-                        Text = hasChildren and (isOpen and "⌄" or "›") or "",
-                        Font = Enum.Font.GothamBold, TextSize = 14,
-                        TextColor3 = colors.dim or Color3.fromRGB(145, 150, 165),
+                        Text = hasChildren and (isOpen and "v" or ">") or "",
+                        Font = Enum.Font.GothamBold, TextSize = 12,
+                        TextColor3 = colors.txt or Color3.fromRGB(225, 228, 238),
                         BackgroundTransparency = 1,
                         Position = UDim2.fromOffset(indent, 0),
                         Size = UDim2.fromOffset(18, 27),
+                        ZIndex = 3,
                     }, row)
                     arrow.Activated:Connect(function()
                         if hasChildren then expanded[item] = not expanded[item]; renderTree() end
@@ -367,7 +368,7 @@ return {
     Manifest = {
         Id = "explorer",
         Name = "Explorer",
-        Version = "0.2.0",
+        Version = "0.4.0",
         ApiVersion = 1,
     },
     Init = Explorer.Init,
