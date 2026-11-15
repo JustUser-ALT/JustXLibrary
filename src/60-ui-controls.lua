@@ -480,7 +480,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         local box = Instance.new("TextBox"); box.Size = UDim2.new(1,-16 - iconW,1,0); box.Position = UDim2.new(0,8 + iconW,0,0); box.BackgroundTransparency = 1
         box.PlaceholderText = o.Placeholder or (o.Name or "Input"); box.PlaceholderColor3 = C.dim; box.Text = cfgGet(o.Flag, "") or ""
         box.Font = GB; box.TextSize = 12; box.TextColor3 = C.txt; box.ClearTextOnFocus = false; box.MultiLine = o.MultiLine or false; box.TextWrapped = o.MultiLine or false
-        box.TextXAlignment = Enum.TextXAlignment.Left; box.Parent = bg
+        box.TextXAlignment = Enum.TextXAlignment.Left; box.TextTruncate = Enum.TextTruncate.AtEnd; box.Parent = bg
         box.FocusLost:Connect(function(enter)
             if enter or o.OnChange then cfgSet(o.Flag, box.Text); if o.Callback then pcall(o.Callback, box.Text) end end
         end)
