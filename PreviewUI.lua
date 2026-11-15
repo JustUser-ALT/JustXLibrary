@@ -2736,7 +2736,7 @@ function M:_buildPluginPage(parent, asset)
 				})
 			end
 			status.Text = statusText()
-			self:_showPage("plugin-management", false)
+			self:_showPage(self._pluginPage and self._pluginPage.id or "info", false)
 		end)
 		return button
 	end
