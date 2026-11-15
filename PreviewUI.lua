@@ -27,6 +27,7 @@
 	Source:SetDiscovery(true/false)  Source:IsDiscoveryEnabled()
 	Source:SetAutoObserve(key, true/false)
 	Source:SetLiveMotion(key, true/false) -- синхронизировать движение/позу выбранной модели в большом Preview
+	Preview:SetGrouping("Type" | "Creator" | "Category" | "None")  Preview:GetGrouping() -- группировка карточек
 	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
