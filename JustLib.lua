@@ -271,7 +271,12 @@ local function createIconsModule(deps)
             if type(override) == "table" then return override end
             return tostring(override)
         end
-        local asset = iconAsset(s)
+        local ok, asset = pcall(iconAsset, s)
+        if not ok then
+            JL._lastIconResolveError = tostring(asset)
+            return s
+        end
+        JL._lastIconResolveError = nil
         if asset then return asset end
         if JL._iconPack and JL._iconPack[s] then return JL._iconPack[s] end
         return s
