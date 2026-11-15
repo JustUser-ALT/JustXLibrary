@@ -1,9 +1,9 @@
 -- JustXLibrary Preview Structure Inspector Test
 -- Loader:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua?v=20261115-icon-cache-1"))()
 
 local Library = loadstring(game:HttpGet(
-	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua"
+	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261115-icon-cache-1"
 ))()
 
 if not Library then
@@ -152,7 +152,7 @@ local function openPreview()
 		Title = "Structure Inspector",
 		Icon = "network",
 		TabName = "Preview",
-		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua",
+		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua?v=20261115-icon-cache-1",
 	})
 
 	if not Preview or Preview.IsStub then
