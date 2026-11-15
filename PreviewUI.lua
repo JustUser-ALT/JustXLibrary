@@ -4254,12 +4254,12 @@ function M:_activate(tab)
 	end
 	self._activeTab = tab
 	self._type = "All"
-	self:_setPluginsView(tab == self._pluginsTab)
 	if tab and not self._restoring and S("remember", true) then
 		B.cfgSet("_pv_last", tab.Name)
 	end
 	self:_styleSidebar()
 	self:_applyFilter()
+	self:_setPluginsView(tab == self._pluginsTab)
 	self:_popGrid()
 end
 
