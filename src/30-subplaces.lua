@@ -109,6 +109,7 @@ local function buildSubPlacesUI(universeId, places)
         local l = Instance.new("Frame"); l.AnchorPoint = Vector2.new(0.5,0.5); l.Position = UDim2.new(0.5,0,0.5,0); l.Size = UDim2.new(0,12,0,2); l.Rotation = rot
         l.BackgroundColor3 = C.dim; l.BorderSizePixel = 0; l.ZIndex = 6; l.Parent = closeBtn; corner(1, l); xl[#xl + 1] = l
     end
+    buttonFeedback(closeBtn,C.btnBg,C.btnHov)
     closeBtn.MouseEnter:Connect(function() if not touchLast() then for _,l in ipairs(xl) do tw(l,{BackgroundColor3 = C.danger},.12) end end end)
     closeBtn.MouseLeave:Connect(function() for _,l in ipairs(xl) do tw(l,{BackgroundColor3 = C.dim},.12) end end)
     local function closePopup()
@@ -178,13 +179,9 @@ local function buildSubPlacesUI(universeId, places)
         newTxt({Parent=cf,Text=pl.name or ("Place " .. tostring(pl.id)),Font=GB,Size=12,Sz=UDim2.new(1,-20,0,16),Pos=UDim2.new(0,10,0,104)})
         newTxt({Parent=cf,Text=isCur and "Current location" or ("ID " .. tostring(pl.id)),Font=GM,Size=10,Color=isCur and ACCENTS[1] or C.dim,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,10,0,122)})
         local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1,0,1,0); btn.BackgroundTransparency = 1; btn.Text = ""; btn.AutoButtonColor = false; btn.ZIndex = 30; btn.Parent = cf
-        btn.MouseEnter:Connect(function()
-            if touchLast() then return end
-            tw(cf,{BackgroundColor3 = C.btnBg},.15); if not isCur then tw(st,{Color = C.dim},.15) end
-        end)
-        btn.MouseLeave:Connect(function()
-            tw(cf,{BackgroundColor3 = C.badge},.15); if not isCur then tw(st,{Color = C.border},.15) end
-        end)
+        buttonFeedback(btn,C.badge,C.btnBg,nil,cf)
+        btn.MouseEnter:Connect(function() if not touchLast() and not isCur then tw(st,{Color = C.dim},.15) end end)
+        btn.MouseLeave:Connect(function() if not isCur then tw(st,{Color = C.border},.15) end end)
         btn.MouseButton1Click:Connect(function() showDetail(pl) end)
         cards[#cards + 1] = {frame = cf, pl = pl}
         if i % 6 == 0 and i < #places then task.wait() end
@@ -233,8 +230,7 @@ local function buildSubPlacesUI(universeId, places)
         end)
     end
     backBtn.MouseButton1Click:Connect(function() if view == "detail" then slide(false) end end)
-    backBtn.MouseEnter:Connect(function() if not touchLast() then tw(backBtn,{BackgroundColor3 = C.btnHov},.12) end end)
-    backBtn.MouseLeave:Connect(function() tw(backBtn,{BackgroundColor3 = C.btnBg},.12) end)
+    buttonFeedback(backBtn,C.btnBg,C.btnHov)
 
     local function spButton(parent, y, text, iconKind, primary)
         local b = Instance.new("TextButton"); b.Size = UDim2.new(1,0,0,38); b.Position = UDim2.new(0,0,0,y)
@@ -244,11 +240,7 @@ local function buildSubPlacesUI(universeId, places)
         local lbl = newTxt({Parent=b,Text=text,Font=GB,Size=12,Color=primary and Color3.new(1,1,1) or C.txt,Sz=UDim2.new(1,-62,1,0),Pos=UDim2.new(0,40,0,0),Z=5})
         local ch = spChev(b, "right", primary and Color3.new(1,1,1) or C.dim, 5); ch.Position = UDim2.new(1,-20,0.5,0)
         local rest = b.BackgroundColor3
-        b.MouseEnter:Connect(function()
-            if touchLast() or b:GetAttribute("off") then return end
-            tw(b,{BackgroundColor3 = primary and rest:Lerp(Color3.new(1,1,1),0.14) or C.btnHov},.12)
-        end)
-        b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = rest},.12) end)
+        buttonFeedback(b,rest,primary and rest:Lerp(Color3.new(1,1,1),0.14) or C.btnHov)
         return b, lbl, ic, ch
     end
 
@@ -298,8 +290,7 @@ local function buildSubPlacesUI(universeId, places)
             corner(8, c); stroke(C.border, 1, c)
             newTxt({Parent=c,Text=label,Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(0.5,0,1,0),Pos=UDim2.new(0,10,0,0),Z=5})
             local v = newTxt({Parent=c,Text=value,Font=GB,Size=11,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0.5,-10,1,0),Pos=UDim2.new(0.5,0,0,0),Z=5})
-            c.MouseEnter:Connect(function() if not touchLast() then tw(c,{BackgroundColor3 = C.btnBg},.12) end end)
-            c.MouseLeave:Connect(function() tw(c,{BackgroundColor3 = C.badge},.12) end)
+            buttonFeedback(c,C.badge,C.btnBg)
             c.MouseButton1Click:Connect(function() onClick(v) end)
             return v
         end
