@@ -2609,6 +2609,9 @@ function M.new(bridge, opts)
 		self._pluginLoadError = tostring(registryError or managerError or "Plugin Core unavailable")
 		warn("[PreviewUI] Plugin Core unavailable: " .. self._pluginLoadError)
 	end
+	if self._plugins then
+		self:_setupPluginsTab()
+	end
 
 	table.insert(B.unloadHooks, function()
 		self:Destroy()
@@ -2658,6 +2661,129 @@ end
 function M:UninstallPlugin(id)
 	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
 	return self._plugins:Uninstall(id)
+end
+
+-- Built-in Plugins page: package implementations remain in Plugins/<Id>/.
+function M:_buildPluginPage(parent, asset)
+	local id = asset and asset.PluginId
+	local definition = id and self:GetPlugin(id)
+	if not definition then
+		txt("TextLabel", {
+			Text = "Plugin information is unavailable.",
+			TextColor3 = C.dim, TextSize = 12, TextWrapped = true,
+			Size = U2(1, 0, 0, 38),
+		}, parent)
+		return
+	end
+
+	local manager = self._plugins
+	local function statusText()
+		if not manager then return "Plugin Core unavailable" end
+		local current = manager:Get(id)
+		if not current or not current.Installed then return "Not installed" end
+		return current.Enabled and "Installed  ·  Enabled" or "Installed  ·  Disabled"
+	end
+
+	local header = new("Frame", {
+		BackgroundColor3 = C.badge, BorderSizePixel = 0,
+		Size = U2(1, 0, 0, 82),
+	}, parent)
+	corner(header, 9)
+	stroke(header, C.border, 1)
+	txt("TextLabel", {
+		Text = definition.Name or asset.Name, Font = GM, TextSize = 15,
+		TextColor3 = C.txt, Position = UDim2.fromOffset(12, 10),
+		Size = U2(1, -24, 0, 20), TextXAlignment = Enum.TextXAlignment.Left,
+	}, header)
+	txt("TextLabel", {
+		Text = definition.Description or asset.Description or "",
+		Font = GM, TextSize = 11, TextColor3 = C.dim, TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		Position = UDim2.fromOffset(12, 34), Size = U2(1, -24, 0, 40),
+	}, header)
+
+	local status = txt("TextLabel", {
+		Text = statusText(), Font = GM, TextSize = 12, TextColor3 = ACCENTS[1],
+		Position = UDim2.fromOffset(2, 94), Size = U2(1, -4, 0, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, parent)
+
+	local actionRoot = new("Frame", {
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 124),
+		Size = U2(1, 0, 0, 82),
+	}, parent)
+	local function makeAction(label, x, width, callback)
+		local button = txt("TextButton", {
+			Text = label, Font = GM, TextSize = 11, TextColor3 = C.txt,
+			BackgroundColor3 = C.btnBg, BorderSizePixel = 0,
+			Position = U2(x, 0, 0, 0), Size = U2(width, -5, 0, 34),
+			AutoButtonColor = true,
+		}, actionRoot)
+		corner(button, 7)
+		stroke(button, C.border, 1)
+		button.Activated:Connect(function()
+			local ok, result
+			if manager then
+				ok, result = callback(manager)
+			else
+				ok, result = false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE"
+			end
+			if B.notify then
+				B.notify({
+					Title = ok and "Plugins" or "Plugin error",
+					Desc = ok and (label .. " completed.") or tostring(result),
+					Type = ok and "Success" or "Warn", Duration = 4,
+				})
+			end
+			status.Text = statusText()
+			self:_showPage("plugin-management", false)
+		end)
+		return button
+	end
+
+	local current = manager and manager:Get(id)
+	if not current or not current.Installed then
+		makeAction("Install", 0, 1, function(m) return m:Install(id) end)
+	else
+		if current.Enabled then
+			makeAction("Disable", 0, 0.5, function(m) return m:Disable(id) end)
+		else
+			makeAction("Enable", 0, 0.5, function(m) return m:Enable(id) end)
+		end
+		makeAction("Uninstall", 0.5, 0.5, function(m) return m:Uninstall(id) end)
+	end
+
+	txt("TextLabel", {
+		Text = "Version " .. tostring(definition.Version or "—") .. "   ·   " .. tostring(definition.Author or "JustXLibrary"),
+		Font = GM, TextSize = 10, TextColor3 = C.dim,
+		Position = UDim2.fromOffset(2, 218), Size = U2(1, -4, 0, 16),
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, parent)
+end
+
+function M:_setupPluginsTab()
+	if self._pluginsTab or not self._plugins then return end
+	local tab = self:Tab({ Name = "Plugins", Icon = "blocks" })
+	self._pluginsTab = tab
+	for _, definition in ipairs(self:GetPlugins()) do
+		tab:Asset({
+			Name = definition.Name,
+			Type = "Plugin",
+			PluginId = definition.Id,
+			Description = definition.Description,
+			Icon = definition.Icon,
+			Category = definition.Category,
+			Version = definition.Version,
+			Creator = definition.Author,
+		})
+	end
+	self._pluginPage = self:Page({
+		Name = "Manage", Icon = "puzzle",
+		Visible = function(asset) return asset and asset.Type == "Plugin" end,
+		Build = function(parent, asset)
+			return self:_buildPluginPage(parent, asset)
+		end,
+	})
 end
 
 function M:Tab(o)
