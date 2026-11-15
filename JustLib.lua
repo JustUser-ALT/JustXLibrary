@@ -1642,6 +1642,11 @@ JL._remoteAttach = function() end -- заменяется, когда созда
 JL._bridge = {
     C = C, ACCENTS = ACCENTS, cfgGet = cfgGet, cfgSet = cfgSet, cfgHas = cfgHas,
     keep = keep, tw = tw, icon = resolveIcon,
+    hasIconPack = function() return JL._iconPack ~= nil end,
+    loadIconPack = function(url)
+        if JL._iconPack then return true end
+        return JL:LoadIconPack(url)
+    end,
     track = function(resource, cleanup) return JL:Track(resource, cleanup) end,
     connect = function(signal, callback) return JL:Connect(signal, callback) end,
     spawn = trackedSpawn, delay = trackedDelay, defer = trackedDefer,
