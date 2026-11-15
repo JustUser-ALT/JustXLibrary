@@ -3013,6 +3013,10 @@ function M:Header(text)
 end
 
 -- своя страница панели: Preview:Page({ Name, Icon, Visible = function(asset), Build = function(parent, asset, pv) return cleanup end })
+function M:CreateIcon(parent, name, size, color)
+	return mkIcon(parent, name, size or 14, color or C.dim)
+end
+
 function M:Page(o)
 	o = o or {}
 	local p = {
