@@ -4671,7 +4671,9 @@ function M:_pagesFor(asset)
 		out[#out + 1] = PAGES.controllers
 	end
 	if hasPreview(asset) then
-		out[#out + 1] = PAGES.structure
+		if asset.Model ~= nil or type(asset.Build) == "function" then
+			out[#out + 1] = PAGES.structure
+		end
 		out[#out + 1] = PAGES.preview
 	end
 	for _, p in ipairs(self._pages) do
