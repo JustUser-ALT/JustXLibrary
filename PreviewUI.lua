@@ -1869,6 +1869,7 @@ function M:Source(o)
 	local function disconnectObserver(entry)
 		if not entry then return end
 		entry._observeToken = (entry._observeToken or 0) + 1
+		entry._observePending = false
 		for _, connection in ipairs(entry._observeConnections or {}) do
 			pcall(function() connection:Disconnect() end)
 		end
@@ -1887,9 +1888,10 @@ function M:Source(o)
 			if entry._observePending then return end
 			entry._observePending = true
 			task.delay(delayTime, function()
+					if entry._observeToken ~= token then return end
 					entry._observePending = false
 					if not source._alive or source._items[key] ~= entry
-						or entry._observeToken ~= token or not entry.asset or not entry.asset._alive then
+						or not entry.asset or not entry.asset._alive then
 						return
 					end
 					source:Refresh(key)
