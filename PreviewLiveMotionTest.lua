@@ -40,6 +40,7 @@ root.Anchored = true
 root.CanCollide = false
 root.Color = Color3.fromRGB(105, 125, 160)
 root.CFrame = CFrame.new(0, 3, 0)
+local initialRootCFrame = root.CFrame
 root.Parent = model
 
 local motors = {}
@@ -187,15 +188,23 @@ local function startAnimation()
 	end)
 end
 
-local function stopAnimation()
+local function stopAnimation(refreshPreview)
 	running = false
 	if animationConnection then
 		animationConnection:Disconnect()
 		animationConnection = nil
 	end
 
+	root.CFrame = initialRootCFrame
 	for _, motor in pairs(motors) do
 		motor.Transform = CFrame.new()
+		if motor.Part0 and motor.Part1 then
+			motor.Part1.CFrame = motor.Part0.CFrame * motor.C0 * motor.C1:Inverse()
+		end
+	end
+
+	if refreshPreview ~= false and model.Parent then
+		Source:Refresh("LiveMotionRig")
 	end
 end
 
@@ -226,7 +235,7 @@ Section:Button({
 Section:Button({
 	Name = "Remove Test Model",
 	Callback = function()
-		stopAnimation()
+		stopAnimation(false)
 		Source:Remove("LiveMotionRig")
 		if model and model.Parent then
 			model:Destroy()
