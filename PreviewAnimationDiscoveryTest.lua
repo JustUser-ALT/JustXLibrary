@@ -1,108 +1,82 @@
--- Preview animation discovery test
+-- Preview animation timeline player test
 -- Loader:
 -- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewAnimationDiscoveryTest.lua"))()
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+if not player then
+	warn("[Preview Animation Player Test] LocalPlayer is unavailable.")
+	return
+end
+
+local character = player.Character or player.CharacterAdded:Wait()
+if not character then
+	warn("[Preview Animation Player Test] Character is unavailable.")
+	return
+end
 
 local Library = loadstring(game:HttpGet(
 	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua"
 ))()
-if not Library then warn("[Preview Animation Discovery Test] JustLib failed to load.") return end
+if not Library then warn("[Preview Animation Player Test] JustLib failed to load.") return end
 
 local Window = Library:Window({
-	Title = "Preview Animation Discovery Test",
-	Config = "JustX_PreviewAnimationDiscoveryTest",
+	Title = "Preview Animation Player Test",
+	Config = "JustX_PreviewAnimationPlayerTest",
 	Width = 520,
 	Height = 440,
 })
-if not Window then warn("[Preview Animation Discovery Test] Window creation failed.") return end
+if not Window then warn("[Preview Animation Player Test] Window creation failed.") return end
 
-local Host = Window:Tab({ Name = "Animation Test", Icon = "clapperboard" })
-local Section = Host:Section({ Title = "Animation discovery" })
+local Host = Window:Tab({ Name = "Animation Player", Icon = "clapperboard" })
+local Section = Host:Section({ Title = "Preview animation timeline" })
 
 local Preview = Library:Preview({
-	Title = "Animation Discovery",
+	Title = "Animation Player",
 	Icon = "clapperboard",
-	TabName = "Animation Discovery",
+	TabName = "Animation Player",
 	Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua",
 })
 if not Preview or Preview.IsStub then
-	warn("[Preview Animation Discovery Test] Preview failed to initialize.")
+	warn("[Preview Animation Player Test] Preview failed to initialize.")
 	return
 end
 
-local model = Instance.new("Model")
-model.Name = "AnimationDiscoveryTestModel"
-
-local root = Instance.new("Part")
-root.Name = "HumanoidRootPart"
-root.Size = Vector3.new(2, 3, 1)
-root.Anchored = true
-root.CanCollide = false
-root.Color = Color3.fromRGB(105, 125, 160)
-root.CFrame = CFrame.new(0, 3, 0)
-root.Parent = model
-
-local humanoid = Instance.new("Humanoid")
-humanoid.Parent = model
-
-local animator = Instance.new("Animator")
-animator.Parent = humanoid
-
-local animationFolder = Instance.new("Folder")
-animationFolder.Name = "Animations"
-animationFolder.Parent = model
-
-local function addAnimation(name, id)
-	local animation = Instance.new("Animation")
-	animation.Name = name
-	animation.AnimationId = "rbxassetid://" .. id
-	animation.Parent = animationFolder
-	return animation
-end
-
-addAnimation("Idle", "507766666")
-addAnimation("Walk", "507777826")
-addAnimation("Run", "507767714")
-
-model.PrimaryPart = root
-model.Parent = workspace
-
 local Models = Preview:Tab({ Name = "Models", Icon = "box" })
 local Source = Preview:Source({
-	Name = "Animation Discovery Model",
+	Name = "Character Animation Player",
 	Tab = Models,
 	GetItems = function()
-		return { "AnimationDiscoveryModel" }
+		return { "LocalCharacter" }
 	end,
 	Key = function(item)
 		return item
 	end,
 	Map = function()
 		return {
-			Name = "Animation Discovery Test",
-			Type = "Animated Model",
-			Description = "Contains three Animation instances and an Animator for testing automatic discovery.",
-			Model = model,
+			Name = "Character Animation Preview",
+			Type = "Live character rig clone",
+			Description = "Tests animation playback, pause, stop, seeking and speed changes on the Preview clone. The original character is not animated by the Preview player.",
+			Model = character,
 		}
 	end,
 })
 
-Preview:Open({ Tab = Models, Asset = "Animation Discovery Test" })
+Preview:Open({ Tab = Models, Asset = "Character Animation Preview" })
 
 Section:Button({
-	Name = "Refresh Animation List",
+	Name = "Refresh Character Preview",
 	Callback = function()
-		Source:Refresh("AnimationDiscoveryModel")
+		character = player.Character or character
+		Source:Refresh("LocalCharacter")
 	end,
 })
 
 Section:Button({
-	Name = "Remove Test Model",
+	Name = "Remove Test Preview",
 	Callback = function()
-		Source:Remove("AnimationDiscoveryModel")
-		if model and model.Parent then
-			model:Destroy()
-		end
+		Source:Remove("LocalCharacter")
 	end,
 })
 
-print("[Preview Animation Discovery Test] Ready. Open the model and select its Animations page.")
+print("[Preview Animation Player Test] Ready. Open the character Preview and use the Animation Player below the viewport.")
