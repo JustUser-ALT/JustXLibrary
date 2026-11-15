@@ -1787,8 +1787,8 @@ PAGES.preview = {
 		end
 		local playButton = controlButton("PlayPause", "▶", 0, 30)
 		local stopButton = controlButton("Stop", "■", 34, 26)
-		local backButton = controlButton("SeekBack", "−5", 64, 32)
-		local forwardButton = controlButton("SeekForward", "+5", 100, 32)
+		local backButton = controlButton("SeekBack", "−1", 64, 32)
+		local forwardButton = controlButton("SeekForward", "+1", 100, 32)
 		local speedButton = controlButton("PlaybackSpeed", "1x", 136, 36)
 
 		local menu = new("Frame", {
@@ -1805,6 +1805,7 @@ PAGES.preview = {
 		local isPlaying, isLoading, disposed = false, false, false
 		local function formatTime(value)
 			value = math.max(tonumber(value) or 0, 0)
+			if value < 60 then return string.format("%.2fs", value) end
 			return string.format("%02d:%05.2f", math.floor(value / 60), value % 60)
 		end
 		local function updateTimeline()
@@ -1978,10 +1979,10 @@ PAGES.preview = {
 			end
 		end)
 		backButton.Activated:Connect(function()
-			if currentTrack then setPosition((currentTrack.TimePosition or 0) - 5) end
+			if currentTrack then setPosition((currentTrack.TimePosition or 0) - 1) end
 		end)
 		forwardButton.Activated:Connect(function()
-			if currentTrack then setPosition((currentTrack.TimePosition or 0) + 5) end
+			if currentTrack then setPosition((currentTrack.TimePosition or 0) + 1) end
 		end)
 		local speeds = { 0.25, 0.5, 1, 1.5, 2 }
 		speedButton.Activated:Connect(function()
