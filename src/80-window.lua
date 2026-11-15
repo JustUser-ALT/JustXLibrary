@@ -2127,15 +2127,20 @@ function JL:Window(opts)
         local rowOrd = 0
         local function mkRow(sf,title,desc,ctrlW)
             rowOrd = rowOrd + 1
-            local labW = PW - 32 - ctrlW - 14
+            local fullLabW = math.max(40, PW - 32)
+            local sideLabW = PW - 32 - ctrlW - 14
+            local stacked = sideLabW < 120
+            local labW = stacked and fullLabW or sideLabW
             local th = fitH(title, 13, GB, labW, 0, 0); local dh = desc and fitH(desc, 10, GM, labW, 0, 0) or 0
-            local h = math.max(48, th + dh + (desc and 24 or 22))
+            local controlW = stacked and math.min(ctrlW, fullLabW) or ctrlW
+            local controlY = 8 + th + (desc and 3 + dh or 0) + (stacked and 8 or 0)
+            local h = stacked and math.max(48, controlY + 28 + 8) or math.max(48, th + dh + (desc and 24 or 22))
             local row = Instance.new("Frame"); row.Name = "JLSettingsRow"; row:SetAttribute("JLSearchSection", tostring(title)); row.Size = UDim2.new(1,0,0,h); row.BackgroundTransparency = 1; row.BorderSizePixel = 0; row.LayoutOrder = rowOrd; row.Parent = sf
             if JL._searchRegister then JL._searchRegister({Name = title, Kind = "Settings", Row = row}) end
-            newTxt({Parent=row,Text=title,Font=GB,Size=13,Wrap=true,Sz=UDim2.new(0,labW,0,th),Pos=UDim2.new(0,16,0,desc and 10 or math.floor((h - th) / 2))})
-            if desc then newTxt({Parent=row,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(0,labW,0,dh),Pos=UDim2.new(0,16,0,10 + th + 3)}) end
+            newTxt({Parent=row,Text=title,Font=GB,Size=13,Wrap=true,Sz=UDim2.new(0,labW,0,th),Pos=UDim2.new(0,16,0,stacked and 8 or (desc and 10 or math.floor((h - th) / 2)))})
+            if desc then newTxt({Parent=row,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(0,labW,0,dh),Pos=UDim2.new(0,16,0,(stacked and 8 or 10) + th + 3)}) end
             local sep = Instance.new("Frame"); sep.Size = UDim2.new(1,-32,0,1); sep.Position = UDim2.new(0,16,1,-1); sep.BackgroundColor3 = C.divLine; sep.BackgroundTransparency = 0.6; sep.BorderSizePixel = 0; sep.Parent = row
-            local ctrl = Instance.new("Frame"); ctrl.Size = UDim2.new(0,ctrlW,0,28); ctrl.AnchorPoint = Vector2.new(1,0.5); ctrl.Position = UDim2.new(1,-16,0.5,0); ctrl.BackgroundTransparency = 1; ctrl.Parent = row
+            local ctrl = Instance.new("Frame"); ctrl.Size = UDim2.new(0,controlW,0,28); ctrl.AnchorPoint = stacked and Vector2.new(1,0) or Vector2.new(1,0.5); ctrl.Position = stacked and UDim2.new(1,-16,0,controlY) or UDim2.new(1,-16,0.5,0); ctrl.BackgroundTransparency = 1; ctrl.Parent = row
             return row, ctrl
         end
         local resetters = {}
