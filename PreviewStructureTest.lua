@@ -11,8 +11,28 @@ if not Library then
 	return
 end
 
-if type(Library.LoadIconPack) == "function" then
-	pcall(function() Library:LoadIconPack() end)
+local iconOk, iconLoaded = pcall(function()
+	return Library:LoadIconPack()
+end)
+warn("[Structure Test] IconPack load call: " .. tostring(iconOk) .. " / " .. tostring(iconLoaded))
+
+local iconPack = Library._iconPack
+warn("[Structure Test] IconPack instance: " .. typeof(iconPack))
+if type(iconPack) == "table" then
+	warn("[Structure Test] IconPack methods: GetAsset=" .. tostring(type(iconPack.GetAsset)) .. ", GetIcon=" .. tostring(type(iconPack.GetIcon)) .. ", SetProvider=" .. tostring(type(iconPack.SetProvider)))
+end
+
+for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
+	local ok, value = pcall(function()
+		return Library._bridge.icon(iconName)
+	end)
+	local detail = typeof(value)
+	if type(value) == "table" then
+		detail = detail .. " Url=" .. tostring(value.Url or value.Image or value.ImageUrl or value.Texture or value.AssetId or value.Id) .. " Text=" .. tostring(value.Text or value.Glyph)
+	elseif type(value) == "string" or type(value) == "number" then
+		detail = detail .. " " .. tostring(value)
+	end
+	warn("[Structure Test] Icon " .. iconName .. ": " .. tostring(ok) .. " / " .. detail)
 end
 
 local Window = Library:Window({
