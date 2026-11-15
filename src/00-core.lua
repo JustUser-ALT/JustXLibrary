@@ -140,7 +140,7 @@ local function buttonFeedback(button, baseColor, hoverColor, pressedColor, visua
         if ok and tween then state.Tween=tween; tween:Play() end
     end
     button.MouseEnter:Connect(function()
-        if touchLast() then return end
+        if touchLast() or button:GetAttribute("off") then return end
         state.Hovered=true
         if not state.PressedInput then setState("Hover",state.HoverColor,0.1) end
     end)
@@ -149,6 +149,7 @@ local function buttonFeedback(button, baseColor, hoverColor, pressedColor, visua
         if not state.PressedInput then setState("Idle",state.BaseColor,0.1) end
     end)
     button.InputBegan:Connect(function(input)
+        if button:GetAttribute("off") then return end
         local kind=input.UserInputType
         if kind~=Enum.UserInputType.MouseButton1 and kind~=Enum.UserInputType.Touch then return end
         state.PressedInput=input
