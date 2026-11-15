@@ -559,7 +559,7 @@ local function makeViewport(parent, src)
 	local dir = V3(0.45, 0.4, -1).Unit
 	local light = V3(-0.4, -1, 0.8)
 	local startYaw = -(src.Yaw or 0)
-	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0 }
+	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0, asset = src }
 	if motionSource and #motionParts > 0 then
 		local ok, sourcePivot = pcall(function() return motionSource:GetPivot() end)
 		if ok then
@@ -2063,9 +2063,9 @@ function M:Source(o)
 		end
 		if existing and existing.asset and existing.asset._alive then
 			existing.item = data == nil and key or data
-			existing.asset:Update(payload)
 			existing.asset._liveMotionEnabled = existing._liveMotionEnabled
 			existing.asset._liveMotionRate = existing._liveMotionRate
+			existing.asset:Update(payload)
 			observeEntry(key)
 			return existing.asset
 		end
