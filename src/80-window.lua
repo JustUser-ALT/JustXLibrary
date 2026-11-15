@@ -685,12 +685,7 @@ function JL:Window(opts)
     end
     refreshSubscriptionBadge()
     JL:OnTierChanged(refreshSubscriptionBadge)
-    subscriptionBadge.MouseEnter:Connect(function()
-        if not touchLast() then tw(subscriptionBadge,{BackgroundColor3 = C.btnHov},.1) end
-    end)
-    subscriptionBadge.MouseLeave:Connect(function()
-        tw(subscriptionBadge,{BackgroundColor3 = C.panel},.1)
-    end)
+    buttonFeedback(subscriptionBadge,C.panel,C.btnHov)
     subscriptionBadge.MouseButton1Click:Connect(function()
         JL:OpenSubscriptions()
     end)
@@ -738,8 +733,7 @@ function JL:Window(opts)
         button.Parent = win
         button.ZIndex = 80
         corner(8,button); stroke(C.border,1,button)
-        button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3 = C.btnHov},.1) end end)
-        button.MouseLeave:Connect(function() tw(button,{BackgroundColor3 = C.panel},.1) end)
+        buttonFeedback(button,C.panel,C.btnHov)
         button.MouseButton1Click:Connect(callback)
         return button
     end
@@ -889,8 +883,7 @@ function JL:Window(opts)
             corner(2,resultDot)
             newTxt({Parent=item,Text=tostring(entry.Name),Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-28,0,17),Pos=UDim2.new(0,12,0,6),Z=84})
             newTxt({Parent=item,Text=(entry.Path ~= "" and entry.Path or "General") .. (entry.ParentName and ("  ›  " .. entry.ParentName) or "") .. "   ·   " .. tostring(entry.Kind),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,12,0,27),Z=84})
-            item.MouseEnter:Connect(function() if not touchLast() then tw(item,{BackgroundColor3=C.btnHov},.1) end end)
-            item.MouseLeave:Connect(function() tw(item,{BackgroundColor3=C.btnBg},.1) end)
+            buttonFeedback(item,C.btnBg,C.btnHov)
             item.MouseButton1Click:Connect(function()
                 searchPanel.Visible = false
                 searchButton.Visible = true
@@ -1822,8 +1815,7 @@ function JL:Window(opts)
             local b = Instance.new("TextButton"); b.Size = UDim2.new(0,26,0,26); b.Position = UDim2.new(1,x,0.5,-13); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.Text = ""
             b.AutoButtonColor = false; b.ZIndex = 4; b.Parent = hdr; corner(7, b); stroke(C.border, 1, b)
             local ic = spIcon(kind, b, 14, C.dim, 5); ic.Position = UDim2.new(0.5,-7,0.5,-7)
-            b.MouseEnter:Connect(function() if not touchLast() then tw(b,{BackgroundColor3 = C.btnHov},.12) end end)
-            b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.12) end)
+            buttonFeedback(b,C.btnBg,C.btnHov)
             b.MouseButton1Click:Connect(fn)
             return b
         end
@@ -2405,8 +2397,7 @@ function JL:Window(opts)
             for i,nm in ipairs(names) do
                 local b = Instance.new("TextButton"); b.Size = UDim2.new(1,0,0,24); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
                 b.Text = nm; b.Font = GB; b.TextSize = 11; b.TextColor3 = (nm == selectedProfile) and ACC or C.txt; b.LayoutOrder = i; b.Parent = list2; corner(5,b)
-                b.MouseEnter:Connect(function() if touchLast() then return end tw(b,{BackgroundColor3 = C.btnHov},.1) end)
-                b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+                buttonFeedback(b,C.btnBg,C.btnHov)
                 b.MouseButton1Click:Connect(function() selectedProfile = nm; selLbl.Text = nm; closeList2() end)
             end
         end
@@ -3162,8 +3153,7 @@ function JL:Window(opts)
             local function actBtn(parentRow,order2,label,w,cb)
                 local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,26); b.LayoutOrder = order2; b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
                 b.Text = label; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.Parent = parentRow; corner(6,b); stroke(C.border,1,b)
-                b.MouseEnter:Connect(function() if touchLast() then return end tw(b,{BackgroundColor3 = C.btnHov},.1) end)
-                b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+                buttonFeedback(b,C.btnBg,C.btnHov)
                 b.MouseButton1Click:Connect(cb)
                 return b
             end
