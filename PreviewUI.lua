@@ -17,8 +17,11 @@
 		Added = Players.PlayerAdded, Changed = characterChanged, Removed = Players.PlayerRemoving,
 		Key = function(player) return player.UserId end,
 		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
+		ObserveModels = true, -- автоматически отслеживать структуру и визуальные свойства моделей
+		-- или ObserveModels = { Debounce = 0.18, Properties = { "Color", "Size", "CFrame" } }
 	})
 	Source:Add(key, data)  Source:Update(key, patch)  Source:Refresh(key)  Source:Get(key)
+	Source:SetAutoObserve(key, true/false)
 	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
