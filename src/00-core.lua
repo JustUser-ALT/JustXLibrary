@@ -159,7 +159,7 @@ end
 keep(UIS.InputEnded:Connect(function(input)
     for button,state in pairs(_buttonFeedbackStates) do
         local pressed=state.PressedInput
-        if pressed and (pressed==input or (pressed.UserInputType==Enum.UserInputType.MouseButton1 and input.UserInputType==Enum.UserInputType.MouseButton1)) then
+        if pressed and (pressed==input or pressed.UserInputType==input.UserInputType) then
             state.PressedInput=nil
             local targetName=state.Hovered and not touchLast() and "Hover" or "Idle"
             local targetColor=targetName=="Hover" and state.HoverColor or state.BaseColor
