@@ -1721,12 +1721,6 @@ PAGES.structure = {
 			sourceModel.Parent = wrapper
 			sourceModel = wrapper
 		end
-		for _, item in ipairs(sourceModel:GetDescendants()) do
-			if item:IsA("LuaSourceContainer") then
-				item:Destroy()
-			end
-		end
-
 		local heading = new("Frame", {
 			BackgroundTransparency = 1, Size = U2(1, 0, 0, 24), LayoutOrder = 1,
 		}, content)
@@ -1768,7 +1762,12 @@ PAGES.structure = {
 
 		local function classIcon(item)
 			if item:IsA("Model") then return "box" end
-			if item:IsA("BasePart") then return "box" end
+			if item:IsA("Folder") then return "folder" end
+			if item:IsA("ModuleScript") then return "file-code" end
+			if item:IsA("LocalScript") or item:IsA("Script") then return "file-code" end
+			if item:IsA("MeshPart") then return "shapes" end
+			if item:IsA("UnionOperation") then return "shapes" end
+			if item:IsA("BasePart") then return "square" end
 			if item:IsA("Attachment") then return "crosshair" end
 			if item:IsA("Decal") or item:IsA("Texture") then return "image" end
 			if item:IsA("SpecialMesh") or item:IsA("DataModelMesh") then return "shapes" end
@@ -1777,6 +1776,12 @@ PAGES.structure = {
 			if item:IsA("Sound") then return "volume-2" end
 			if item:IsA("ParticleEmitter") then return "sparkles" end
 			if item:IsA("Humanoid") then return "user-round" end
+			if item:IsA("Configuration") then return "settings" end
+			if item:IsA("ObjectValue") then return "link" end
+			if item:IsA("WeldConstraint") or item:IsA("Motor6D") then return "link" end
+			if item:IsA("Beam") or item:IsA("Trail") then return "activity" end
+			if item:IsA("Camera") then return "camera" end
+			if item:IsA("BillboardGui") or item:IsA("SurfaceGui") then return "panels-top-left" end
 			return "box"
 		end
 
@@ -1868,11 +1873,12 @@ PAGES.structure = {
 						Position = UDim2.fromOffset(8, 0), Size = U2(0.38, -8, 1, 0),
 						TextTruncate = Enum.TextTruncate.AtEnd,
 					}, row)
-					txt("TextLabel", {
+					local valueLabel = txt("TextLabel", {
 						Text = tostring(value), TextColor3 = C.txt, TextSize = 10,
-						Position = U2(0.38, 0, 0, 0), Size = U2(0.62, -8, 1, 0),
+						Position = U2(0.38, 0, 0, 0), Size = U2(0.62, -12, 1, 0),
 						TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd,
 					}, row)
+					valueLabel.ClipsDescendants = true
 				end
 			end
 			local childCount = #selected:GetChildren()
@@ -1898,29 +1904,37 @@ PAGES.structure = {
 				local row = txt("TextButton", {
 					Name = "Node_" .. tostring(rowCount), Text = "",
 					BackgroundColor3 = active and ACCENTS[1] or C.panel,
-					BackgroundTransparency = active and 0.82 or 1,
-					Size = U2(1, 0, 0, 25), LayoutOrder = rowCount,
+					BackgroundTransparency = active and 0.88 or 1,
+					Size = U2(1, 0, 0, 27), LayoutOrder = rowCount,
+					AutoButtonColor = false,
 				}, treeHost)
-				corner(row, 5)
+				corner(row, 6)
+				if active then
+					stroke(row, ACCENTS[1], 1.25)
+				end
 				local indent = math.min(depth, MAX_DEPTH) * 13
 				local toggle = txt("TextButton", {
-					Text = hasChildren and (isOpen and "⌄" or "›") or "",
-					Font = GB, TextSize = 15, TextColor3 = C.dim,
-					Position = UDim2.fromOffset(indent, 0), Size = UDim2.fromOffset(17, 25),
+					Text = "", BackgroundTransparency = 1,
+					Position = UDim2.fromOffset(indent, 0), Size = UDim2.fromOffset(18, 27),
 				}, row)
+				local arrow = mkIcon(toggle, "chevron-right", 11, hasChildren and C.dim or C.border)
+				arrow.AnchorPoint = V2(0.5, 0.5)
+				arrow.Position = U2(0.5, 0, 0.5, 0)
+				arrow.Rotation = isOpen and 90 or 0
+				arrow.Visible = hasChildren
 				toggle.Activated:Connect(function()
 					if hasChildren then
 						expanded[item] = not expanded[item]
 						renderTree()
 					end
 				end)
-				local ic = mkIcon(row, classIcon(item), 13, active and ACCENTS[1] or C.dim)
-				ic.Position = UDim2.fromOffset(indent + 18, 6)
+				local ic = mkIcon(row, classIcon(item), 14, active and ACCENTS[1] or C.dim)
+				ic.Position = UDim2.fromOffset(indent + 21, 6)
 				ic.Active = false
 				txt("TextLabel", {
 					Text = tostring(item.Name), TextColor3 = active and C.txt or C.dim,
 					Font = active and GB or GM, TextSize = 10,
-					Position = UDim2.fromOffset(indent + 37, 0), Size = U2(1, -(indent + 43), 1, 0),
+					Position = UDim2.fromOffset(indent + 41, 0), Size = U2(1, -(indent + 47), 1, 0),
 					TextTruncate = Enum.TextTruncate.AtEnd,
 				}, row)
 				row.Activated:Connect(function()
