@@ -2303,10 +2303,16 @@ function M:Source(o)
 		tab = self:Tab({ Name = o.TabName or o.Name or "Source", Icon = o.Icon or "◼" })
 	end
 	assert(tab._isTab and tab._pv == self, "Preview:Source Tab must belong to this Preview")
+	local discoveryOptions = type(o.Discover) == "table" and o.Discover or {}
 	local source = {
 		_pv = self, _tab = tab, _items = {}, _order = {},
 		Name = o.Name or tab.Name, _alive = true, _connections = {},
-		_map = o.Map, _key = o.Key,
+		_map = o.Map, _key = o.Key, _getItems = o.GetItems,
+		_discoveryOptions = discoveryOptions,
+		_discoveryEnabled = o.Discover == true or (type(o.Discover) == "table" and discoveryOptions.Enabled ~= false),
+		_discoveryInterval = math.clamp(tonumber(discoveryOptions.Interval) or 2, 0.5, 30),
+		_discoveryRemoveMissing = discoveryOptions.RemoveMissing ~= false,
+		_discoveryToken = 0,
 		_liveMotionOptions = type(o.LiveMotion) == "table" and o.LiveMotion or {},
 		_liveMotionDefault = o.LiveMotion == true or type(o.LiveMotion) == "table",
 		_observeOptions = type(o.ObserveModels) == "table" and o.ObserveModels or {},
@@ -2514,6 +2520,63 @@ function M:Source(o)
 		observeEntry(key)
 		return entry.asset
 	end
+	function source:Sync()
+		if not self._alive or type(self._getItems) ~= "function" then
+			return false
+		end
+		local ok, items = pcall(self._getItems, self)
+		if not ok then
+			warn("[PreviewUI] source GetItems failed: " .. tostring(items))
+			return false
+		end
+		if type(items) ~= "table" then
+			warn("[PreviewUI] source GetItems must return a table")
+			return false
+		end
+		local present, count = {}, 0
+		for _, item in pairs(items) do
+			local key = resolveKey(item)
+			if key ~= nil then
+				present[key] = true
+				count = count + 1
+				source:Add(key, item)
+			end
+		end
+		if self._discoveryRemoveMissing then
+			for i = #self._order, 1, -1 do
+				local key = self._order[i]
+				if not present[key] then
+					source:Remove(key)
+				end
+			end
+		end
+		return true, count
+	end
+	function source:SetDiscovery(enabled)
+		if not self._alive then return false end
+		if enabled == true then
+			if type(self._getItems) ~= "function" then return false end
+			if self._discoveryEnabled then return true end
+			self._discoveryEnabled = true
+			self._discoveryToken = self._discoveryToken + 1
+			local token = self._discoveryToken
+			task.spawn(function()
+				while self._alive and self._discoveryEnabled and self._discoveryToken == token do
+					task.wait(self._discoveryInterval)
+					if self._alive and self._discoveryEnabled and self._discoveryToken == token then
+						self:Sync()
+					end
+				end
+			end)
+			return true
+		end
+		self._discoveryEnabled = false
+		self._discoveryToken = self._discoveryToken + 1
+		return true
+	end
+	function source:IsDiscoveryEnabled()
+		return self._alive and self._discoveryEnabled
+	end
 	function source:Remove(key)
 		local entry = self._items[key]
 		if not entry then return false end
@@ -2532,6 +2595,7 @@ function M:Source(o)
 	end
 	function source:Destroy()
 		if not self._alive then return end
+		self:SetDiscovery(false)
 		self:Clear()
 		self._alive = false
 		for _, connection in ipairs(self._connections) do
@@ -2560,18 +2624,14 @@ function M:Source(o)
 		local key = resolveKey(item)
 		if key ~= nil then source:Remove(key) end
 	end)
-	if type(o.GetItems) == "function" then
-		local ok, items = pcall(o.GetItems, source)
-		if ok and type(items) == "table" then
-			for _, item in pairs(items) do
-				local key = resolveKey(item)
-				if key ~= nil then source:Add(key, item) end
-			end
-		elseif not ok then
-			warn("[PreviewUI] source GetItems failed: " .. tostring(items))
-		end
-	end
 	self._sources[#self._sources + 1] = source
+	if type(o.GetItems) == "function" then
+		source:Sync()
+	end
+	if source._discoveryEnabled then
+		source._discoveryEnabled = false
+		source:SetDiscovery(true)
+	end
 	return source
 end
 
