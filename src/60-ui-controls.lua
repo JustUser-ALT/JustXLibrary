@@ -473,45 +473,19 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
     end
     function Sec:Input(o)
         o = o or {}
-        local multiLine = o.MultiLine == true
         local iconW = o.Icon and ICONW or 0
-        local row = newRow(multiLine and 64 or 32)
-        local bg = Instance.new("Frame"); bg.Size = UDim2.new(1,0,1,0); bg.BackgroundColor3 = C.input; bg.BorderSizePixel = 0; bg.ClipsDescendants = true; bg.Parent = row; corner(7,bg); stroke(C.border,1,bg)
+        local row = newRow(o.MultiLine and 64 or 32)
+        local bg = Instance.new("Frame"); bg.Size = UDim2.new(1,0,1,0); bg.BackgroundColor3 = C.input; bg.BorderSizePixel = 0; bg.Parent = row; corner(7,bg); stroke(C.border,1,bg)
         tip(bg, o.Tooltip); iconSlot(bg, o.Icon)
-        local box = Instance.new("TextBox")
-        box.Size = UDim2.new(1,-16 - iconW,1,multiLine and -12 or 0)
-        box.Position = UDim2.new(0,8 + iconW,0,multiLine and 6 or 0)
-        box.BackgroundTransparency = 1
-        box.BorderSizePixel = 0
-        box.ClipsDescendants = true
-        box.PlaceholderText = tostring(o.Placeholder or o.Name or "Input")
-        box.PlaceholderColor3 = C.dim
-        box.Text = tostring(cfgGet(o.Flag, "") or "")
-        box.Font = GB
-        box.TextSize = 12
-        box.TextColor3 = C.txt
-        box.ClearTextOnFocus = false
-        box.MultiLine = multiLine
-        box.TextWrapped = multiLine
-        box.TextXAlignment = Enum.TextXAlignment.Left
-        box.TextYAlignment = multiLine and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center
-        box.Parent = bg
+        local box = Instance.new("TextBox"); box.Size = UDim2.new(1,-16 - iconW,1,0); box.Position = UDim2.new(0,8 + iconW,0,0); box.BackgroundTransparency = 1
+        box.PlaceholderText = o.Placeholder or (o.Name or "Input"); box.PlaceholderColor3 = C.dim; box.Text = cfgGet(o.Flag, "") or ""
+        box.Font = GB; box.TextSize = 12; box.TextColor3 = C.txt; box.ClearTextOnFocus = false; box.MultiLine = o.MultiLine or false; box.TextWrapped = o.MultiLine or false
+        box.TextXAlignment = Enum.TextXAlignment.Left; box.Parent = bg
         box.FocusLost:Connect(function(enter)
-            if enter or o.OnChange then
-                cfgSet(o.Flag, box.Text)
-                if o.Callback then pcall(o.Callback, box.Text) end
-            end
+            if enter or o.OnChange then cfgSet(o.Flag, box.Text); if o.Callback then pcall(o.Callback, box.Text) end end
         end)
-        if o.OnChange then
-            box:GetPropertyChangedSignal("Text"):Connect(function()
-                cfgSet(o.Flag, box.Text)
-                if o.Callback then pcall(o.Callback, box.Text) end
-            end)
-        end
-        local ret = {
-            Get = function() return box.Text end,
-            Set = function(_,v) box.Text = tostring(v or "") end,
-        }
+        if o.OnChange then box:GetPropertyChangedSignal("Text"):Connect(function() cfgSet(o.Flag, box.Text); if o.Callback then pcall(o.Callback, box.Text) end end) end
+        local ret = {Get = function() return box.Text end, Set = function(_,v) box.Text = v end}
         regFlag(o.Flag, ret, o.NoSave)
         return mergeLock(ret, row, o)
     end
