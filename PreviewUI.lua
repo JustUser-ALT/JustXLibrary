@@ -1725,6 +1725,8 @@ PAGES.preview = {
 			makePageButton("NextVariant", "›", 101, 1)
 		end
 
+		local h = makeThumb(inner, a)
+		if h then h.manualOnly = true end
 		local animations = discoverAnimations(a)
 		local player = new("Frame", {
 			Name = "AnimationTimelinePlayer", BackgroundColor3 = C.panel, BorderSizePixel = 0,
@@ -2029,9 +2031,6 @@ PAGES.preview = {
 			timeLabel.Text = "Add an Animation to the model"
 			playButton.TextColor3 = C.dim
 		end
-
-		local h = makeThumb(inner, a)
-		if h then h.manualOnly = true end
 
 		if h then
 			local st = { dragging = false, resumeAt = 0, pinching = false }
