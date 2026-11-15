@@ -2812,16 +2812,23 @@ function M:_renderPluginsSurface(selectedId)
 	pad(list, 2, 4, 2, 12)
 	local function updateColumns()
 		if not list.Parent then return end
-		local width = list.AbsoluteSize.X
-		if width <= 0 then
-			list.Visible = false
-			return
-		end
-		layout.CellSize = width < 390 and UDim2.new(1, -4, 0, 166) or UDim2.new(0.5, -5, 0, 174)
-		list.Visible = true
+		local camera = workspace.CurrentCamera
+		local viewportWidth = camera and camera.ViewportSize.X or 0
+		layout.CellSize = viewportWidth < 700
+			and UDim2.new(1, -4, 0, 166)
+			or UDim2.new(0.5, -5, 0, 174)
 	end
-	list.Visible = false
-	list:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateColumns)
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateColumns)
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		camera = workspace.CurrentCamera
+		if camera then
+			camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateColumns)
+		end
+		updateColumns()
+	end)
 	updateColumns()
 
 	for index, definition in ipairs(definitions) do
