@@ -19,7 +19,25 @@ warn("[Structure Test] IconPack load call: " .. tostring(iconOk) .. " / " .. tos
 local iconPack = Library._iconPack
 warn("[Structure Test] IconPack instance: " .. typeof(iconPack))
 if type(iconPack) == "table" then
-	warn("[Structure Test] IconPack methods: GetAsset=" .. tostring(type(iconPack.GetAsset)) .. ", GetIcon=" .. tostring(type(iconPack.GetIcon)) .. ", SetProvider=" .. tostring(type(iconPack.SetProvider)))
+	local keys = {}
+	for key, value in pairs(iconPack) do
+		keys[#keys + 1] = tostring(key) .. ":" .. typeof(value)
+	end
+	table.sort(keys)
+	warn("[Structure Test] IconPack exports: " .. table.concat(keys, ", "))
+
+	for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
+		local dotOk, dotValue = pcall(iconPack.GetAsset, iconName)
+		local selfOk, selfValue = pcall(iconPack.GetAsset, iconPack, iconName)
+		local function describe(value)
+			if type(value) == "table" then
+				return "table Url=" .. tostring(value.Url or value.Image or value.ImageUrl or value.Texture or value.AssetId or value.Id) .. " Text=" .. tostring(value.Text or value.Glyph)
+			end
+			return typeof(value) .. " " .. tostring(value)
+		end
+		warn("[Structure Test] GetAsset(" .. iconName .. ") dot: " .. tostring(dotOk) .. " / " .. describe(dotValue))
+		warn("[Structure Test] GetAsset(self," .. iconName .. ") colon: " .. tostring(selfOk) .. " / " .. describe(selfValue))
+	end
 end
 
 for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
@@ -32,7 +50,7 @@ for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
 	elseif type(value) == "string" or type(value) == "number" then
 		detail = detail .. " " .. tostring(value)
 	end
-	warn("[Structure Test] Icon " .. iconName .. ": " .. tostring(ok) .. " / " .. detail)
+	warn("[Structure Test] Bridge icon " .. iconName .. ": " .. tostring(ok) .. " / " .. detail)
 end
 
 local Window = Library:Window({
