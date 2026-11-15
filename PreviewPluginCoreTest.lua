@@ -42,6 +42,37 @@ local function log(label, ok, result)
     warn("[Plugin Core Test] " .. label .. " => " .. tostring(ok) .. " / " .. tostring(result))
 end
 
+local SampleTab = Preview:Tab({Name = "Plugin Samples", Icon = "box"})
+SampleTab:Asset({
+    Name = "Explorer Sample",
+    Type = "Model",
+    Creator = "JustXLibrary",
+    Description = "A small hierarchy used to verify the Explorer plugin.",
+    Build = function(model)
+        local folder = Instance.new("Folder")
+        folder.Name = "Geometry"
+        folder.Parent = model
+
+        local block = Instance.new("Part")
+        block.Name = "MainBlock"
+        block.Size = Vector3.new(4, 2, 4)
+        block.Anchored = true
+        block.Color = Color3.fromRGB(90, 150, 235)
+        block.Parent = folder
+
+        local detail = Instance.new("Part")
+        detail.Name = "Detail"
+        detail.Size = Vector3.new(1, 3, 1)
+        detail.Position = Vector3.new(0, 2, 0)
+        detail.Anchored = true
+        detail.Parent = block
+
+        local attachment = Instance.new("Attachment")
+        attachment.Name = "Pivot"
+        attachment.Parent = block
+    end,
+})
+
 local available = Preview:GetPlugins()
 warn("[Plugin Core Test] Available plugins: " .. tostring(#available))
 for _, item in ipairs(available) do
@@ -64,6 +95,14 @@ Tests:Button({
                 log("Uninstall " .. item.Id, okRemove, removeResult)
             end
         end
+    end,
+})
+
+Tests:Button({
+    Name = "Open Explorer Sample",
+    Icon = "network",
+    Callback = function()
+        Preview:Open({Tab = "Plugin Samples", Asset = "Explorer Sample"})
     end,
 })
 
