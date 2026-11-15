@@ -10,8 +10,6 @@ if not Library then warn("[Input Overflow Test] JustLib failed to load.") return
 local Window = Library:Window({
     Title = "Input Overflow Test",
     Config = "JustX_InputOverflowTest",
-    Width = 480,
-    Height = 520,
 })
 if not Window then warn("[Input Overflow Test] Window creation failed.") return end
 
