@@ -1783,11 +1783,11 @@ PAGES.preview = {
 			stroke(button, C.border, 1)
 			return button
 		end
-		local playButton = controlButton("PlayPause", "▶", 0, 34)
-		local stopButton = controlButton("Stop", "■", 40, 30)
-		local backButton = controlButton("SeekBack", "−5", 76, 38)
-		local forwardButton = controlButton("SeekForward", "+5", 120, 38)
-		local speedButton = controlButton("PlaybackSpeed", "1x", 164, 42)
+		local playButton = controlButton("PlayPause", "▶", 0, 30)
+		local stopButton = controlButton("Stop", "■", 34, 26)
+		local backButton = controlButton("SeekBack", "−5", 64, 32)
+		local forwardButton = controlButton("SeekForward", "+5", 100, 32)
+		local speedButton = controlButton("PlaybackSpeed", "1x", 136, 36)
 
 		local menu = new("Frame", {
 			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
@@ -1855,7 +1855,7 @@ PAGES.preview = {
 			else
 				pcall(function() currentTrack:AdjustSpeed(0) end)
 				isPlaying = false
-				if h then h.animationActive = false end
+				if h then h.animationActive = currentTrack ~= nil end
 			end
 			updateTimeline()
 		end
@@ -1897,6 +1897,7 @@ PAGES.preview = {
 			end
 			currentTrack = track
 			currentAnimation = animation
+			if h then h.animationActive = true end
 			isLoading = true
 			timeLabel.Text = "Loading animation..."
 			pcall(function()
@@ -1914,7 +1915,7 @@ PAGES.preview = {
 						pcall(function() track.TimePosition = 0 end)
 						isLoading = false
 						isPlaying = false
-						if h then h.animationActive = false end
+						if h then h.animationActive = true end
 						updateTimeline()
 						return
 					end
@@ -2006,7 +2007,7 @@ PAGES.preview = {
 		end)
 
 		local updateConnection = RunService.RenderStepped:Connect(function()
-			if disposed then return end
+			if disposed or not pv._root or not pv._root.Visible or not pv._drawerOpen then return end
 			if currentTrack then
 				if isPlaying and not currentTrack.IsPlaying then
 					isPlaying = false
