@@ -1523,14 +1523,31 @@ local function discoverAnimations(asset)
 			end
 			return
 		end
+		local name = animation.Name
+		if name == "" or string.lower(name) == "animation" then
+			local ancestor = animation.Parent
+			while ancestor and ancestor ~= model do
+				local candidate = tostring(ancestor.Name or "")
+				local lowered = string.lower(candidate)
+				if candidate ~= "" and lowered ~= "animations" and lowered ~= "animate"
+					and lowered ~= "animator" and lowered ~= "humanoid" then
+					name = candidate
+					break
+				end
+				ancestor = ancestor.Parent
+			end
+		end
+		if name == "" or string.lower(name) == "animation" then
+			name = "Animation " .. tostring(#found + 1)
+		end
 		local entry = {
-			Name = animation.Name ~= "" and animation.Name or "Animation",
+			Name = name,
 			AnimationId = id,
 			Object = animation,
 			State = state or "Available",
-			}
-			seen[key] = entry
-			found[#found + 1] = entry
+		}
+		seen[key] = entry
+		found[#found + 1] = entry
 	end
 	local descendants = model:GetDescendants()
 	if model:IsA("Animation") then
@@ -1753,7 +1770,8 @@ PAGES.preview = {
 
 		local timeLabel = txt("TextLabel", {
 			Name = "TimelineTime", Text = "0.00s / 0.00s",
-			Font = Enum.Font.Code, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
+			Font = Enum.Font.Code, TextSize = 9, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Position = U2(0.58, 0, 0, 5), Size = U2(0.42, -10, 0, 22),
 		}, player)
 
@@ -1811,10 +1829,13 @@ PAGES.preview = {
 		pauseIcon.Position = U2(0.5, 0, 0.5, 0)
 		pauseIcon.Visible = false
 
-		local menu = new("Frame", {
+		local menu = new("ScrollingFrame", {
 			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
 			AnchorPoint = V2(0, 1), Position = U2(0, 8, 1, -104),
-			Size = U2(0.72, 0, 0, 0), Visible = false, ZIndex = 50,
+			Size = U2(0.58, -18, 0, 162), Visible = false, ZIndex = 50,
+			ClipsDescendants = true, CanvasSize = U2(0, 0, 0, 0),
+			AutomaticCanvasSize = Enum.AutomaticSize.None, ScrollingDirection = Enum.ScrollingDirection.Y,
+			ScrollBarThickness = 3, ScrollBarImageColor3 = C.dim,
 		}, parent)
 		corner(menu, 8)
 		stroke(menu, C.border, 1)
@@ -1962,6 +1983,7 @@ PAGES.preview = {
 					Text = entry.Name, Font = GM, TextSize = 11, TextColor3 = C.txt,
 					BackgroundTransparency = 1, Size = U2(1, -8, 0, 25),
 					Position = U2(0, 4, 0, 0), LayoutOrder = i, ZIndex = 51,
+					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 				}, menu)
 				pad(button, 8, 6, 0, 0)
@@ -1972,7 +1994,8 @@ PAGES.preview = {
 				menuButtons[#menuButtons + 1] = button
 			end
 			local height = math.min(#animations * 27 + 6, 162)
-			menu.Size = U2(0.72, 0, 0, height)
+			menu.CanvasSize = U2(0, 0, 0, #animations * 27 + 6)
+			menu.Size = U2(0.58, -18, 0, 162)
 		end
 		rebuildMenu()
 		selector.Activated:Connect(function()
