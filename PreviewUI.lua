@@ -3841,6 +3841,8 @@ function M:_useFlatGrid()
 	if not self._grid then
 		return
 	end
+	self._grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	self._grid.CanvasSize = U2(0, 0, 0, 0)
 	for _, c in pairs(self._cards) do
 		if c.frame and c.frame.Parent ~= self._grid then
 			c.frame.Parent = self._grid
@@ -3891,6 +3893,7 @@ function M:_renderGroupedCards(visible)
 		self._gridLayout:Destroy()
 		self._gridLayout = nil
 	end
+	self._grid.AutomaticCanvasSize = Enum.AutomaticSize.None
 	if not self._groupListLayout or not self._groupListLayout.Parent then
 		self._groupListLayout = new("UIListLayout", {
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -3913,16 +3916,24 @@ function M:_renderGroupedCards(visible)
 		return string.lower(a) < string.lower(b)
 	end)
 
+	local columns = math.max(1, self._cols or 1)
+	local cellHeight = (self._th or 90) + 44
+	local cellWidth = self._cw or 140
+	local totalHeight = 16
 	for groupIndex, name in ipairs(names) do
+		local count = #grouped[name]
+		local rows = math.ceil(count / columns)
+		local cardsHeight = rows * cellHeight + math.max(0, rows - 1) * 8
+		local groupHeight = 25 + cardsHeight + 4
 		local group = new("Frame", {
 			Name = "Group_" .. tostring(groupIndex),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Size = UDim2.new(1, 0, 0, 28),
+			Size = UDim2.new(1, 0, 0, groupHeight),
 			LayoutOrder = groupIndex,
 		}, self._grid)
 		self._groupFrames[#self._groupFrames + 1] = group
-		local heading = txt("TextLabel", {
+		txt("TextLabel", {
 			Text = name,
 			Font = GB,
 			TextSize = 11,
@@ -3938,41 +3949,34 @@ function M:_renderGroupedCards(visible)
 			Position = UDim2.fromOffset(5, 20),
 			Size = UDim2.new(1, -10, 0, 1),
 		}, group)
-		local grid = new("Frame", {
+		local cardsGrid = new("Frame", {
 			Name = "GroupCards",
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Position = UDim2.fromOffset(0, 25),
-			Size = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.new(1, 0, 0, cardsHeight),
 		}, group)
 		local layout = new("UIGridLayout", {
-			CellSize = UDim2.fromOffset(self._cw or 140, (self._th or 90) + 44),
+			CellSize = UDim2.fromOffset(cellWidth, cellHeight),
 			CellPadding = UDim2.fromOffset(8, 8),
 			SortOrder = Enum.SortOrder.LayoutOrder,
-		}, grid)
+		}, cardsGrid)
 		self._groupLayouts[#self._groupLayouts + 1] = layout
-		local function updateHeight()
-			if group.Parent and layout.Parent then
-				local height = layout.AbsoluteContentSize.Y
-				grid.Size = UDim2.new(1, 0, 0, height)
-				group.Size = UDim2.new(1, 0, 0, 25 + height + 4)
-			end
-		end
-		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateHeight)
 		for index, asset in ipairs(grouped[name]) do
 			local card = self._cards[asset]
 			if card then
-				card.frame.Parent = grid
+				card.frame.Parent = cardsGrid
 				card.frame.LayoutOrder = index
 			end
 		end
-		updateHeight()
-	end
-	B.delay(0.05, function()
-		if self._grid and self._grid.Parent then
-			self._grid.CanvasPosition = oldCanvasPosition
+		totalHeight = totalHeight + groupHeight
+		if groupIndex < #names then
+			totalHeight = totalHeight + 10
 		end
-	end)
+	end
+	self._grid.CanvasSize = U2(0, 0, 0, totalHeight)
+	local maxY = math.max(0, totalHeight - self._grid.AbsoluteSize.Y)
+	self._grid.CanvasPosition = V2(oldCanvasPosition.X, math.clamp(oldCanvasPosition.Y, 0, maxY))
 end
 
 function M:SetGrouping(key)
