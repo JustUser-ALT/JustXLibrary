@@ -2663,127 +2663,237 @@ function M:UninstallPlugin(id)
 	return self._plugins:Uninstall(id)
 end
 
--- Built-in Plugins page: package implementations remain in Plugins/<Id>/.
-function M:_buildPluginPage(parent, asset)
-	local id = asset and asset.PluginId
-	local definition = id and self:GetPlugin(id)
-	if not definition then
-		txt("TextLabel", {
-			Text = "Plugin information is unavailable.",
-			TextColor3 = C.dim, TextSize = 12, TextWrapped = true,
-			Size = U2(1, 0, 0, 38),
-		}, parent)
-		return
+-- Dedicated Plugins library UI; it is intentionally separate from asset cards.
+function M:_setPluginsView(active)
+	local chrome = self._pluginChrome
+	if not chrome then return end
+	for _, object in pairs(chrome) do
+		if object and object.Parent then object.Visible = not active end
+	end
+	if self._pluginSurface then
+		self._pluginSurface.Visible = active
+	end
+end
+
+function M:_renderPluginsSurface(selectedId)
+	local surface = self._pluginSurface
+	if not surface then return end
+	for _, child in ipairs(surface:GetChildren()) do
+		if not child:IsA("UIPadding") then child:Destroy() end
 	end
 
-	local manager = self._plugins
-	local function statusText()
-		if not manager then return "Plugin Core unavailable" end
-		local current = manager:Get(id)
-		if not current or not current.Installed then return "Not installed" end
-		return current.Enabled and "Installed  ·  Enabled" or "Installed  ·  Disabled"
+	local definitions = self:GetPlugins()
+	local purple, green = rgb(157, 112, 255), rgb(75, 204, 143)
+	local function stateFor(id)
+		local current = self._plugins and self._plugins:Get(id)
+		if not current or not current.Installed then return "Not installed", false, false end
+		return current.Enabled and "Enabled" or "Disabled", true, current.Enabled == true
 	end
-
-	local header = new("Frame", {
-		BackgroundColor3 = C.badge, BorderSizePixel = 0,
-		Size = U2(1, 0, 0, 82),
-	}, parent)
-	corner(header, 9)
-	stroke(header, C.border, 1)
-	txt("TextLabel", {
-		Text = definition.Name or asset.Name, Font = GM, TextSize = 15,
-		TextColor3 = C.txt, Position = UDim2.fromOffset(12, 10),
-		Size = U2(1, -24, 0, 20), TextXAlignment = Enum.TextXAlignment.Left,
-	}, header)
-	txt("TextLabel", {
-		Text = definition.Description or asset.Description or "",
-		Font = GM, TextSize = 11, TextColor3 = C.dim, TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
-		Position = UDim2.fromOffset(12, 34), Size = U2(1, -24, 0, 40),
-	}, header)
-
-	local status = txt("TextLabel", {
-		Text = statusText(), Font = GM, TextSize = 12, TextColor3 = ACCENTS[1],
-		Position = UDim2.fromOffset(2, 94), Size = U2(1, -4, 0, 20),
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, parent)
-
-	local actionRoot = new("Frame", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 124),
-		Size = U2(1, 0, 0, 82),
-	}, parent)
-	local function makeAction(label, x, width, callback)
+	local function notifyAction(label, ok, result)
+		if B.notify then
+			B.notify({
+				Title = ok and "Plugins" or "Plugin error",
+				Desc = ok and (label .. " completed.") or tostring(result),
+				Type = ok and "Success" or "Warn", Duration = 4,
+			})
+		end
+	end
+	local function actionButton(parent, label, color, callback, position, size)
 		local button = txt("TextButton", {
-			Text = label, Font = GM, TextSize = 11, TextColor3 = C.txt,
-			BackgroundColor3 = C.btnBg, BorderSizePixel = 0,
-			Position = U2(x, 0, 0, 0), Size = U2(width, -5, 0, 34),
-			AutoButtonColor = true,
-		}, actionRoot)
-		corner(button, 7)
-		stroke(button, C.border, 1)
-		button.Activated:Connect(function()
-			local ok, result
-			if manager then
-				ok, result = callback(manager)
-			else
-				ok, result = false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE"
-			end
-			if B.notify then
-				B.notify({
-					Title = ok and "Plugins" or "Plugin error",
-					Desc = ok and (label .. " completed.") or tostring(result),
-					Type = ok and "Success" or "Warn", Duration = 4,
-				})
-			end
-			status.Text = statusText()
-			self:_showPage(self._pluginPage and self._pluginPage.id or "info", false)
+			Text = label, Font = GB, TextSize = 11, TextColor3 = Color3.new(1, 1, 1),
+			BackgroundColor3 = color, BorderSizePixel = 0,
+			Position = position, Size = size, AutoButtonColor = false,
+		}, parent)
+		corner(button, 8)
+		button.MouseEnter:Connect(function()
+			if not touchLast() then tw(button, { BackgroundTransparency = 0.12 }, 0.12) end
 		end)
+		button.MouseLeave:Connect(function() tw(button, { BackgroundTransparency = 0 }, 0.12) end)
+		button.Activated:Connect(callback)
 		return button
 	end
 
-	local current = manager and manager:Get(id)
-	if not current or not current.Installed then
-		makeAction("Install", 0, 1, function(m) return m:Install(id) end)
-	else
-		if current.Enabled then
-			makeAction("Disable", 0, 0.5, function(m) return m:Disable(id) end)
+	if selectedId then
+		local definition = self:GetPlugin(selectedId)
+		if not definition then
+			selectedId = nil
 		else
-			makeAction("Enable", 0, 0.5, function(m) return m:Enable(id) end)
+			local accent = selectedId == "animation" and purple or green
+			local statusText, installed, enabled = stateFor(selectedId)
+			local back = txt("TextButton", {
+				Text = "‹  Back to Plugins", Font = GM, TextSize = 12, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(16, 14), Size = UDim2.fromOffset(150, 28),
+			}, surface)
+			back.Activated:Connect(function() self:_renderPluginsSurface() end)
+
+			local panel = new("Frame", {
+				BackgroundColor3 = C.badge, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(14, 54), Size = U2(1, -28, 0, 230),
+			}, surface)
+			corner(panel, 12)
+			stroke(panel, C.border, 1)
+			local iconTile = new("Frame", {
+				BackgroundColor3 = accent, BackgroundTransparency = 0.82,
+				Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(54, 54),
+			}, panel)
+			corner(iconTile, 13)
+			local icon = mkIcon(iconTile, definition.Icon or (selectedId == "animation" and "clapperboard" or "network"), 27, accent)
+			icon.AnchorPoint = V2(0.5, 0.5)
+			icon.Position = U2(0.5, 0, 0.5, 0)
+			txt("TextLabel", {
+				Text = definition.Name or selectedId, Font = GB, TextSize = 17,
+				Position = UDim2.fromOffset(82, 18), Size = U2(1, -98, 0, 24),
+			}, panel)
+			txt("TextLabel", {
+				Text = tostring(definition.Category or "Plugin") .. "  ·  v" .. tostring(definition.Version or "1.0"),
+				Font = GM, TextSize = 10, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(82, 43), Size = U2(1, -98, 0, 16),
+			}, panel)
+			local status = txt("TextLabel", {
+				Text = statusText, Font = GB, TextSize = 10, TextColor3 = accent,
+				BackgroundColor3 = accent, BackgroundTransparency = 0.86,
+				Position = UDim2.fromOffset(16, 84), Size = UDim2.fromOffset(94, 23),
+				TextXAlignment = Enum.TextXAlignment.Center,
+			}, panel)
+			corner(status, 7)
+			txt("TextLabel", {
+				Text = definition.Description or "", Font = G, TextSize = 12, TextColor3 = C.dim,
+				TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+				Position = UDim2.fromOffset(16, 120), Size = U2(1, -32, 0, 48),
+			}, panel)
+			local function run(label, fn)
+				local ok, result = false, "Plugin Core unavailable"
+				if self._plugins then ok, result = fn(self._plugins) end
+				notifyAction(label, ok, result)
+				self:_renderPluginsSurface(selectedId)
+			end
+			if not installed then
+				actionButton(panel, "Install Plugin", accent, function()
+					run("Install", function(manager) return manager:Install(selectedId) end)
+				end, U2(0, 16, 1, -48), U2(1, -32, 0, 34))
+			else
+				local leftLabel = enabled and "Disable Plugin" or "Enable Plugin"
+				actionButton(panel, leftLabel, accent, function()
+					if enabled then
+						run("Disable", function(manager) return manager:Disable(selectedId) end)
+					else
+						run("Enable", function(manager) return manager:Enable(selectedId) end)
+					end
+				end, U2(0, 16, 1, -48), U2(0.5, -20, 0, 34))
+				actionButton(panel, "Uninstall", C.btnBg, function()
+					run("Uninstall", function(manager) return manager:Uninstall(selectedId) end)
+				end, U2(0.5, 4, 1, -48), U2(0.5, -20, 0, 34))
+			end
+			return
 		end
-		makeAction("Uninstall", 0.5, 0.5, function(m) return m:Uninstall(id) end)
 	end
 
+	local header = new("Frame", { BackgroundTransparency = 1, Size = U2(1, -28, 0, 62), Position = UDim2.fromOffset(14, 12) }, surface)
 	txt("TextLabel", {
-		Text = "Version " .. tostring(definition.Version or "—") .. "   ·   " .. tostring(definition.Author or "JustXLibrary"),
-		Font = GM, TextSize = 10, TextColor3 = C.dim,
-		Position = UDim2.fromOffset(2, 218), Size = U2(1, -4, 0, 16),
-		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "Plugin Library", Font = GB, TextSize = 18, TextColor3 = C.txt,
+		Position = UDim2.fromOffset(2, 0), Size = U2(1, -4, 0, 25),
+	}, header)
+	txt("TextLabel", {
+		Text = "Extend Preview with powerful tools", Font = GM, TextSize = 11, TextColor3 = C.dim,
+		Position = UDim2.fromOffset(2, 29), Size = U2(1, -4, 0, 18),
+	}, header)
+
+	local list = new("ScrollingFrame", {
+		Name = "PluginCards", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(14, 82), Size = U2(1, -28, 1, -94),
+		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1],
+	}, surface)
+	local layout = new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -5, 0, 174), CellPadding = UDim2.fromOffset(10, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, list)
+	pad(list, 2, 4, 2, 12)
+	local function updateColumns()
+		if not list.Parent then return end
+		local width = list.AbsoluteSize.X
+		layout.CellSize = width < 390 and UDim2.new(1, -4, 0, 166) or UDim2.new(0.5, -5, 0, 174)
+	end
+	updateColumns()
+	list:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateColumns)
+
+	for index, definition in ipairs(definitions) do
+		local id = definition.Id
+		local accent = id == "animation" and purple or green
+		local statusText, installed, enabled = stateFor(id)
+		local card = new("Frame", {
+			Name = "Plugin_" .. tostring(id), BackgroundColor3 = C.badge,
+			BorderSizePixel = 0, LayoutOrder = index,
+		}, list)
+		corner(card, 12)
+		stroke(card, C.border, 1)
+		local tile = new("Frame", {
+			BackgroundColor3 = accent, BackgroundTransparency = 0.84,
+			Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(42, 42),
+		}, card)
+		corner(tile, 11)
+		local glyph = mkIcon(tile, definition.Icon or (id == "animation" and "clapperboard" or "network"), 23, accent)
+		glyph.AnchorPoint = V2(0.5, 0.5)
+		glyph.Position = U2(0.5, 0, 0.5, 0)
+		txt("TextLabel", {
+			Text = definition.Name or id, Font = GB, TextSize = 14,
+			Position = UDim2.fromOffset(64, 13), Size = U2(1, -76, 0, 20),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, card)
+		local pill = txt("TextLabel", {
+			Text = statusText, Font = GB, TextSize = 9, TextColor3 = accent,
+			BackgroundColor3 = accent, BackgroundTransparency = 0.86,
+			Position = UDim2.fromOffset(64, 36), Size = UDim2.fromOffset(math.max(76, #statusText * 6 + 16), 18),
+			TextXAlignment = Enum.TextXAlignment.Center,
+		}, card)
+		corner(pill, 6)
+		txt("TextLabel", {
+			Text = definition.Description or "", Font = G, TextSize = 10,
+			TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+			Position = UDim2.fromOffset(12, 66), Size = U2(1, -24, 0, 43),
+		}, card)
+		txt("TextLabel", {
+			Text = "VERSION  " .. tostring(definition.Version or "1.0"),
+			Font = GB, TextSize = 8, TextColor3 = C.dim,
+			Position = UDim2.fromOffset(12, 114), Size = U2(1, -24, 0, 13),
+		}, card)
+		local label = installed and "Manage Plugin" or "Install Plugin"
+		local button = txt("TextButton", {
+			Text = label, Font = GB, TextSize = 10,
+			TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = accent,
+			Position = U2(0, 12, 1, -38), Size = U2(1, -24, 0, 27),
+			BorderSizePixel = 0, AutoButtonColor = false,
+		}, card)
+		corner(button, 7)
+		button.MouseEnter:Connect(function()
+			if not touchLast() then tw(button, { BackgroundTransparency = 0.12 }, 0.12) end
+		end)
+		button.MouseLeave:Connect(function() tw(button, { BackgroundTransparency = 0 }, 0.12) end)
+		button.Activated:Connect(function()
+			if installed then
+				self:_renderPluginsSurface(id)
+			else
+				local ok, result = self:InstallPlugin(id)
+				notifyAction("Install", ok, result)
+				self:_renderPluginsSurface()
+			end
+		end)
+	end
+end
+
+function M:_buildPluginsSurface(parent)
+	if self._pluginSurface and self._pluginSurface.Parent then return end
+	local surface = new("Frame", {
+		Name = "PvPluginLibrary", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false,
 	}, parent)
+	self._pluginSurface = surface
+	self:_renderPluginsSurface()
 end
 
 function M:_setupPluginsTab()
 	if self._pluginsTab or not self._plugins then return end
-	local tab = self:Tab({ Name = "Plugins", Icon = "blocks" })
-	self._pluginsTab = tab
-	for _, definition in ipairs(self:GetPlugins()) do
-		tab:Asset({
-			Name = definition.Name,
-			Type = "Plugin",
-			PluginId = definition.Id,
-			Description = definition.Description,
-			Icon = definition.Icon,
-			Category = definition.Category,
-			Version = definition.Version,
-			Creator = definition.Author,
-		})
-	end
-	self._pluginPage = self:Page({
-		Name = "Manage", Icon = "puzzle",
-		Visible = function(asset) return asset and asset.Type == "Plugin" end,
-		Build = function(parent, asset)
-			return self:_buildPluginPage(parent, asset)
-		end,
-	})
+	self._pluginsTab = self:Tab({ Name = "Plugins", Icon = "blocks" })
 end
 
 function M:Tab(o)
@@ -3953,6 +4063,8 @@ function M:_build()
 		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 90), Size = UDim2.fromOffset(240, 20),
 	}, card)
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList, ddArrow = filterArrow }
+	self._pluginChrome = { search = searchBox, filter = ddButton, close = closeBtn, grid = grid, empty = emptyL }
+	if self._pluginsTab then self:_buildPluginsSurface(card) end
 
 	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
 	local drawer = new("Frame", {
@@ -4142,6 +4254,7 @@ function M:_activate(tab)
 	end
 	self._activeTab = tab
 	self._type = "All"
+	self:_setPluginsView(tab == self._pluginsTab)
 	if tab and not self._restoring and S("remember", true) then
 		B.cfgSet("_pv_last", tab.Name)
 	end
