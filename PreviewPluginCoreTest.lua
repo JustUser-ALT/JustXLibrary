@@ -43,7 +43,7 @@ local function log(label, ok, result)
 end
 
 local SampleTab = Preview:Tab({Name = "Plugin Samples", Icon = "box"})
-SampleTab:Asset({
+local SampleAsset = SampleTab:Asset({
     Name = "Explorer Sample",
     Type = "Model",
     Creator = "JustXLibrary",
@@ -102,7 +102,7 @@ Tests:Button({
     Name = "Open Explorer Sample",
     Icon = "network",
     Callback = function()
-        Preview:Open({Tab = "Plugin Samples", Asset = "Explorer Sample"})
+        Preview:Open(SampleAsset)
     end,
 })
 
