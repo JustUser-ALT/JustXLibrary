@@ -1988,6 +1988,9 @@ function M:GetAsset(name)
 end
 
 function M:_removeTab(T)
+	for i = #self._sources, 1, -1 do
+		if self._sources[i]._tab == T then self._sources[i]:Destroy() end
+	end
 	for i = #T.assets, 1, -1 do
 		T.assets[i]:Remove(true)
 	end
@@ -2124,6 +2127,12 @@ function M:_addAsset(tab, a, quiet)
 		end
 		if self._pv._selected == self then
 			self._pv._selected = nil
+		end
+		if self._source and self._source._items[self._sourceKey] then
+			self._source._items[self._sourceKey] = nil
+			for i, key in ipairs(self._source._order) do
+				if key == self._sourceKey then table.remove(self._source._order, i) break end
+			end
 		end
 		if not quietRemove then
 			self._pv:_assetsChanged()
