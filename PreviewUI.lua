@@ -4414,7 +4414,7 @@ function M:_applyFilter()
 			end
 		end
 	end
-	self._d.empty.Visible = not hasTabAssets
+	self._d.empty.Visible = #self._assets == 0
 	self:_buildTypeList()
 	self:_markSelected(true)
 end
