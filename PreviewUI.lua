@@ -1847,6 +1847,8 @@ function M:Source(o)
 		_pv = self, _tab = tab, _items = {}, _order = {},
 		Name = o.Name or tab.Name, _alive = true, _connections = {},
 		_map = o.Map, _key = o.Key,
+		_observeOptions = type(o.ObserveModels) == "table" and o.ObserveModels or {},
+		_observeDefault = o.ObserveModels == true or type(o.ObserveModels) == "table",
 	}
 	local function resolveKey(item)
 		if type(source._key) == "function" then
@@ -1856,9 +1858,105 @@ function M:Source(o)
 		end
 		return item
 	end
+
+	local defaultObserveProperties = {
+		BasePart = { "Color", "Size", "Material", "Transparency", "Reflectance", "Shape" },
+		Decal = { "Texture", "Color3", "Transparency" },
+		Texture = { "Texture", "Color3", "Transparency", "StudsPerTileU", "StudsPerTileV" },
+		SpecialMesh = { "MeshId", "TextureId", "MeshType", "Scale", "Offset", "VertexColor" },
+		SurfaceAppearance = { "ColorMap", "MetalnessMap", "NormalMap", "RoughnessMap" },
+	}
+	local function disconnectObserver(entry)
+		if not entry then return end
+		entry._observeToken = (entry._observeToken or 0) + 1
+		for _, connection in ipairs(entry._observeConnections or {}) do
+			pcall(function() connection:Disconnect() end)
+		end
+		entry._observeConnections = {}
+	end
+	local function observeEntry(key)
+		local entry = source._items[key]
+		if not entry then return end
+		disconnectObserver(entry)
+		if not entry._observeEnabled or not entry.asset or not entry.asset._alive then return end
+		local token = entry._observeToken
+		local connections, watched = entry._observeConnections, {}
+		local delayTime = tonumber(source._observeOptions.Debounce) or 0.18
+		delayTime = math.clamp(delayTime, 0.05, 2)
+		local function scheduleRefresh()
+			if entry._observePending then return end
+			entry._observePending = true
+			task.delay(delayTime, function()
+					entry._observePending = false
+					if not source._alive or source._items[key] ~= entry
+						or entry._observeToken ~= token or not entry.asset or not entry.asset._alive then
+						return
+					end
+					source:Refresh(key)
+				end)
+		end
+		local function addConnection(signal, callback)
+			local ok, connection = pcall(function() return signal:Connect(callback) end)
+			if ok and connection then connections[#connections + 1] = connection end
+		end
+		local properties = source._observeOptions.Properties
+		local function watchInstance(instance)
+			if not instance or watched[instance] then return end
+			watched[instance] = true
+			local classProperties
+			if type(properties) == "table" then
+				classProperties = properties
+			else
+				for className, list in pairs(defaultObserveProperties) do
+					if instance:IsA(className) then
+						classProperties = list
+						break
+					end
+				end
+			end
+			for _, property in ipairs(classProperties or {}) do
+				pcall(function()
+					addConnection(instance:GetPropertyChangedSignal(property), scheduleRefresh)
+				end)
+			end
+		end
+		local roots, seenRoots = {}, {}
+		local function addRoot(value)
+			if typeof(value) ~= "Instance" then return end
+			if not (value:IsA("Model") or value:IsA("BasePart")) or seenRoots[value] then return end
+			seenRoots[value] = true
+			roots[#roots + 1] = value
+		end
+		addRoot(entry.asset.Model)
+		for _, variant in ipairs(entry.asset._variants or {}) do
+			addRoot(variant.Model)
+		end
+		for _, root in ipairs(roots) do
+			watchInstance(root)
+			if root:IsA("Model") then
+				for _, descendant in ipairs(root:GetDescendants()) do
+					watchInstance(descendant)
+				end
+				addConnection(root.DescendantAdded, function(descendant)
+					watchInstance(descendant)
+					scheduleRefresh()
+				end)
+				addConnection(root.DescendantRemoving, scheduleRefresh)
+			end
+		end
+		entry._observeConnections = connections
+	end
+
 	function source:Get(key)
 		local entry = self._items[key]
 		return entry and entry.asset or nil
+	end
+	function source:SetAutoObserve(key, enabled)
+		local entry = self._items[key]
+		if not entry then return false end
+		entry._observeEnabled = enabled == true
+		observeEntry(key)
+		return true
 	end
 	function source:Add(key, data)
 		if not self._alive or key == nil then return nil end
@@ -1879,13 +1977,19 @@ function M:Source(o)
 		if existing and existing.asset and existing.asset._alive then
 			existing.item = data == nil and key or data
 			existing.asset:Update(payload)
+			observeEntry(key)
 			return existing.asset
 		end
 		local item = data == nil and key or data
 		local asset = self._pv:_addAsset(self._tab, payload, true)
 		asset._source, asset._sourceKey = self, key
-		self._items[key] = { asset = asset, item = item }
+		self._items[key] = {
+			asset = asset, item = item,
+			_observeEnabled = self._observeDefault,
+			_observeConnections = {}, _observeToken = 0,
+		}
 		self._order[#self._order + 1] = key
+		observeEntry(key)
 		self._pv:_assetsChanged()
 		return asset
 	end
@@ -1893,6 +1997,7 @@ function M:Source(o)
 		local entry = self._items[key]
 		if not entry or not entry.asset or not entry.asset._alive then return nil end
 		entry.asset:Update(patch or {})
+		observeEntry(key)
 		return entry.asset
 	end
 	function source:Refresh(key)
@@ -1911,11 +2016,13 @@ function M:Source(o)
 			payload = { Name = tostring(payload) }
 		end
 		entry.asset:Update(payload)
+		observeEntry(key)
 		return entry.asset
 	end
 	function source:Remove(key)
 		local entry = self._items[key]
 		if not entry then return false end
+		disconnectObserver(entry)
 		self._items[key] = nil
 		for i, value in ipairs(self._order) do
 			if value == key then table.remove(self._order, i) break end
