@@ -44,6 +44,7 @@ local initialRootCFrame = root.CFrame
 root.Parent = model
 
 local motors = {}
+local initialPartCFrames = { [root] = initialRootCFrame }
 
 local function addLimb(name, size, color, c0, c1)
 	local part = Instance.new("Part")
@@ -53,6 +54,7 @@ local function addLimb(name, size, color, c0, c1)
 	part.CanCollide = false
 	part.Color = color
 	part.CFrame = root.CFrame * c0 * c1:Inverse()
+	initialPartCFrames[part] = part.CFrame
 	part.Parent = model
 
 	local motor = Instance.new("Motor6D")
@@ -195,17 +197,25 @@ local function stopAnimation(refreshPreview)
 		animationConnection = nil
 	end
 
-	root.CFrame = initialRootCFrame
 	for _, motor in pairs(motors) do
 		motor.Transform = CFrame.new()
-		if motor.Part0 and motor.Part1 then
-			motor.Part1.CFrame = motor.Part0.CFrame * motor.C0 * motor.C1:Inverse()
+	end
+
+	-- Let the joint solver consume the cleared Motor6D transforms first.
+	RunService.Heartbeat:Wait()
+
+	-- Restore every part from its captured rest pose, not from the animated frame.
+	for part, initialCFrame in pairs(initialPartCFrames) do
+		if part and part.Parent then
+			part.CFrame = initialCFrame
 		end
 	end
+	root.CFrame = initialRootCFrame
 
 	if refreshPreview ~= false and model.Parent then
 		Source:Refresh("LiveMotionRig")
 	end
+end
 end
 
 Section:Button({
