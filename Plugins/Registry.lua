@@ -19,7 +19,7 @@ return {
             Name = "Explorer",
             Description = "Browse asset hierarchies, inspect instances and properties.",
             Icon = "folder-tree",
-            Version = "0.2.0",
+            Version = "0.3.0",
             Author = "JustXLibrary",
             Entry = "Plugins/Explorer/init.lua",
             Manifest = "Plugins/Explorer/manifest.lua",
