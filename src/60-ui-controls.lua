@@ -71,8 +71,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.AutoButtonColor = false
         close.Text = "×"; close.Font = GB; close.TextSize = 18; close.TextColor3 = C.txt
         close.ZIndex = 95; close.Parent = head; corner(9,close); stroke(C.border,1,close)
-        close.MouseEnter:Connect(function() if not touchLast() then tw(close,{BackgroundColor3=C.btnHov},0.1) end end)
-        close.MouseLeave:Connect(function() tw(close,{BackgroundColor3=C.btnBg},0.1) end)
+        buttonFeedback(close,C.btnBg,C.btnHov)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
         local body = Instance.new("ScrollingFrame")
         body.Size = UDim2.new(1,-14,1,-51); body.Position = UDim2.new(0,7,0,48)
@@ -197,13 +196,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
             icon.Position = UDim2.new(0.5,0,0.5,0)
             icon.Size = UDim2.new(0,11,0,11)
             if icon:IsA("TextLabel") then icon.TextColor3 = ac else icon.ImageColor3 = ac end
-            button.MouseEnter:Connect(function()
-                if touchLast() then return end
-                tw(capsule,{BackgroundColor3=C.btnHov},0.1)
-            end)
-            button.MouseLeave:Connect(function()
-                tw(capsule,{BackgroundColor3=C.pHdr},0.1)
-            end)
+            buttonFeedback(button,C.pHdr,C.btnHov,nil,capsule)
             tip(button,help)
             button.MouseButton1Click:Connect(action)
             JL._metaButtons[#JL._metaButtons + 1] = button
@@ -230,13 +223,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         return r
     end
     local function hover(b,base,hov)
-        b.MouseEnter:Connect(function()
-            if touchLast() then return end
-            b:SetAttribute("JLHover", true); tw(b,{BackgroundColor3 = C.btnHov},.1)
-        end)
-        b.MouseLeave:Connect(function()
-            b:SetAttribute("JLHover", false); tw(b,{BackgroundColor3 = C.btnBg},.1)
-        end)
+        buttonFeedback(b,base,hov)
     end
     local function regFlag(flag,ctrl,noSave)
         if not flag then return end
@@ -446,18 +433,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         local row = newRow(fitH(o.Name or "Button", 12, GB, INNER - 20 - iconW, 32, 14))
         local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1,0,1,0); btn.BackgroundColor3 = C.btnBg; btn.BorderSizePixel = 0; btn.AutoButtonColor = false
         btn.Text = ""; btn.Font = GB; btn.TextSize = 12; btn.TextColor3 = C.txt; btn.Parent = row
-        corner(7,btn); stroke(C.border,1,btn); hover(btn, C.btnBg, C.btnHov); tip(btn, o.Tooltip)
+        corner(7,btn); stroke(C.border,1,btn); buttonFeedback(btn,C.btnBg,C.btnHov,ac); tip(btn, o.Tooltip)
         iconSlot(btn, o.Icon)
         newTxt({Parent=btn,Text=o.Name or "Button",Font=GB,Size=12,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-10 - iconW,1,0),Pos=UDim2.new(0,iconW,0,0)})
         local presses = 0
         local function press()
             presses = presses + 1
-            local fl = (btn:GetAttribute("JLFlash") or 0) + 1; btn:SetAttribute("JLFlash", fl)
-            tw(btn,{BackgroundColor3 = ac},.06)
-            trackedDelay(.14, function()
-                if btn:GetAttribute("JLFlash") ~= fl then return end
-                tw(btn,{BackgroundColor3 = btn:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
-            end)
             if o.Callback then pcall(o.Callback) end
         end
         local function activate()
@@ -645,7 +626,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
             mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = selectButton; corner(2,mk)
             optRefs[optName] = {opt = opt, button = selectButton, mark = mk, label = optLbl}
             mark(optRefs[optName], selected[optName] or false)
-            hover(opt, C.btnBg, C.btnHov)
+            buttonFeedback(selectButton,C.btnBg,C.btnHov,nil,opt)
             if o.OptionTooltips then tip(selectButton, o.OptionTooltips[optName]) end
             if meta then
                 local actionIndex = 0
