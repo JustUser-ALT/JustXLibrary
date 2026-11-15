@@ -1,9 +1,9 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-core-2"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-1"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-core-2"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-1"))()
 if not Library then
     warn("[Plugin Core Test] JustLib failed to load")
     return
@@ -23,7 +23,7 @@ local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUI.lua?v=20261116-core-2",
+    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-1",
 })
 if not Preview or Preview.IsStub then
     warn("[Plugin Core Test] Preview failed to initialize")
@@ -64,6 +64,14 @@ Tests:Button({
                 log("Uninstall " .. item.Id, okRemove, removeResult)
             end
         end
+    end,
+})
+
+Tests:Button({
+    Name = "Open Plugins tab",
+    Icon = "blocks",
+    Callback = function()
+        Preview:Open("Plugins")
     end,
 })
 
