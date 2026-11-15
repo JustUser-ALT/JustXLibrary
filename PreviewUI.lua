@@ -2272,6 +2272,7 @@ function M.new(bridge, opts)
 	self._viewers = {}
 	self._order = 0
 	self._type, self._query = "All", ""
+	self._sort = { Key = "Default", Descending = false }
 	attachControls(self)
 
 	table.insert(B.unloadHooks, function()
@@ -2965,6 +2966,30 @@ function M:_ctrlChanged()
 	if self._root and self._selected and self._drawerOpen then
 		self:_refreshDrawer(false)
 	end
+end
+
+-- Сортировка карточек: Default, Name, Type, Creator, Author, Created, Size, Version, Category.
+function M:SetSort(key, descending)
+	local allowed = {
+		Default = true, Name = true, Type = true, Creator = true, Author = true,
+		Created = true, Size = true, Version = true, Category = true, Id = true, AssetId = true,
+	}
+	if type(key) == "table" then
+		descending = key.Descending
+		key = key.Key or key.By
+	end
+	key = key or "Default"
+	if not allowed[key] then
+		return false
+	end
+	self._sort = { Key = key, Descending = descending == true }
+	self:_applyFilter()
+	return true
+end
+
+function M:GetSort()
+	local sort = self._sort or { Key = "Default", Descending = false }
+	return sort.Key, sort.Descending
 end
 
 function M:SetTitle(t)
@@ -3817,19 +3842,45 @@ function M:_applyFilter()
 	end
 	self._types = types
 	local q = string.lower(self._query or "")
-	local shown = 0
+	local visible = {}
 	for _, a in ipairs(self._assets) do
 		local c = self._cards[a]
 		if c then
 			local ok = tab ~= nil and self:_inScope(tab, a) and (self._type == "All" or a.Type == self._type) and matchQuery(a, q)
 			c.frame.Visible = ok
 			if ok then
-				shown = shown + 1
+				visible[#visible + 1] = a
 				self:_ensureThumb(a, c)
 			end
 		end
 	end
-	self._d.empty.Visible = (shown == 0)
+	local sort = self._sort or { Key = "Default", Descending = false }
+	local key = sort.Key or "Default"
+	table.sort(visible, function(a, b)
+		local av, bv
+		if key == "Default" then
+			av, bv = a._order or 0, b._order or 0
+		else
+			av, bv = a[key], b[key]
+			av = av == nil and "" or tostring(av)
+			bv = bv == nil and "" or tostring(bv)
+			av, bv = string.lower(av), string.lower(bv)
+		end
+		if av == bv then
+			return (a._order or 0) < (b._order or 0)
+		end
+		if sort.Descending then
+			return av > bv
+		end
+		return av < bv
+	end)
+	for index, asset in ipairs(visible) do
+		local card = self._cards[asset]
+		if card then
+			card.frame.LayoutOrder = index
+		end
+	end
+	self._d.empty.Visible = (#visible == 0)
 	self:_buildTypeList()
 	self:_markSelected(true)
 end
