@@ -216,7 +216,6 @@ local function stopAnimation(refreshPreview)
 		Source:Refresh("LiveMotionRig")
 	end
 end
-end
 
 Section:Button({
 	Name = "Start Full Rig Motion",
