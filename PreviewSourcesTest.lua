@@ -32,6 +32,7 @@ end
 local Models = Preview:Tab({ Name = "Live Models", Icon = "box" })
 local added = Instance.new("BindableEvent")
 local removed = Instance.new("BindableEvent")
+local changed = Instance.new("BindableEvent")
 local initial = {
     { Id = "npc-1", Name = "Test NPC", Type = "NPC", Description = "Loaded from GetItems." },
 }
@@ -43,6 +44,7 @@ local Source = Preview:Source({
         return initial
     end,
     Added = added.Event,
+    Changed = changed.Event,
     Removed = removed.Event,
     Key = function(item)
         return item.Id
@@ -85,6 +87,15 @@ Section:Button({
 })
 
 Section:Button({
+    Name = "Fire changed event",
+    Callback = function()
+        initial[1].Name = "NPC changed by event"
+        initial[1].Description = "The Changed signal remapped this existing card."
+        changed:Fire(initial[1])
+    end,
+})
+
+Section:Button({
     Name = "Remove first NPC",
     Callback = function()
         removed:Fire(initial[1])
@@ -122,4 +133,4 @@ Section:Button({
     end,
 })
 
-print("[Preview Sources Test] Ready. Check initial item, event add/remove, update, and dynamic Controllers page.")
+print("[Preview Sources Test] Ready. Check initial item, event add/change/remove, update, and dynamic Controllers page.")
