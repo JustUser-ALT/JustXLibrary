@@ -1739,9 +1739,13 @@ PAGES.preview = {
 		local selector = txt("TextButton", {
 			Name = "AnimationSelector", Text = animations[1].Name,
 			Font = GB, TextSize = 11, TextColor3 = C.txt,
-			BackgroundTransparency = 1, Position = U2(0, 10, 0, 5), Size = U2(0.58, -10, 0, 22),
+			BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.22,
+			Position = U2(0, 10, 0, 5), Size = U2(0.58, -18, 0, 23),
 			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
 		}, player)
+		corner(selector, 7)
+		stroke(selector, C.border, 1)
+		pad(selector, 8, 22, 0, 0)
 		local selectorArrow = mkIcon(selector, "chevron-down", 12, C.dim)
 		selectorArrow.AnchorPoint = V2(1, 0.5)
 		selectorArrow.Position = U2(1, -4, 0.5, 0)
@@ -1796,7 +1800,16 @@ PAGES.preview = {
 		local backButton = controlButton("SeekBack", "rewind", 70, 32)
 		local forwardButton = controlButton("SeekForward", "fast-forward", 108, 32)
 		local speedButton = controlButton("PlaybackSpeed", nil, 146, 40)
-		speedButton.Text = "1×"
+		speedButton.Font = Enum.Font.Code
+		speedButton.TextSize = 11
+		speedButton.Text = "1.0x"
+		local playIcon = mkIcon(playButton, "play", 13, C.txt)
+		playIcon.AnchorPoint = V2(0.5, 0.5)
+		playIcon.Position = U2(0.5, 0, 0.5, 0)
+		local pauseIcon = mkIcon(playButton, "pause", 13, C.txt)
+		pauseIcon.AnchorPoint = V2(0.5, 0.5)
+		pauseIcon.Position = U2(0.5, 0, 0.5, 0)
+		pauseIcon.Visible = false
 
 		local menu = new("Frame", {
 			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
@@ -1825,14 +1838,8 @@ PAGES.preview = {
 			timelineFill.Size = U2(alpha, 0, 1, 0)
 			timelineKnob.Position = U2(alpha, 0, 0.5, 0)
 			timeLabel.Text = formatTime(position) .. " / " .. formatTime(length)
-			local playIcon = playButton:FindFirstChildOfClass("ImageLabel") or playButton:FindFirstChildOfClass("TextLabel")
-			if playIcon then setIconColor(playIcon, C.txt) end
-			if playIcon then
-				playIcon:Destroy()
-			end
-			local icon = mkIcon(playButton, isPlaying and "pause" or "play", 13, C.txt)
-			icon.AnchorPoint = V2(0.5, 0.5)
-			icon.Position = U2(0.5, 0, 0.5, 0)
+			playIcon.Visible = not isPlaying
+			pauseIcon.Visible = isPlaying
 		end
 		local function stopCurrent()
 			if currentTrack then
@@ -1971,9 +1978,6 @@ PAGES.preview = {
 		selector.Activated:Connect(function()
 			if #animations > 0 then menu.Visible = not menu.Visible end
 		end)
-		selectorArrow.InputBegan:Connect(function(input)
-			if isPtr(input) and #animations > 0 then menu.Visible = not menu.Visible end
-		end)
 
 		playButton.Activated:Connect(function()
 			if not currentTrack and #animations > 0 then
@@ -2005,7 +2009,7 @@ PAGES.preview = {
 				if speed == playbackSpeed then nextIndex = i % #speeds + 1 break end
 			end
 			playbackSpeed = speeds[nextIndex]
-			speedButton.Text = tostring(playbackSpeed) .. "x"
+			speedButton.Text = string.format("%.2gx", playbackSpeed)
 			if isPlaying and currentTrack then
 				pcall(function() currentTrack:AdjustSpeed(playbackSpeed) end)
 			end
