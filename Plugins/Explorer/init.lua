@@ -142,14 +142,33 @@ function Explorer.Init(context)
             local expanded, selected = { [source] = true }, source
             local rowCount, maxRows, maxDepth = 0, 350, 24
             local function iconFor(item)
-                if item:IsA("Model") then return "◇" end
-                if item:IsA("Folder") then return "▰" end
-                if item:IsA("BasePart") then return "◻" end
-                if item:IsA("Animation") then return "▶" end
-                if item:IsA("Sound") then return "♫" end
-                if item:IsA("Attachment") then return "⊕" end
-                if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then return "⌘" end
-                return "◆"
+                if item:IsA("Model") then return "box" end
+                if item:IsA("Folder") then return "folder" end
+                if item:IsA("BasePart") then return "box-select" end
+                if item:IsA("Animation") then return "play" end
+                if item:IsA("Sound") then return "volume-2" end
+                if item:IsA("Attachment") then return "crosshair" end
+                if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then return "code" end
+                return "component"
+            end
+            local function addIcon(parent, name, size, color)
+                if type(context.Icon) == "function" then
+                    local ok, icon = pcall(context.Icon, parent, name, size, color)
+                    if ok and icon then return icon end
+                end
+                local glyphs = {
+                    box = "▣", folder = "▰", ["box-select"] = "□",
+                    play = "▶", ["volume-2"] = "♫", crosshair = "⊕",
+                    code = "⌘", component = "◆",
+                }
+                return make("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.fromOffset(size, size),
+                    Text = glyphs[name] or "◆",
+                    TextColor3 = color,
+                    TextScaled = true,
+                    Font = Enum.Font.GothamBold,
+                }, parent)
             end
             local function read(item, key)
                 local ok, value = pcall(function() return item[key] end)
@@ -286,14 +305,10 @@ function Explorer.Init(context)
                     arrow.Activated:Connect(function()
                         if hasChildren then expanded[item] = not expanded[item]; renderTree() end
                     end)
-                    make("TextLabel", {
-                        BackgroundTransparency = 1,
-                        Text = iconFor(item),
-                        Font = Enum.Font.GothamBold, TextSize = 12,
-                        TextColor3 = active and accent or (colors.dim or Color3.fromRGB(145, 150, 165)),
-                        Position = UDim2.fromOffset(indent + 20, 0),
-                        Size = UDim2.fromOffset(18, 27),
-                    }, row)
+                    local nodeIcon = addIcon(row, iconFor(item), 13,
+                        active and accent or (colors.dim or Color3.fromRGB(145, 150, 165)))
+                    nodeIcon.AnchorPoint = Vector2.new(0, 0.5)
+                    nodeIcon.Position = UDim2.new(0, indent + 22, 0.5, 0)
                     make("TextLabel", {
                         BackgroundTransparency = 1,
                         Text = tostring(item.Name),
