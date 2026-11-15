@@ -1,9 +1,9 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-core-1"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-core-2"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-core-1"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-core-2"))()
 if not Library then
     warn("[Plugin Core Test] JustLib failed to load")
     return
@@ -19,13 +19,22 @@ if not Window then
 end
 
 local Host = Window:Tab({Name = "Plugin Tests", Icon = "plug"})
+local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUI.lua?v=20261116-core-1",
+    Source = ROOT .. "PreviewUI.lua?v=20261116-core-2",
 })
 if not Preview or Preview.IsStub then
     warn("[Plugin Core Test] Preview failed to initialize")
+    Tests:Button({
+        Name = "Preview initialization failed",
+        Icon = "alert-circle",
+        Callback = function()
+            warn("[Plugin Core Test] Preview is unavailable")
+        end,
+    })
+    Window:Open()
     return
 end
 
@@ -36,10 +45,10 @@ end
 local available = Preview:GetPlugins()
 warn("[Plugin Core Test] Available plugins: " .. tostring(#available))
 for _, item in ipairs(available) do
-    log("Registry " .. item.Id, item.Id ~= nil and item.Entry ~= nil, item.Name .. " v" .. tostring(item.Version))
+    log("Registry " .. tostring(item.Id), item.Id ~= nil and item.Entry ~= nil, tostring(item.Name) .. " v" .. tostring(item.Version))
 end
 
-Host:Button({
+Tests:Button({
     Name = "Test install lifecycle",
     Icon = "download",
     Callback = function()
@@ -58,7 +67,7 @@ Host:Button({
     end,
 })
 
-Host:Button({
+Tests:Button({
     Name = "Show plugin states",
     Icon = "list",
     Callback = function()
@@ -68,7 +77,7 @@ Host:Button({
     end,
 })
 
-Host:Button({
+Tests:Button({
     Name = "Close Preview",
     Icon = "x",
     Callback = function()
@@ -78,4 +87,4 @@ Host:Button({
 
 Preview:Open()
 Window:Open()
-print("[Plugin Core Test] Loaded. Run 'Test install lifecycle' and inspect output.")
+warn("[Plugin Core Test] Loaded. Run 'Test install lifecycle' and inspect output.")
