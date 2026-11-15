@@ -1,9 +1,9 @@
 -- JustXLibrary Preview Structure Inspector Test
 -- Loader:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua?v=20261115-icon-trace-2"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua?v=20261115-icon-trace-3"))()
 
 local Library = loadstring(game:HttpGet(
-	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261115-icon-trace-2"
+	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261115-icon-trace-3"
 ))()
 
 if not Library then
@@ -40,10 +40,19 @@ if type(iconPack) == "table" then
 	end
 end
 
+local bridge = Library._bridge
+warn("[Structure Test] Library type: " .. typeof(Library))
+warn("[Structure Test] Bridge type: " .. typeof(bridge))
+warn("[Structure Test] Bridge icon type: " .. tostring(type(bridge) == "table" and typeof(bridge.icon) or "unavailable"))
+warn("[Structure Test] Direct resolver error field: " .. tostring(Library._lastIconResolveError))
+
 for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
-	local ok, value = pcall(function()
-		return Library._bridge.icon(iconName)
-	end)
+	local ok, value
+	if type(bridge) == "table" and type(bridge.icon) == "function" then
+		ok, value = pcall(bridge.icon, iconName)
+	else
+		ok, value = false, "bridge.icon is not a function"
+	end
 	local detail = typeof(value)
 	if type(value) == "table" then
 		detail = detail .. " Url=" .. tostring(value.Url or value.Image or value.ImageUrl or value.Texture or value.AssetId or value.Id) .. " Text=" .. tostring(value.Text or value.Glyph)
@@ -153,7 +162,7 @@ local function openPreview()
 		Title = "Structure Inspector",
 		Icon = "network",
 		TabName = "Preview",
-		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua?v=20261115-icon-trace-2",
+		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua?v=20261115-icon-trace-3",
 	})
 
 	if not Preview or Preview.IsStub then
