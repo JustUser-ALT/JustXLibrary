@@ -1645,11 +1645,12 @@ PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
+		local animations = discoverAnimations(a)
 		-- Use one full-width rounded preview surface instead of nested inset frames.
 		local topOffset = 0
 		local box = new("Frame", {
 			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
-			Size = U2(1, 0, 1, -108 - topOffset),
+			Size = U2(1, 0, 1, ( #animations > 0 and -108 or 0) - topOffset),
 			ClipsDescendants = true,
 		}, parent)
 		corner(box, 12)
@@ -1727,7 +1728,7 @@ PAGES.preview = {
 
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
-		local animations = discoverAnimations(a)
+		if #animations > 0 then
 		local player = new("Frame", {
 			Name = "AnimationTimelinePlayer", BackgroundColor3 = C.panel, BorderSizePixel = 0,
 			Position = U2(0, 0, 1, -100), Size = U2(1, 0, 0, 92), ClipsDescendants = false,
@@ -1736,25 +1737,25 @@ PAGES.preview = {
 		stroke(player, C.border, 1)
 
 		local selector = txt("TextButton", {
-			Name = "AnimationSelector", Text = #animations > 0 and animations[1].Name or "No animations found",
-			Font = GB, TextSize = 11, TextColor3 = #animations > 0 and C.txt or C.dim,
+			Name = "AnimationSelector", Text = animations[1].Name,
+			Font = GB, TextSize = 11, TextColor3 = C.txt,
 			BackgroundTransparency = 1, Position = U2(0, 10, 0, 5), Size = U2(0.58, -10, 0, 22),
 			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
 		}, player)
-		local selectorArrow = txt("TextLabel", {
-			Text = "⌄", Font = GB, TextSize = 13, TextColor3 = C.dim,
-			Position = U2(1, -18, 0, 0), Size = U2(0, 16, 1, 0), TextXAlignment = Enum.TextXAlignment.Center,
-		}, selector)
+		local selectorArrow = mkIcon(selector, "chevron-down", 12, C.dim)
+		selectorArrow.AnchorPoint = V2(1, 0.5)
+		selectorArrow.Position = U2(1, -4, 0.5, 0)
+		selectorArrow.Active = false
 
 		local timeLabel = txt("TextLabel", {
-			Name = "TimelineTime", Text = "00:00.00 / 00:00.00",
-			Font = GM, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
+			Name = "TimelineTime", Text = "0.00s / 0.00s",
+			Font = Enum.Font.Code, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
 			Position = U2(0.58, 0, 0, 5), Size = U2(0.42, -10, 0, 22),
 		}, player)
 
 		local timeline = new("Frame", {
 			Name = "TimelineTrack", BackgroundColor3 = C.slTrack, BorderSizePixel = 0,
-			Position = U2(0, 10, 0, 34), Size = U2(1, -20, 0, 6),
+			Position = U2(0, 12, 0, 35), Size = U2(1, -24, 0, 4),
 		}, player)
 		corner(timeline, 3)
 		local timelineFill = new("Frame", {
@@ -1764,7 +1765,7 @@ PAGES.preview = {
 		corner(timelineFill, 3)
 		local timelineKnob = new("Frame", {
 			Name = "TimelineKnob", BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0, 0, 0.5, 0), Size = UDim2.fromOffset(12, 12),
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0, 0, 0.5, 0), Size = UDim2.fromOffset(10, 10),
 		}, timeline)
 		corner(timelineKnob, 6)
 		local timelineHit = txt("TextButton", {
@@ -1773,23 +1774,29 @@ PAGES.preview = {
 		}, timeline)
 
 		local controls = new("Frame", {
-			BackgroundTransparency = 1, Position = U2(0, 8, 0, 48), Size = U2(1, -16, 0, 36),
+			BackgroundTransparency = 1, Position = U2(0, 10, 0, 47), Size = U2(1, -20, 0, 34),
 		}, player)
-		local function controlButton(name, textValue, x, width)
+		local function controlButton(name, iconName, x, width)
 			local button = txt("TextButton", {
-				Name = name, Text = textValue, Font = GB, TextSize = 13, TextColor3 = C.txt,
-				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.12,
-				Position = U2(0, x, 0, 2), Size = UDim2.fromOffset(width, 30),
+				Name = name, Text = "", Font = GB, TextSize = 11, TextColor3 = C.txt,
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.08,
+				Position = U2(0, x, 0, 2), Size = UDim2.fromOffset(width, 28),
 			}, controls)
 			corner(button, 7)
 			stroke(button, C.border, 1)
+			if iconName then
+				local icon = mkIcon(button, iconName, 13, C.txt)
+				icon.AnchorPoint = V2(0.5, 0.5)
+				icon.Position = U2(0.5, 0, 0.5, 0)
+			end
 			return button
 		end
-		local playButton = controlButton("PlayPause", "▶", 0, 30)
-		local stopButton = controlButton("Stop", "■", 34, 26)
-		local backButton = controlButton("SeekBack", "−1", 64, 32)
-		local forwardButton = controlButton("SeekForward", "+1", 100, 32)
-		local speedButton = controlButton("PlaybackSpeed", "1x", 136, 36)
+		local playButton = controlButton("PlayPause", "play", 0, 30)
+		local stopButton = controlButton("Stop", "square", 36, 28)
+		local backButton = controlButton("SeekBack", "rewind", 70, 32)
+		local forwardButton = controlButton("SeekForward", "fast-forward", 108, 32)
+		local speedButton = controlButton("PlaybackSpeed", nil, 146, 40)
+		speedButton.Text = "1×"
 
 		local menu = new("Frame", {
 			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
@@ -1818,7 +1825,14 @@ PAGES.preview = {
 			timelineFill.Size = U2(alpha, 0, 1, 0)
 			timelineKnob.Position = U2(alpha, 0, 0.5, 0)
 			timeLabel.Text = formatTime(position) .. " / " .. formatTime(length)
-			playButton.Text = isPlaying and "Ⅱ" or "▶"
+			local playIcon = playButton:FindFirstChildOfClass("ImageLabel") or playButton:FindFirstChildOfClass("TextLabel")
+			if playIcon then setIconColor(playIcon, C.txt) end
+			if playIcon then
+				playIcon:Destroy()
+			end
+			local icon = mkIcon(playButton, isPlaying and "pause" or "play", 13, C.txt)
+			icon.AnchorPoint = V2(0.5, 0.5)
+			icon.Position = U2(0.5, 0, 0.5, 0)
 		end
 		local function stopCurrent()
 			if currentTrack then
@@ -2025,12 +2039,7 @@ PAGES.preview = {
 			stopCurrent()
 			if menu and menu.Parent then menu:Destroy() end
 		end
-		if #animations > 0 then
-			loadAnimation(1)
-		else
-			selector.Text = "No animations found"
-			timeLabel.Text = "Add an Animation to the model"
-			playButton.TextColor3 = C.dim
+		loadAnimation(1)
 		end
 
 		if h then
