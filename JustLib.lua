@@ -5523,6 +5523,9 @@ function JL:Window(opts)
         if u.label then u.label.TextColor3 = col end
         u.ind.Visible = active
     end
+    table.insert(JL._themeHooks, function()
+        for tid in pairs(tabUI) do styleTab(tid, tid == activeTabId) end
+    end)
     local function switchToTab(id)
         local prev = activeTabId
         if prev == id then return end
