@@ -119,6 +119,66 @@ local UIPrimitives = createUIPrimitivesModule({
     Math = math
 })
 local touchLast = UIPrimitives.TouchLast
+local _buttonFeedbackStates = setmetatable({}, {__mode = "k"})
+local function buttonFeedback(button, baseColor, hoverColor, pressedColor, visualTarget)
+    if not button or not button:IsA("GuiObject") or _buttonFeedbackStates[button] then return end
+    visualTarget = visualTarget or button
+    baseColor = baseColor or visualTarget.BackgroundColor3
+    hoverColor = hoverColor or baseColor
+    pressedColor = pressedColor or baseColor:Lerp(hoverColor, 0.55)
+    local state = {BaseColor=baseColor, HoverColor=hoverColor, PressedColor=pressedColor, VisualTarget=visualTarget, Hovered=false, PressedInput=nil, Tween=nil, Token=0, Name="Idle"}
+    _buttonFeedbackStates[button] = state
+    local function setState(name, color, duration)
+        state.Token = state.Token + 1
+        state.Name = name
+        if button.Parent then button:SetAttribute("JLButtonState", name) end
+        if state.Tween then pcall(function() state.Tween:Cancel() end) end
+        if not visualTarget.Parent then return end
+        local ok, tween = pcall(function()
+            return createTween(visualTarget, TweenInfo.new(duration or 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3=color})
+        end)
+        if ok and tween then state.Tween=tween; tween:Play() end
+    end
+    button.MouseEnter:Connect(function()
+        if touchLast() then return end
+        state.Hovered=true
+        if not state.PressedInput then setState("Hover",state.HoverColor,0.1) end
+    end)
+    button.MouseLeave:Connect(function()
+        state.Hovered=false
+        if not state.PressedInput then setState("Idle",state.BaseColor,0.1) end
+    end)
+    button.InputBegan:Connect(function(input)
+        local kind=input.UserInputType
+        if kind~=Enum.UserInputType.MouseButton1 and kind~=Enum.UserInputType.Touch then return end
+        state.PressedInput=input
+        setState("Pressed",state.PressedColor,0.06)
+    end)
+end
+keep(UIS.InputEnded:Connect(function(input)
+    for button,state in pairs(_buttonFeedbackStates) do
+        local pressed=state.PressedInput
+        if pressed and (pressed==input or (pressed.UserInputType==Enum.UserInputType.MouseButton1 and input.UserInputType==Enum.UserInputType.MouseButton1)) then
+            state.PressedInput=nil
+            local targetName=state.Hovered and not touchLast() and "Hover" or "Idle"
+            local targetColor=targetName=="Hover" and state.HoverColor or state.BaseColor
+            state.Token=state.Token+1
+            local token=state.Token
+            state.Name="Released"
+            if button.Parent then button:SetAttribute("JLButtonState","Released") end
+            if state.Tween then pcall(function() state.Tween:Cancel() end) end
+            if state.VisualTarget.Parent then
+                local ok,tween=pcall(function()
+                    return createTween(state.VisualTarget,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=targetColor})
+                end)
+                if ok and tween then state.Tween=tween; tween:Play() end
+            end
+            trackedDelay(0.12,function()
+                if state.Token==token and button.Parent then state.Name=targetName; button:SetAttribute("JLButtonState",targetName) end
+            end)
+        end
+    end
+end))
 local corner = UIPrimitives.Corner
 local stroke = UIPrimitives.Stroke
 local pad = UIPrimitives.Pad
