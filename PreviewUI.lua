@@ -18,10 +18,12 @@
 		Key = function(player) return player.UserId end,
 		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
 		ObserveModels = true, -- автоматически отслеживать структуру и визуальные свойства моделей
-		-- или ObserveModels = { Debounce = 0.18, Properties = { "Color", "Size", "CFrame" } }
+		LiveMotion = true, -- опционально синхронизировать движение и позу выбранной модели (10–60 FPS, default 30)
+		-- или LiveMotion = { Rate = 30 }
 	})
 	Source:Add(key, data)  Source:Update(key, patch)  Source:Refresh(key)  Source:Get(key)
 	Source:SetAutoObserve(key, true/false)
+	Source:SetLiveMotion(key, true/false) -- синхронизировать движение/позу выбранной модели в большом Preview
 	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
@@ -469,6 +471,7 @@ M.Builders = Builders
 -- Модель вписывается с запасом, поэтому края не обрезаются.
 local function makeViewport(parent, src)
 	local model
+	local motionSource = src.Model
 	if src.Model then
 		local ok, c = pcall(function() return src.Model:Clone() end)
 		if not ok or not c then
@@ -495,6 +498,28 @@ local function makeViewport(parent, src)
 		end
 	else
 		return nil
+	end
+
+	local motionParts = {}
+	if motionSource then
+		local sourceParts = {}
+		local cloneParts = {}
+		if motionSource:IsA("BasePart") then
+			sourceParts[1] = motionSource
+		else
+			for _, d in ipairs(motionSource:GetDescendants()) do
+				if d:IsA("BasePart") then sourceParts[#sourceParts + 1] = d end
+			end
+		end
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then cloneParts[#cloneParts + 1] = d end
+		end
+		for i, sourcePart in ipairs(sourceParts) do
+			local clonePart = cloneParts[i]
+			if clonePart then
+				motionParts[#motionParts + 1] = { source = sourcePart, clone = clonePart }
+			end
+		end
 	end
 
 	local okb, cf, size = pcall(function() return model:GetBoundingBox() end)
@@ -535,6 +560,42 @@ local function makeViewport(parent, src)
 	local light = V3(-0.4, -1, 0.8)
 	local startYaw = -(src.Yaw or 0)
 	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0 }
+	if motionSource and #motionParts > 0 then
+		local ok, sourcePivot = pcall(function() return motionSource:GetPivot() end)
+		if ok then
+			local clonePivot = model:GetPivot()
+			h.motionSource = motionSource
+			h.motionModel = model
+			h.motionParts = motionParts
+			h.motionSourcePivot = sourcePivot
+			h.motionClonePivot = clonePivot
+			h.motionEnabled = src._liveMotionEnabled == true
+			h.motionRate = math.clamp(tonumber(src._liveMotionRate) or 30, 10, 60)
+			h.motionElapsed = 0
+			function h.syncMotion()
+				local source = h.motionSource
+				if not source or not source.Parent or not h.motionModel or not h.motionModel.Parent then
+					return false
+				end
+				local okPivot, currentPivot = pcall(function() return source:GetPivot() end)
+				if not okPivot then return false end
+				local targetPivot = currentPivot * h.motionSourcePivot:ToObjectSpace(h.motionClonePivot)
+				local okMove = pcall(function() h.motionModel:PivotTo(targetPivot) end)
+				if not okMove then return false end
+				for _, pair in ipairs(h.motionParts) do
+					if pair.source.Parent and pair.clone.Parent then
+						local okPart, relative = pcall(function()
+							return currentPivot:ToObjectSpace(pair.source.CFrame)
+						end)
+						if okPart then
+							pcall(function() pair.clone.CFrame = targetPivot * relative end)
+						end
+					end
+				end
+				return true
+			end
+		end
+	end
 
 	local function place()
 		local rot = ANG(0, h.yaw, 0)
@@ -1850,6 +1911,8 @@ function M:Source(o)
 		_pv = self, _tab = tab, _items = {}, _order = {},
 		Name = o.Name or tab.Name, _alive = true, _connections = {},
 		_map = o.Map, _key = o.Key,
+		_liveMotionOptions = type(o.LiveMotion) == "table" and o.LiveMotion or {},
+		_liveMotionDefault = o.LiveMotion == true or type(o.LiveMotion) == "table",
 		_observeOptions = type(o.ObserveModels) == "table" and o.ObserveModels or {},
 		_observeDefault = o.ObserveModels == true or type(o.ObserveModels) == "table",
 	}
@@ -1973,6 +2036,15 @@ function M:Source(o)
 		observeEntry(key)
 		return true
 	end
+	function source:SetLiveMotion(key, enabled)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return false end
+		entry._liveMotionEnabled = enabled == true
+		entry.asset._liveMotionEnabled = entry._liveMotionEnabled
+		entry.asset._liveMotionRate = entry._liveMotionRate
+		self._pv:_assetUpdated(entry.asset)
+		return true
+	end
 	function source:Add(key, data)
 		if not self._alive or key == nil then return nil end
 		local existing = self._items[key]
@@ -1992,15 +2064,22 @@ function M:Source(o)
 		if existing and existing.asset and existing.asset._alive then
 			existing.item = data == nil and key or data
 			existing.asset:Update(payload)
+			existing.asset._liveMotionEnabled = existing._liveMotionEnabled
+			existing.asset._liveMotionRate = existing._liveMotionRate
 			observeEntry(key)
 			return existing.asset
 		end
 		local item = data == nil and key or data
 		local asset = self._pv:_addAsset(self._tab, payload, true)
 		asset._source, asset._sourceKey = self, key
+		local motionRate = math.clamp(tonumber(self._liveMotionOptions.Rate) or 30, 10, 60)
+		asset._liveMotionEnabled = self._liveMotionDefault
+		asset._liveMotionRate = motionRate
 		self._items[key] = {
 			asset = asset, item = item,
 			_observeEnabled = self._observeDefault,
+			_liveMotionEnabled = self._liveMotionDefault,
+			_liveMotionRate = motionRate,
 			_observeConnections = {}, _observeToken = 0,
 		}
 		self._order[#self._order + 1] = key
@@ -2902,6 +2981,15 @@ function M:_build()
 		end
 		for h, st in pairs(self._viewers) do
 			h.step(dt, self._auto and not h.manualOnly and not st.dragging and os.clock() > st.resumeAt, self._speed)
+			if h.motionEnabled and h.motionSync and h.manualOnly and self._drawerOpen
+				and self._selected == h.asset then
+				h.motionElapsed = h.motionElapsed + dt
+				local interval = 1 / (h.motionRate or 30)
+				if h.motionElapsed >= interval then
+					h.motionElapsed = h.motionElapsed % interval
+					h.syncMotion()
+				end
+			end
 		end
 	end)
 
