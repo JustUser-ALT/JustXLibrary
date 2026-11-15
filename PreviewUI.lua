@@ -3896,7 +3896,7 @@ function M:_renderGroupedCards(visible)
 	local field = self._grouping
 	for _, asset in ipairs(visible) do
 		local value = asset[field]
-		local name = value == nil or tostring(value) == "" and "Unknown" or tostring(value)
+		local name = (value == nil or tostring(value) == "") and "Unknown" or tostring(value)
 		if not grouped[name] then
 			grouped[name] = {}
 			names[#names + 1] = name
