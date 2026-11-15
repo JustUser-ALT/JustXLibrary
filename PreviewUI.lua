@@ -2204,14 +2204,50 @@ PAGES.preview = {
 -- конструктор и данные
 --------------------------------------------------------------------
 local function matchQuery(a, q)
+	q = string.lower(tostring(q or "")):gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
 	if q == "" then
 		return true
 	end
-	local hay = string.lower(tostring(a.Name or "") .. " " .. tostring(a.Type or "") .. " " .. tostring(a.Creator or ""))
-	if type(a.Tags) == "table" then
-		hay = hay .. " " .. string.lower(table.concat(a.Tags, " "))
+	local values = {}
+	local function add(value)
+		if value == nil then return end
+		local kind = type(value)
+		if kind == "string" or kind == "number" then
+			values[#values + 1] = tostring(value)
+		end
 	end
-	return string.find(hay, q, 1, true) ~= nil
+	for _, key in ipairs({
+		"Name", "Type", "Creator", "Author", "Description", "Version",
+		"Size", "Created", "Category", "SubType", "DisplayName",
+		"Source", "Id", "AssetId",
+	}) do
+		add(a[key])
+	end
+	for _, key in ipairs({ "Tags", "Keywords" }) do
+		local list = a[key]
+		if type(list) == "table" then
+			for _, value in pairs(list) do add(value) end
+		else
+			add(list)
+		end
+	end
+	if type(a.Info) == "table" then
+		for _, row in pairs(a.Info) do
+			if type(row) == "table" then
+				add(row.Label)
+				add(row.Value)
+			else
+				add(row)
+			end
+		end
+	end
+	local hay = string.lower(table.concat(values, " "))
+	for term in string.gmatch(q, "%S+") do
+		if not string.find(hay, term, 1, true) then
+			return false
+		end
+	end
+	return true
 end
 
 function M.new(bridge, opts)
