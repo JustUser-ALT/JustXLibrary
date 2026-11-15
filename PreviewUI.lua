@@ -18,7 +18,7 @@
 		Key = function(player) return player.UserId end,
 		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
 	})
-	Source:Add(key, data)  Source:Update(key, patch)  Source:Get(key)
+	Source:Add(key, data)  Source:Update(key, patch)  Source:Refresh(key)  Source:Get(key)
 	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
@@ -1877,12 +1877,14 @@ function M:Source(o)
 			payload = { Name = tostring(payload) }
 		end
 		if existing and existing.asset and existing.asset._alive then
+			existing.item = data == nil and key or data
 			existing.asset:Update(payload)
 			return existing.asset
 		end
+		local item = data == nil and key or data
 		local asset = self._pv:_addAsset(self._tab, payload, true)
 		asset._source, asset._sourceKey = self, key
-		self._items[key] = { asset = asset }
+		self._items[key] = { asset = asset, item = item }
 		self._order[#self._order + 1] = key
 		self._pv:_assetsChanged()
 		return asset
@@ -1891,6 +1893,24 @@ function M:Source(o)
 		local entry = self._items[key]
 		if not entry or not entry.asset or not entry.asset._alive then return nil end
 		entry.asset:Update(patch or {})
+		return entry.asset
+	end
+	function source:Refresh(key)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return nil end
+		local payload = entry.item
+		if type(self._map) == "function" then
+			local ok, mapped = pcall(self._map, payload, key, self)
+			if not ok then
+				warn("[PreviewUI] source map failed: " .. tostring(mapped))
+				return nil
+			end
+			payload = mapped
+		end
+		if type(payload) ~= "table" then
+			payload = { Name = tostring(payload) }
+		end
+		entry.asset:Update(payload)
 		return entry.asset
 	end
 	function source:Remove(key)
