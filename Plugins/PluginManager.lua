@@ -115,6 +115,7 @@ function Manager:_context(id)
     local manager = self
     local context = {
         Preview = self.Preview,
+        Bridge = self.Bridge,
         Plugins = self,
         Id = id,
         Notify = function(title, description, kind)
