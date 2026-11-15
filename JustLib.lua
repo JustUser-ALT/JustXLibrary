@@ -1080,6 +1080,66 @@ local UIPrimitives = createUIPrimitivesModule({
     Math = math
 })
 local touchLast = UIPrimitives.TouchLast
+local _buttonFeedbackStates = setmetatable({}, {__mode = "k"})
+local function buttonFeedback(button, baseColor, hoverColor, pressedColor, visualTarget)
+    if not button or not button:IsA("GuiObject") or _buttonFeedbackStates[button] then return end
+    visualTarget = visualTarget or button
+    baseColor = baseColor or visualTarget.BackgroundColor3
+    hoverColor = hoverColor or baseColor
+    pressedColor = pressedColor or baseColor:Lerp(hoverColor, 0.55)
+    local state = {BaseColor=baseColor, HoverColor=hoverColor, PressedColor=pressedColor, VisualTarget=visualTarget, Hovered=false, PressedInput=nil, Tween=nil, Token=0, Name="Idle"}
+    _buttonFeedbackStates[button] = state
+    local function setState(name, color, duration)
+        state.Token = state.Token + 1
+        state.Name = name
+        if button.Parent then button:SetAttribute("JLButtonState", name) end
+        if state.Tween then pcall(function() state.Tween:Cancel() end) end
+        if not visualTarget.Parent then return end
+        local ok, tween = pcall(function()
+            return createTween(visualTarget, TweenInfo.new(duration or 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3=color})
+        end)
+        if ok and tween then state.Tween=tween; tween:Play() end
+    end
+    button.MouseEnter:Connect(function()
+        if touchLast() then return end
+        state.Hovered=true
+        if not state.PressedInput then setState("Hover",state.HoverColor,0.1) end
+    end)
+    button.MouseLeave:Connect(function()
+        state.Hovered=false
+        if not state.PressedInput then setState("Idle",state.BaseColor,0.1) end
+    end)
+    button.InputBegan:Connect(function(input)
+        local kind=input.UserInputType
+        if kind~=Enum.UserInputType.MouseButton1 and kind~=Enum.UserInputType.Touch then return end
+        state.PressedInput=input
+        setState("Pressed",state.PressedColor,0.06)
+    end)
+end
+keep(UIS.InputEnded:Connect(function(input)
+    for button,state in pairs(_buttonFeedbackStates) do
+        local pressed=state.PressedInput
+        if pressed and (pressed==input or (pressed.UserInputType==Enum.UserInputType.MouseButton1 and input.UserInputType==Enum.UserInputType.MouseButton1)) then
+            state.PressedInput=nil
+            local targetName=state.Hovered and not touchLast() and "Hover" or "Idle"
+            local targetColor=targetName=="Hover" and state.HoverColor or state.BaseColor
+            state.Token=state.Token+1
+            local token=state.Token
+            state.Name="Released"
+            if button.Parent then button:SetAttribute("JLButtonState","Released") end
+            if state.Tween then pcall(function() state.Tween:Cancel() end) end
+            if state.VisualTarget.Parent then
+                local ok,tween=pcall(function()
+                    return createTween(state.VisualTarget,TweenInfo.new(0.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=targetColor})
+                end)
+                if ok and tween then state.Tween=tween; tween:Play() end
+            end
+            trackedDelay(0.12,function()
+                if state.Token==token and button.Parent then state.Name=targetName; button:SetAttribute("JLButtonState",targetName) end
+            end)
+        end
+    end
+end))
 local corner = UIPrimitives.Corner
 local stroke = UIPrimitives.Stroke
 local pad = UIPrimitives.Pad
@@ -3258,18 +3318,8 @@ local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet
         local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,26); b.Position = UDim2.new(0,x,0.5,-13); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
         b.Text = cfg.Name or "Button"; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.TextWrapped = true; b.Parent = parent
         corner(6,b); stroke(C.border,1,b)
-        b.MouseEnter:Connect(function()
-            if touchLast() then return end
-            b:SetAttribute("JLHover", true); tw(b,{BackgroundColor3 = C.btnHov},.1)
-        end)
-        b.MouseLeave:Connect(function() b:SetAttribute("JLHover", false); tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+        buttonFeedback(b,C.btnBg,C.btnHov,ac)
         b.MouseButton1Click:Connect(function()
-            local fl = (b:GetAttribute("JLFlash") or 0) + 1; b:SetAttribute("JLFlash", fl)
-            tw(b,{BackgroundColor3 = ac},.06)
-            trackedDelay(.14, function()
-                if b:GetAttribute("JLFlash") ~= fl then return end
-                tw(b,{BackgroundColor3 = b:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
-            end)
             if cfg.Callback then pcall(cfg.Callback) end
         end)
         return {Instance = b}
@@ -3349,8 +3399,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.AutoButtonColor = false
         close.Text = "×"; close.Font = GB; close.TextSize = 18; close.TextColor3 = C.txt
         close.ZIndex = 95; close.Parent = head; corner(9,close); stroke(C.border,1,close)
-        close.MouseEnter:Connect(function() if not touchLast() then tw(close,{BackgroundColor3=C.btnHov},0.1) end end)
-        close.MouseLeave:Connect(function() tw(close,{BackgroundColor3=C.btnBg},0.1) end)
+        buttonFeedback(close,C.btnBg,C.btnHov)
         close.MouseButton1Click:Connect(function() overlay:Destroy() end)
         local body = Instance.new("ScrollingFrame")
         body.Size = UDim2.new(1,-14,1,-51); body.Position = UDim2.new(0,7,0,48)
@@ -3475,13 +3524,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
             icon.Position = UDim2.new(0.5,0,0.5,0)
             icon.Size = UDim2.new(0,11,0,11)
             if icon:IsA("TextLabel") then icon.TextColor3 = ac else icon.ImageColor3 = ac end
-            button.MouseEnter:Connect(function()
-                if touchLast() then return end
-                tw(capsule,{BackgroundColor3=C.btnHov},0.1)
-            end)
-            button.MouseLeave:Connect(function()
-                tw(capsule,{BackgroundColor3=C.pHdr},0.1)
-            end)
+            buttonFeedback(button,C.pHdr,C.btnHov,nil,capsule)
             tip(button,help)
             button.MouseButton1Click:Connect(action)
             JL._metaButtons[#JL._metaButtons + 1] = button
@@ -3508,13 +3551,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         return r
     end
     local function hover(b,base,hov)
-        b.MouseEnter:Connect(function()
-            if touchLast() then return end
-            b:SetAttribute("JLHover", true); tw(b,{BackgroundColor3 = C.btnHov},.1)
-        end)
-        b.MouseLeave:Connect(function()
-            b:SetAttribute("JLHover", false); tw(b,{BackgroundColor3 = C.btnBg},.1)
-        end)
+        buttonFeedback(b,base,hov)
     end
     local function regFlag(flag,ctrl,noSave)
         if not flag then return end
@@ -3724,18 +3761,12 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
         local row = newRow(fitH(o.Name or "Button", 12, GB, INNER - 20 - iconW, 32, 14))
         local btn = Instance.new("TextButton"); btn.Size = UDim2.new(1,0,1,0); btn.BackgroundColor3 = C.btnBg; btn.BorderSizePixel = 0; btn.AutoButtonColor = false
         btn.Text = ""; btn.Font = GB; btn.TextSize = 12; btn.TextColor3 = C.txt; btn.Parent = row
-        corner(7,btn); stroke(C.border,1,btn); hover(btn, C.btnBg, C.btnHov); tip(btn, o.Tooltip)
+        corner(7,btn); stroke(C.border,1,btn); buttonFeedback(btn,C.btnBg,C.btnHov,ac); tip(btn, o.Tooltip)
         iconSlot(btn, o.Icon)
         newTxt({Parent=btn,Text=o.Name or "Button",Font=GB,Size=12,Wrap=true,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-10 - iconW,1,0),Pos=UDim2.new(0,iconW,0,0)})
         local presses = 0
         local function press()
             presses = presses + 1
-            local fl = (btn:GetAttribute("JLFlash") or 0) + 1; btn:SetAttribute("JLFlash", fl)
-            tw(btn,{BackgroundColor3 = ac},.06)
-            trackedDelay(.14, function()
-                if btn:GetAttribute("JLFlash") ~= fl then return end
-                tw(btn,{BackgroundColor3 = btn:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
-            end)
             if o.Callback then pcall(o.Callback) end
         end
         local function activate()
@@ -3923,7 +3954,7 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
             mk.BackgroundColor3 = ac; mk.BorderSizePixel = 0; mk.Parent = selectButton; corner(2,mk)
             optRefs[optName] = {opt = opt, button = selectButton, mark = mk, label = optLbl}
             mark(optRefs[optName], selected[optName] or false)
-            hover(opt, C.btnBg, C.btnHov)
+            buttonFeedback(selectButton,C.btnBg,C.btnHov,nil,opt)
             if o.OptionTooltips then tip(selectButton, o.OptionTooltips[optName]) end
             if meta then
                 local actionIndex = 0
@@ -5766,12 +5797,7 @@ function JL:Window(opts)
     end
     refreshSubscriptionBadge()
     JL:OnTierChanged(refreshSubscriptionBadge)
-    subscriptionBadge.MouseEnter:Connect(function()
-        if not touchLast() then tw(subscriptionBadge,{BackgroundColor3 = C.btnHov},.1) end
-    end)
-    subscriptionBadge.MouseLeave:Connect(function()
-        tw(subscriptionBadge,{BackgroundColor3 = C.panel},.1)
-    end)
+    buttonFeedback(subscriptionBadge,C.panel,C.btnHov)
     subscriptionBadge.MouseButton1Click:Connect(function()
         JL:OpenSubscriptions()
     end)
@@ -5819,8 +5845,7 @@ function JL:Window(opts)
         button.Parent = win
         button.ZIndex = 80
         corner(8,button); stroke(C.border,1,button)
-        button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3 = C.btnHov},.1) end end)
-        button.MouseLeave:Connect(function() tw(button,{BackgroundColor3 = C.panel},.1) end)
+        buttonFeedback(button,C.panel,C.btnHov)
         button.MouseButton1Click:Connect(callback)
         return button
     end
@@ -5970,8 +5995,7 @@ function JL:Window(opts)
             corner(2,resultDot)
             newTxt({Parent=item,Text=tostring(entry.Name),Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-28,0,17),Pos=UDim2.new(0,12,0,6),Z=84})
             newTxt({Parent=item,Text=(entry.Path ~= "" and entry.Path or "General") .. (entry.ParentName and ("  ›  " .. entry.ParentName) or "") .. "   ·   " .. tostring(entry.Kind),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-28,0,14),Pos=UDim2.new(0,12,0,27),Z=84})
-            item.MouseEnter:Connect(function() if not touchLast() then tw(item,{BackgroundColor3=C.btnHov},.1) end end)
-            item.MouseLeave:Connect(function() tw(item,{BackgroundColor3=C.btnBg},.1) end)
+            buttonFeedback(item,C.btnBg,C.btnHov)
             item.MouseButton1Click:Connect(function()
                 searchPanel.Visible = false
                 searchButton.Visible = true
@@ -6903,8 +6927,7 @@ function JL:Window(opts)
             local b = Instance.new("TextButton"); b.Size = UDim2.new(0,26,0,26); b.Position = UDim2.new(1,x,0.5,-13); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.Text = ""
             b.AutoButtonColor = false; b.ZIndex = 4; b.Parent = hdr; corner(7, b); stroke(C.border, 1, b)
             local ic = spIcon(kind, b, 14, C.dim, 5); ic.Position = UDim2.new(0.5,-7,0.5,-7)
-            b.MouseEnter:Connect(function() if not touchLast() then tw(b,{BackgroundColor3 = C.btnHov},.12) end end)
-            b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.12) end)
+            buttonFeedback(b,C.btnBg,C.btnHov)
             b.MouseButton1Click:Connect(fn)
             return b
         end
@@ -7486,8 +7509,7 @@ function JL:Window(opts)
             for i,nm in ipairs(names) do
                 local b = Instance.new("TextButton"); b.Size = UDim2.new(1,0,0,24); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
                 b.Text = nm; b.Font = GB; b.TextSize = 11; b.TextColor3 = (nm == selectedProfile) and ACC or C.txt; b.LayoutOrder = i; b.Parent = list2; corner(5,b)
-                b.MouseEnter:Connect(function() if touchLast() then return end tw(b,{BackgroundColor3 = C.btnHov},.1) end)
-                b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+                buttonFeedback(b,C.btnBg,C.btnHov)
                 b.MouseButton1Click:Connect(function() selectedProfile = nm; selLbl.Text = nm; closeList2() end)
             end
         end
@@ -8243,8 +8265,7 @@ function JL:Window(opts)
             local function actBtn(parentRow,order2,label,w,cb)
                 local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,26); b.LayoutOrder = order2; b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
                 b.Text = label; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.Parent = parentRow; corner(6,b); stroke(C.border,1,b)
-                b.MouseEnter:Connect(function() if touchLast() then return end tw(b,{BackgroundColor3 = C.btnHov},.1) end)
-                b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+                buttonFeedback(b,C.btnBg,C.btnHov)
                 b.MouseButton1Click:Connect(cb)
                 return b
             end
