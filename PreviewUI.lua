@@ -3807,12 +3807,8 @@ function M:_build()
 	pad(grid, 4, 4, 4, 12)
 	self._grid = grid
 
-	local emptyL = txt("TextLabel", {
-		Text = "Nothing found", TextSize = 13, TextColor3 = C.dim, Visible = false,
-		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 22), Size = UDim2.fromOffset(240, 20),
-	}, card)
-	self._d = { empty = emptyL, ddText = ddText, ddList = ddList, ddArrow = filterArrow }
-	self._pluginChrome = { search = searchBox, filter = ddButton, close = closeBtn, grid = grid, empty = emptyL }
+	self._d = { ddText = ddText, ddList = ddList, ddArrow = filterArrow }
+	self._pluginChrome = { search = searchBox, filter = ddButton, close = closeBtn, grid = grid }
 	if self._pluginsTab then self:_buildPluginsSurface(card) end
 
 	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
@@ -4414,7 +4410,6 @@ function M:_applyFilter()
 			end
 		end
 	end
-	self._d.empty.Visible = #self._assets == 0
 	self:_buildTypeList()
 	self:_markSelected(true)
 end
