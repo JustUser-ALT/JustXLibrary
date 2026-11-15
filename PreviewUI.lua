@@ -17,11 +17,14 @@
 		Added = Players.PlayerAdded, Changed = characterChanged, Removed = Players.PlayerRemoving,
 		Key = function(player) return player.UserId end,
 		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
+		Discover = { Enabled = true, Interval = 2, RemoveMissing = true }, -- периодическая сверка коллекции (0.5–30 сек)
 		ObserveModels = true, -- автоматически отслеживать структуру и визуальные свойства моделей
 		LiveMotion = true, -- опционально синхронизировать движение и позу выбранной модели (10–60 FPS, default 30)
 		-- или LiveMotion = { Rate = 30 }
 	})
 	Source:Add(key, data)  Source:Update(key, patch)  Source:Refresh(key)  Source:Get(key)
+	Source:Sync() -- принудительно сверить GetItems с текущими карточками
+	Source:SetDiscovery(true/false)  Source:IsDiscoveryEnabled()
 	Source:SetAutoObserve(key, true/false)
 	Source:SetLiveMotion(key, true/false) -- синхронизировать движение/позу выбранной модели в большом Preview
 	Source:Remove(key)  Source:Clear()  Source:Destroy()
