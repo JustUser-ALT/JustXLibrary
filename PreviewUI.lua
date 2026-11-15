@@ -4744,9 +4744,6 @@ function M:_pagesFor(asset)
 		out[#out + 1] = PAGES.controllers
 	end
 	if hasPreview(asset) then
-		if asset.Model ~= nil or type(asset.Build) == "function" then
-			-- Model inspection is provided by the optional Explorer plugin.
-		end
 		out[#out + 1] = PAGES.preview
 	end
 	for _, p in ipairs(self._pages) do
