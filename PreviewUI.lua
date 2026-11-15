@@ -1506,6 +1506,57 @@ PAGES.controllers = {
 	end,
 }
 
+-- Discover Animation instances stored in the model and animations exposed by its Animators.
+local function discoverAnimations(asset)
+	local model = asset and asset.Model
+	if typeof(model) ~= "Instance" then
+		return {}
+	end
+	local found, seen = {}, {}
+	local function add(animation, state)
+		if not animation or not animation:IsA("Animation") then return end
+		local id = tostring(animation.AnimationId or "")
+		local key = id ~= "" and id or animation:GetFullName()
+		if seen[key] then
+			if state == "Playing" then
+				seen[key].State = "Playing"
+			end
+			return
+		end
+		local entry = {
+			Name = animation.Name ~= "" and animation.Name or "Animation",
+			AnimationId = id,
+			State = state or "Available",
+			}
+			seen[key] = entry
+			found[#found + 1] = entry
+	end
+	local descendants = model:GetDescendants()
+	if model:IsA("Animation") then
+		add(model, "Available")
+	end
+	for _, instance in ipairs(descendants) do
+		if instance:IsA("Animation") then
+			add(instance, "Available")
+		elseif instance:IsA("Animator") then
+			local ok, tracks = pcall(function()
+					return instance:GetPlayingAnimationTracks()
+				end)
+			if ok then
+				for _, track in ipairs(tracks) do
+					local animation
+					pcall(function() animation = track.Animation end)
+					if animation then add(animation, "Playing") end
+				end
+			end
+		end
+	end
+	table.sort(found, function(a, b)
+		return string.lower(a.Name) < string.lower(b.Name)
+	end)
+	return found
+end
+
 -- Info: название, автор, аватарка, даты и любые свои строки
 PAGES.info = {
 	id = "info", name = "Info", icon = "info",
@@ -1585,6 +1636,50 @@ PAGES.info = {
 			end
 		end
 		new("Frame", { BackgroundTransparency = 1, Size = U2(1, 0, 0, 12), LayoutOrder = order }, content)
+	end,
+}
+
+-- Animations: read-only discovery for Animation instances and active Animator tracks.
+PAGES.animations = {
+	id = "animations", name = "Animations", icon = "clapperboard",
+	build = function(parent, asset, pv)
+		local _, content = pageScroll(parent, pv)
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
+		local animations = discoverAnimations(asset)
+		if #animations == 0 then
+			txt("TextLabel", {
+				Text = "No animations found on this model.", TextSize = 12, TextColor3 = C.dim,
+				TextWrapped = true, Size = U2(1, 0, 0, 42), LayoutOrder = 1,
+			}, content)
+			return
+		end
+		txt("TextLabel", {
+			Text = tostring(#animations) .. " animation" .. (#animations == 1 and "" or "s") .. " discovered",
+			Font = GB, TextSize = 12, TextColor3 = C.dim, Size = U2(1, 0, 0, 22), LayoutOrder = 1,
+		}, content)
+		for i, animation in ipairs(animations) do
+			local row = new("Frame", {
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.12,
+				Size = U2(1, 0, 0, 54), LayoutOrder = i + 1,
+			}, content)
+			corner(row, 8)
+			stroke(row, C.border, 1)
+			local icon = mkIcon(row, "film", 16, ACCENTS[1])
+			icon.Position = UDim2.fromOffset(10, 10)
+			txt("TextLabel", {
+				Text = animation.Name, Font = GB, TextSize = 12, TextColor3 = C.txt,
+				Position = UDim2.fromOffset(34, 7), Size = U2(1, -44, 0, 17),
+				TextTruncate = Enum.TextTruncate.AtEnd,
+			}, row)
+			local idText = animation.AnimationId ~= "" and animation.AnimationId or "Animation ID unavailable"
+			txt("TextLabel", {
+				Text = idText .. (animation.State == "Playing" and "  ·  Playing" or ""),
+				Font = GM, TextSize = 10, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(34, 27), Size = U2(1, -44, 0, 16),
+				TextTruncate = Enum.TextTruncate.AtEnd,
+			}, row)
+		end
+		new("Frame", { BackgroundTransparency = 1, Size = U2(1, 0, 0, 8), LayoutOrder = #animations + 2 }, content)
 	end,
 }
 
@@ -3667,6 +3762,9 @@ function M:_pagesFor(asset)
 	local hasVariants = asset and type(asset._variants) == "table" and #asset._variants > 1
 	if #controls > 0 or hasVariants then
 		out[#out + 1] = PAGES.controllers
+	end
+	if #discoverAnimations(asset) > 0 then
+		out[#out + 1] = PAGES.animations
 	end
 	if hasPreview(asset) then
 		out[#out + 1] = PAGES.preview
