@@ -2273,6 +2273,10 @@ function M.new(bridge, opts)
 	self._order = 0
 	self._type, self._query = "All", ""
 	self._sort = { Key = "Default", Descending = false }
+	self._grouping = "None"
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	self._groupListLayout = nil
 	attachControls(self)
 
 	table.insert(B.unloadHooks, function()
@@ -3236,7 +3240,14 @@ function M:_fitGrid()
 		return
 	end
 	self._cw, self._th, self._cols = cw, th, cols
-	self._gridLayout.CellSize = UDim2.fromOffset(cw, th + 44)
+	if self._gridLayout then
+		self._gridLayout.CellSize = UDim2.fromOffset(cw, th + 44)
+	end
+	for _, layout in ipairs(self._groupLayouts or {}) do
+		if layout and layout.Parent then
+			layout.CellSize = UDim2.fromOffset(cw, th + 44)
+		end
+	end
 	for _, c in pairs(self._cards) do
 		self:_applyCardGeo(c)
 	end
@@ -3825,6 +3836,152 @@ function M:_buildTypeList()
 	d.ddText.Text = cleanDropdownLabel(self._type)
 end
 
+function M:_useFlatGrid()
+	if not self._grid then
+		return
+	end
+	for _, c in pairs(self._cards) do
+		if c.frame and c.frame.Parent ~= self._grid then
+			c.frame.Parent = self._grid
+		end
+	end
+	for _, frame in ipairs(self._groupFrames or {}) do
+		if frame and frame.Parent then
+			frame:Destroy()
+		end
+	end
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	if self._groupListLayout then
+		self._groupListLayout:Destroy()
+		self._groupListLayout = nil
+	end
+	if not self._gridLayout or not self._gridLayout.Parent then
+		self._gridLayout = new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(self._cw or 140, (self._th or 90) + 44),
+			CellPadding = UDim2.fromOffset(8, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, self._grid)
+	end
+end
+
+function M:_renderGroupedCards(visible)
+	if not self._grid then
+		return
+	end
+	for _, c in pairs(self._cards) do
+		if c.frame and c.frame.Parent ~= self._grid then
+			c.frame.Parent = self._grid
+		end
+	end
+	for _, frame in ipairs(self._groupFrames or {}) do
+		if frame and frame.Parent then
+			frame:Destroy()
+		end
+	end
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	if self._gridLayout then
+		self._gridLayout:Destroy()
+		self._gridLayout = nil
+	end
+	if not self._groupListLayout or not self._groupListLayout.Parent then
+		self._groupListLayout = new("UIListLayout", {
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 10),
+		}, self._grid)
+	end
+
+	local grouped, names = {}, {}
+	local field = self._grouping
+	for _, asset in ipairs(visible) do
+		local value = asset[field]
+		local name = value == nil or tostring(value) == "" and "Unknown" or tostring(value)
+		if not grouped[name] then
+			grouped[name] = {}
+			names[#names + 1] = name
+		end
+		grouped[name][#grouped[name] + 1] = asset
+	end
+	table.sort(names, function(a, b)
+		return string.lower(a) < string.lower(b)
+	end)
+
+	for groupIndex, name in ipairs(names) do
+		local group = new("Frame", {
+			Name = "Group_" .. tostring(groupIndex),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, -8, 0, 28),
+			LayoutOrder = groupIndex,
+		}, self._grid)
+		self._groupFrames[#self._groupFrames + 1] = group
+		local heading = txt("TextLabel", {
+			Text = name,
+			Font = GB,
+			TextSize = 11,
+			TextColor3 = C.dim,
+			Position = UDim2.fromOffset(5, 0),
+			Size = UDim2.new(1, -10, 0, 18),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, group)
+		new("Frame", {
+			BackgroundColor3 = C.divLine,
+			BackgroundTransparency = 0.45,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(5, 20),
+			Size = UDim2.new(1, -10, 0, 1),
+		}, group)
+		local grid = new("Frame", {
+			Name = "GroupCards",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(4, 25),
+			Size = UDim2.new(1, -8, 0, 0),
+		}, group)
+		local layout = new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(self._cw or 140, (self._th or 90) + 44),
+			CellPadding = UDim2.fromOffset(8, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, grid)
+		self._groupLayouts[#self._groupLayouts + 1] = layout
+		local function updateHeight()
+			if group.Parent and layout.Parent then
+				local height = layout.AbsoluteContentSize.Y
+				grid.Size = UDim2.new(1, -8, 0, height)
+				group.Size = UDim2.new(1, -8, 0, 25 + height + 4)
+			end
+		end
+		layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateHeight)
+		for index, asset in ipairs(grouped[name]) do
+			local card = self._cards[asset]
+			if card then
+				card.frame.Parent = grid
+				card.frame.LayoutOrder = index
+			end
+		end
+		updateHeight()
+	end
+end
+
+function M:SetGrouping(key)
+	local allowed = { None = true, Type = true, Creator = true, Category = true }
+	key = key or "None"
+	if not allowed[key] then
+		return false
+	end
+	if self._grouping == key then
+		return true
+	end
+	self._grouping = key
+	self:_applyFilter()
+	return true
+end
+
+function M:GetGrouping()
+	return self._grouping or "None"
+end
+
 function M:_applyFilter()
 	if not self._grid or not self._d then
 		return
@@ -3874,10 +4031,15 @@ function M:_applyFilter()
 		end
 		return av < bv
 	end)
-	for index, asset in ipairs(visible) do
-		local card = self._cards[asset]
-		if card then
-			card.frame.LayoutOrder = index
+	if self._grouping and self._grouping ~= "None" then
+		self:_renderGroupedCards(visible)
+	else
+		self:_useFlatGrid()
+		for index, asset in ipairs(visible) do
+			local card = self._cards[asset]
+			if card then
+				card.frame.LayoutOrder = index
+			end
 		end
 	end
 	self._d.empty.Visible = (#visible == 0)
