@@ -454,18 +454,8 @@ local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet
         local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,26); b.Position = UDim2.new(0,x,0.5,-13); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
         b.Text = cfg.Name or "Button"; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.TextWrapped = true; b.Parent = parent
         corner(6,b); stroke(C.border,1,b)
-        b.MouseEnter:Connect(function()
-            if touchLast() then return end
-            b:SetAttribute("JLHover", true); tw(b,{BackgroundColor3 = C.btnHov},.1)
-        end)
-        b.MouseLeave:Connect(function() b:SetAttribute("JLHover", false); tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+        buttonFeedback(b,C.btnBg,C.btnHov,ac)
         b.MouseButton1Click:Connect(function()
-            local fl = (b:GetAttribute("JLFlash") or 0) + 1; b:SetAttribute("JLFlash", fl)
-            tw(b,{BackgroundColor3 = ac},.06)
-            trackedDelay(.14, function()
-                if b:GetAttribute("JLFlash") ~= fl then return end
-                tw(b,{BackgroundColor3 = b:GetAttribute("JLHover") and C.btnHov or C.btnBg},.12)
-            end)
             if cfg.Callback then pcall(cfg.Callback) end
         end)
         return {Instance = b}
