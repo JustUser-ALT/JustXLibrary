@@ -33,12 +33,22 @@ local Library = runStep("Library load", function()
 end)
 if not Library then return end
 
+local IconsLoaded = runStep("Lucide icon pack load", function()
+    local loaded = Library:LoadIconPack()
+    assert(loaded == true, "Icon pack request, compilation or initialization failed")
+    return loaded
+end)
+if not IconsLoaded then
+    fail("The UI can still be tested, but Lucide icons are unavailable. Check executor HTTP access to molto.pages.dev/source.lua.")
+end
+
 local Window = runStep("Window creation", function()
     return Library:Window({
         Title = "Button Animation Test",
         HubId = "JustX_ButtonAnimationTest",
         Config = "JustX_ButtonAnimationTest",
         DebugPerformance = true,
+        LoadIcons = false,
     })
 end)
 if not Window then
@@ -47,7 +57,7 @@ if not Window then
 end
 
 local Tab = runStep("Tab creation", function()
-    return Window:Tab({Name = "Animation Tests", Icon = "mouse-pointer-click", Type = "Grid"})
+    return Window:Tab({Name = "Animation Tests", Icon = "settings", Type = "Grid"})
 end)
 if not Tab then return end
 
