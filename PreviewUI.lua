@@ -1921,6 +1921,13 @@ function M:Source(o)
 					addConnection(instance:GetPropertyChangedSignal(property), scheduleRefresh)
 				end)
 			end
+			if instance:IsA("Model") then
+				for _, property in ipairs({ "WorldPivot", "PrimaryPart" }) do
+					pcall(function()
+						addConnection(instance:GetPropertyChangedSignal(property), scheduleRefresh)
+					end)
+				end
+			end
 		end
 		local roots, seenRoots = {}, {}
 		local function addRoot(value)
@@ -1930,6 +1937,9 @@ function M:Source(o)
 			roots[#roots + 1] = value
 		end
 		addRoot(entry.asset.Model)
+		if entry.asset._baseVariantData then
+			addRoot(entry.asset._baseVariantData.Model)
+		end
 		for _, variant in ipairs(entry.asset._variants or {}) do
 			addRoot(variant.Model)
 		end
