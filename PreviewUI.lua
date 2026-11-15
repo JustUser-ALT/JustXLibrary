@@ -3870,9 +3870,13 @@ function M:_renderGroupedCards(visible)
 	if not self._grid then
 		return
 	end
-	for _, c in pairs(self._cards) do
-		if c.frame and c.frame.Parent ~= self._grid then
-			c.frame.Parent = self._grid
+	local visibleSet = {}
+	for _, asset in ipairs(visible) do
+		visibleSet[asset] = true
+	end
+	for asset, c in pairs(self._cards) do
+		if c.frame then
+			c.frame.Parent = visibleSet[asset] and self._grid or nil
 		end
 	end
 	for _, frame in ipairs(self._groupFrames or {}) do
