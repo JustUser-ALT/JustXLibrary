@@ -4356,7 +4356,11 @@ function M:_applyFilter()
 	end
 	local tab = self._activeTab
 	local types, seen = { "All" }, { All = true }
+	local hasTabAssets = false
 	for _, a in ipairs(self._assets) do
+		if self:_inScope(tab, a) then
+			hasTabAssets = true
+		end
 		if self:_inScope(tab, a) and a.Type and not seen[a.Type] then
 			seen[a.Type] = true
 			types[#types + 1] = a.Type
@@ -4410,7 +4414,7 @@ function M:_applyFilter()
 			end
 		end
 	end
-	self._d.empty.Visible = (#visible == 0)
+	self._d.empty.Visible = not hasTabAssets
 	self:_buildTypeList()
 	self:_markSelected(true)
 end
