@@ -2140,7 +2140,6 @@ local function buildSubPlacesUI(universeId, places)
         local l = Instance.new("Frame"); l.AnchorPoint = Vector2.new(0.5,0.5); l.Position = UDim2.new(0.5,0,0.5,0); l.Size = UDim2.new(0,12,0,2); l.Rotation = rot
         l.BackgroundColor3 = C.dim; l.BorderSizePixel = 0; l.ZIndex = 6; l.Parent = closeBtn; corner(1, l); xl[#xl + 1] = l
     end
-    buttonFeedback(closeBtn,C.btnBg,C.btnHov)
     closeBtn.MouseEnter:Connect(function() if not touchLast() then for _,l in ipairs(xl) do tw(l,{BackgroundColor3 = C.danger},.12) end end end)
     closeBtn.MouseLeave:Connect(function() for _,l in ipairs(xl) do tw(l,{BackgroundColor3 = C.dim},.12) end end)
     local function closePopup()
