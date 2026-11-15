@@ -1572,6 +1572,14 @@ local function discoverAnimations(asset)
 	table.sort(found, function(a, b)
 		return string.lower(a.Name) < string.lower(b.Name)
 	end)
+	local nameCounts = {}
+	for _, entry in ipairs(found) do
+		local base = entry.Name
+		nameCounts[base] = (nameCounts[base] or 0) + 1
+		if nameCounts[base] > 1 then
+			entry.Name = base .. " " .. tostring(nameCounts[base])
+		end
+	end
 	return found
 end
 
@@ -1983,7 +1991,6 @@ PAGES.preview = {
 					Text = entry.Name, Font = GM, TextSize = 11, TextColor3 = C.txt,
 					BackgroundTransparency = 1, Size = U2(1, -8, 0, 25),
 					Position = U2(0, 4, 0, 0), LayoutOrder = i, ZIndex = 51,
-					TextTruncate = Enum.TextTruncate.AtEnd,
 					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 				}, menu)
 				pad(button, 8, 6, 0, 0)
@@ -1993,7 +2000,6 @@ PAGES.preview = {
 				end)
 				menuButtons[#menuButtons + 1] = button
 			end
-			local height = math.min(#animations * 27 + 6, 162)
 			menu.CanvasSize = U2(0, 0, 0, #animations * 27 + 6)
 			menu.Size = U2(0.58, -18, 0, 162)
 		end
