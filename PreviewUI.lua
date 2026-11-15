@@ -3809,7 +3809,7 @@ function M:_build()
 
 	local emptyL = txt("TextLabel", {
 		Text = "Nothing found", TextSize = 13, TextColor3 = C.dim, Visible = false,
-		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 90), Size = UDim2.fromOffset(240, 20),
+		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 22), Size = UDim2.fromOffset(240, 20),
 	}, card)
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList, ddArrow = filterArrow }
 	self._pluginChrome = { search = searchBox, filter = ddButton, close = closeBtn, grid = grid, empty = emptyL }
