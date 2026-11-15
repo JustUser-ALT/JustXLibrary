@@ -2086,14 +2086,73 @@ function M:_addAsset(tab, a, quiet)
 	function asset:Select()
 		self._pv:_goto(self)
 	end
+	local function applyVariant(self, index)
+		local variant = self._variants[index]
+		if not variant then
+			for _, key in ipairs(VARIANT_FIELDS) do
+				self[key] = self._baseVariantData[key]
+			end
+			self._variantIndex = 1
+			self._variantName = nil
+			return false
+		end
+		for _, key in ipairs(VARIANT_FIELDS) do
+			local value = variant[key]
+			if value == nil then
+				value = self._baseVariantData[key]
+			end
+			self[key] = value
+		end
+		self._variantIndex = index
+		self._variantName = variant.Name or ("Variant " .. tostring(index))
+		return true
+	end
 	function asset:Update(t)
+		local variants
+		local hasVariants = false
 		for k, v in pairs(t or {}) do
-			self[k] = v
-			if self._baseVariantData[k] ~= nil or table.find(VARIANT_FIELDS, k) then
-				self._baseVariantData[k] = v
+			if k == "Variants" then
+				variants = v
+				hasVariants = true
+			else
+				self[k] = v
+				if self._baseVariantData[k] ~= nil or table.find(VARIANT_FIELDS, k) then
+					self._baseVariantData[k] = v
+				end
 			end
 		end
+		if hasVariants then
+			self:SetVariants(variants, true)
+		end
 		self._pv:_assetUpdated(self)
+	end
+	function asset:SetVariants(list, quiet)
+		if type(list) ~= "table" then
+			return false
+		end
+		local selectedName = self._variantName
+		local nextVariants = {}
+		for _, variant in ipairs(list) do
+			if type(variant) == "table" then
+				nextVariants[#nextVariants + 1] = variant
+			end
+		end
+		self._variants = nextVariants
+		local selectedIndex
+		if selectedName then
+			for i, variant in ipairs(nextVariants) do
+				if variant.Name == selectedName then
+					selectedIndex = i
+					break
+				end
+			end
+		end
+		selectedIndex = selectedIndex or (#nextVariants > 0 and 1 or nil)
+		applyVariant(self, selectedIndex)
+		if not quiet then
+			self._pv:_assetUpdated(self)
+		end
+		return true
 	end
 	function asset:SetVariant(target)
 		local index
@@ -2110,16 +2169,7 @@ function M:_addAsset(tab, a, quiet)
 		if not index or not self._variants[index] then
 			return false
 		end
-		local variant = self._variants[index]
-		for _, key in ipairs(VARIANT_FIELDS) do
-			local value = variant[key]
-			if value == nil then
-				value = self._baseVariantData[key]
-			end
-			self[key] = value
-		end
-		self._variantIndex = index
-		self._variantName = variant.Name or ("Variant " .. tostring(index))
+		applyVariant(self, index)
 		self._pv:_assetUpdated(self)
 		return true
 	end
