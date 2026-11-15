@@ -108,6 +108,11 @@ local function createIconsModule(deps)
     local UDim2 = deps.UDim2
     local Vector2 = deps.Vector2
     local typeof = deps.Typeof
+    local function isOfType(value, expected)
+        if type(typeof) ~= "function" then return false end
+        local ok, result = pcall(typeof, value)
+        return ok and result == expected
+    end
     local game = deps.Game
     local loadstring = deps.LoadString
 
@@ -126,7 +131,7 @@ local function createIconsModule(deps)
             local ok,value = pcall(pack.GetIcon, name)
             if ok then asset = value end
         end
-        if typeof(asset) == "Instance" then
+        if isOfType(asset, "Instance") then
             if asset:IsA("ImageLabel") or asset:IsA("ImageButton") then
                 asset = {Url = asset.Image, ImageRectOffset = asset.ImageRectOffset, ImageRectSize = asset.ImageRectSize}
             elseif asset:IsA("TextLabel") or asset:IsA("TextButton") then
@@ -147,8 +152,8 @@ local function createIconsModule(deps)
         if url ~= nil and tostring(url) ~= "" then
             return {
                 Url = tostring(url),
-                ImageRectOffset = typeof(asset.ImageRectOffset) == "Vector2" and asset.ImageRectOffset or Vector2.zero,
-                ImageRectSize = typeof(asset.ImageRectSize) == "Vector2" and asset.ImageRectSize or Vector2.zero,
+                ImageRectOffset = isOfType(asset.ImageRectOffset, "Vector2") and asset.ImageRectOffset or Vector2.zero,
+                ImageRectSize = isOfType(asset.ImageRectSize, "Vector2") and asset.ImageRectSize or Vector2.zero,
                 FontFace = asset.FontFace,
                 Text = text,
             }
