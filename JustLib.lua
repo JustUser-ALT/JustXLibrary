@@ -326,7 +326,8 @@ local function createIconsModule(deps)
     end
 
     return {
-        Make = mkIcon
+        Make = mkIcon,
+        Resolve = resolveIcon
     }
 end
 -- Background module factory. Dependencies are injected; background state stays on the library instance.
@@ -1172,6 +1173,7 @@ local Icons = createIconsModule({
     LoadString = loadstring
 })
 local mkIcon = Icons.Make
+local resolveIcon = Icons.Resolve
 local Backgrounds = createBackgroundsModule({
     JL = JL,
     Enum = Enum,
