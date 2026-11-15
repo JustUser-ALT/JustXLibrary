@@ -5267,8 +5267,8 @@ function JL:Window(opts)
     local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
     local labelsOn = cfgGet("_sidebar_labels", opts.SidebarLabels == true)
     local SBW, GAP, PADIN, COLGAP = (labelsOn and 64 or 42), 10, 8, 8
-    local CWW = math.clamp(opts.Width or 640, 340, math.max(340, vp.X - SBW - GAP - 30))
-    local WH  = math.clamp(opts.Height or 420, 240, math.max(240, vp.Y - 30))
+    local CWW = math.clamp(640, 340, math.max(340, vp.X - SBW - GAP - 30))
+    local WH  = math.clamp(420, 240, math.max(240, vp.Y - 30))
     local WW  = SBW + GAP + CWW
     local IW  = CWW - 2 * PADIN
     local VIS = math.clamp(opts.Columns or 3, 1, 6)
