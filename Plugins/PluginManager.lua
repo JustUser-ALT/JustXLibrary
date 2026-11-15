@@ -77,7 +77,7 @@ function Manager:_notify(title, description, kind)
 end
 
 function Manager:_download(path)
-    if type(path) ~= "string" or path == "" or path:find("%.%.", 1, true) then
+    if type(path) ~= "string" or path == "" or path:find("..", 1, true) then
         return nil, "Invalid plugin source path"
     end
     local gameRef = game
