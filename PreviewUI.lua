@@ -2580,6 +2580,36 @@ function M.new(bridge, opts)
 	self._groupListLayout = nil
 	attachControls(self)
 
+	-- Plugin Core is kept outside PreviewUI; plugins own their implementation files.
+	self._plugins = nil
+	self._pluginLoadError = nil
+	local function loadPluginCore(path)
+		local base = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
+		local okBody, body = pcall(function() return game:HttpGet(base .. path) end)
+		if not okBody or type(body) ~= "string" or body == "" then
+			return nil, "download failed: " .. tostring(body)
+		end
+		local fn, compileError = loadstring(body)
+		if type(fn) ~= "function" then return nil, tostring(compileError) end
+		local okModule, module = pcall(fn)
+		if not okModule or type(module) ~= "table" then return nil, tostring(module) end
+		return module
+	end
+	local registry, registryError = loadPluginCore("Plugins/Registry.lua")
+	local managerModule, managerError = loadPluginCore("Plugins/PluginManager.lua")
+	if registry and managerModule and type(managerModule.new) == "function" then
+		local okManager, manager = pcall(managerModule.new, self, B, registry)
+		if okManager and manager then
+			self._plugins = manager
+			pcall(function() manager:LoadInstalled() end)
+		else
+			self._pluginLoadError = tostring(manager)
+		end
+	else
+		self._pluginLoadError = tostring(registryError or managerError or "Plugin Core unavailable")
+		warn("[PreviewUI] Plugin Core unavailable: " .. self._pluginLoadError)
+	end
+
 	table.insert(B.unloadHooks, function()
 		self:Destroy()
 	end)
@@ -2597,6 +2627,37 @@ function M.new(bridge, opts)
 		end))
 	end
 	return self
+end
+
+-- Plugin API: plugin implementations stay in Plugins/<Id>/init.lua.
+function M:GetPlugins()
+	if not self._plugins then return {} end
+	return self._plugins:GetAvailable()
+end
+
+function M:GetPlugin(id)
+	if not self._plugins then return nil end
+	return self._plugins:Get(id)
+end
+
+function M:InstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Install(id)
+end
+
+function M:EnablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Enable(id)
+end
+
+function M:DisablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Disable(id)
+end
+
+function M:UninstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Uninstall(id)
 end
 
 function M:Tab(o)
@@ -3428,6 +3489,10 @@ function M:Destroy()
 	end
 	self.alive = false
 	for i = #self._sources, 1, -1 do self._sources[i]:Destroy() end
+	if self._plugins then
+		pcall(function() self._plugins:Destroy() end)
+		self._plugins = nil
+	end
 	self:_teardown(true)
 	for _, d in ipairs(self:_allControls()) do
 		if d.o.Flag and B.registry[d.o.Flag] == d then
