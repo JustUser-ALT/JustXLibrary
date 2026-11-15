@@ -1680,295 +1680,6 @@ PAGES.info = {
 }
 
 -- Structure: иерархия объектов текущей модели и свойства выбранного Instance.
-PAGES.structure = {
-	id = "structure", name = "Structure", icon = "network",
-	build = function(parent, a, pv)
-		local _, content = pageScroll(parent, pv)
-		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, content)
-
-		local sourceModel
-		local ownedModel = false
-		if typeof(a.Model) == "Instance" then
-			local ok, clone = pcall(function() return a.Model:Clone() end)
-			if ok then
-				sourceModel = clone
-				ownedModel = true
-			end
-		elseif type(a.Build) == "function" then
-			sourceModel = Instance.new("Model")
-			ownedModel = true
-			local ok, err = pcall(a.Build, sourceModel)
-			if not ok then
-				warn("[PreviewUI] Structure Build failed: " .. tostring(err))
-				sourceModel:Destroy()
-				sourceModel = nil
-			end
-		end
-
-		if not sourceModel then
-			txt("TextLabel", {
-				Text = "No model structure available",
-				TextColor3 = C.dim, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center,
-				Size = U2(1, 0, 0, 38),
-			}, content)
-			return function()
-				if ownedModel and sourceModel then sourceModel:Destroy() end
-			end
-		end
-
-		if sourceModel:IsA("BasePart") then
-			local wrapper = Instance.new("Model")
-			sourceModel.Parent = wrapper
-			sourceModel = wrapper
-		end
-		local heading = new("Frame", {
-			BackgroundTransparency = 1, Size = U2(1, 0, 0, 24), LayoutOrder = 1,
-		}, content)
-		local total = #sourceModel:GetDescendants() + 1
-		txt("TextLabel", {
-			Text = "MODEL STRUCTURE", Font = GB, TextSize = 10, TextColor3 = C.dim,
-			Size = U2(0.7, 0, 1, 0),
-		}, heading)
-		txt("TextLabel", {
-			Text = tostring(total) .. " objects", Font = GM, TextSize = 10, TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Right, Position = U2(0.7, 0, 0, 0),
-			Size = U2(0.3, 0, 1, 0),
-		}, heading)
-
-		local treeHost = new("Frame", {
-			Name = "StructureTree", BackgroundColor3 = C.panel, BackgroundTransparency = 0.12,
-			BorderSizePixel = 0, Size = U2(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-			LayoutOrder = 2,
-		}, content)
-		corner(treeHost, 8)
-		stroke(treeHost, C.border, 1)
-		pad(treeHost, 5, 5, 5, 5)
-		local treeLayout = new("UIListLayout", {
-			SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 1),
-		}, treeHost)
-
-		local propertiesHost = new("Frame", {
-			Name = "SelectedProperties", BackgroundTransparency = 1,
-			Size = U2(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 3,
-		}, content)
-		new("UIListLayout", {
-			SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4),
-		}, propertiesHost)
-
-		local expanded = { [sourceModel] = true }
-		local selected = sourceModel
-		local rowCount = 0
-		local MAX_ROWS, MAX_DEPTH = 350, 24
-
-		local function classIcon(item)
-			if item:IsA("Model") then return "box" end
-			if item:IsA("Folder") then return "folder" end
-			if item:IsA("ModuleScript") then return "file-code" end
-			if item:IsA("LocalScript") or item:IsA("Script") then return "file-code" end
-			if item:IsA("MeshPart") then return "shapes" end
-			if item:IsA("UnionOperation") then return "shapes" end
-			if item:IsA("BasePart") then return "square" end
-			if item:IsA("Attachment") then return "crosshair" end
-			if item:IsA("Decal") or item:IsA("Texture") then return "image" end
-			if item:IsA("SpecialMesh") or item:IsA("DataModelMesh") then return "shapes" end
-			if item:IsA("SurfaceAppearance") then return "palette" end
-			if item:IsA("Animation") then return "clapperboard" end
-			if item:IsA("Sound") then return "volume-2" end
-			if item:IsA("ParticleEmitter") then return "sparkles" end
-			if item:IsA("Humanoid") then return "user-round" end
-			if item:IsA("Configuration") then return "settings" end
-			if item:IsA("ObjectValue") then return "link" end
-			if item:IsA("WeldConstraint") or item:IsA("Motor6D") then return "link" end
-			if item:IsA("Beam") or item:IsA("Trail") then return "activity" end
-			if item:IsA("Camera") then return "camera" end
-			if item:IsA("BillboardGui") or item:IsA("SurfaceGui") then return "panels-top-left" end
-			return "box"
-		end
-
-		local function read(item, key)
-			local ok, value = pcall(function() return item[key] end)
-			if not ok or value == nil then return nil end
-			if typeof(value) == "Color3" then
-				return string.format("RGB(%d, %d, %d)", math.floor(value.R * 255 + 0.5), math.floor(value.G * 255 + 0.5), math.floor(value.B * 255 + 0.5))
-			end
-			if typeof(value) == "Vector3" then
-				return string.format("%.3f, %.3f, %.3f", value.X, value.Y, value.Z)
-			end
-			if typeof(value) == "Vector2" then
-				return string.format("%.3f, %.3f", value.X, value.Y)
-			end
-			if typeof(value) == "CFrame" then
-				local p = value.Position
-				return string.format("%.3f, %.3f, %.3f", p.X, p.Y, p.Z)
-			end
-			if typeof(value) == "EnumItem" then return value.Name end
-			if typeof(value) == "NumberRange" then return tostring(value.Min) .. " – " .. tostring(value.Max) end
-			if typeof(value) == "NumberSequence" or typeof(value) == "ColorSequence" then return tostring(value) end
-			if type(value) == "Instance" then return value.Name end
-			return tostring(value)
-		end
-
-		local function propertyList(item)
-			local keys = { "Name", "ClassName" }
-			if item:IsA("BasePart") then
-				for _, key in ipairs({ "Size", "Position", "Color", "Material", "Transparency", "Reflectance", "Anchored", "CanCollide", "CastShadow" }) do
-					keys[#keys + 1] = key
-				end
-			end
-			if item:IsA("MeshPart") then
-				keys[#keys + 1] = "MeshId"
-				keys[#keys + 1] = "TextureID"
-			elseif item:IsA("SpecialMesh") then
-				for _, key in ipairs({ "MeshType", "MeshId", "TextureId", "Scale", "Offset" }) do keys[#keys + 1] = key end
-			end
-			if item:IsA("Decal") or item:IsA("Texture") then
-				for _, key in ipairs({ "Texture", "Face", "Transparency" }) do keys[#keys + 1] = key end
-				if item:IsA("Texture") then
-					keys[#keys + 1] = "StudsPerTileU"
-					keys[#keys + 1] = "StudsPerTileV"
-				end
-			end
-			if item:IsA("SurfaceAppearance") then
-				for _, key in ipairs({ "ColorMap", "MetalnessMap", "NormalMap", "RoughnessMap", "AlphaMode" }) do keys[#keys + 1] = key end
-			end
-			if item:IsA("Attachment") then
-				keys[#keys + 1] = "Position"
-				keys[#keys + 1] = "Orientation"
-			end
-			if item:IsA("Humanoid") then
-				for _, key in ipairs({ "Health", "MaxHealth", "WalkSpeed", "JumpPower", "RigType" }) do keys[#keys + 1] = key end
-			end
-			if item:IsA("ParticleEmitter") then
-				for _, key in ipairs({ "Texture", "Rate", "Lifetime", "Speed", "Enabled", "LightEmission" }) do keys[#keys + 1] = key end
-			end
-			if item:IsA("Animation") then keys[#keys + 1] = "AnimationId" end
-			if item:IsA("Sound") then
-				for _, key in ipairs({ "SoundId", "Volume", "PlaybackSpeed", "Looped" }) do keys[#keys + 1] = key end
-			end
-			return keys
-		end
-
-		local function renderProperties()
-			for _, child in ipairs(propertiesHost:GetChildren()) do
-				child:Destroy()
-			end
-			local title = new("Frame", {
-				BackgroundTransparency = 1, Size = U2(1, 0, 0, 25), LayoutOrder = 1,
-			}, propertiesHost)
-			txt("TextLabel", {
-				Text = "PROPERTIES", Font = GB, TextSize = 10, TextColor3 = C.dim,
-				Size = U2(1, 0, 1, 0),
-			}, title)
-			local keys = propertyList(selected)
-			for index, key in ipairs(keys) do
-				local value = read(selected, key)
-				if value ~= nil then
-					local row = new("Frame", {
-						BackgroundColor3 = C.panel, BackgroundTransparency = index % 2 == 0 and 0.15 or 0.45,
-						BorderSizePixel = 0, Size = U2(1, 0, 0, 25), LayoutOrder = index + 1,
-					}, propertiesHost)
-					corner(row, 5)
-					txt("TextLabel", {
-						Text = key, TextColor3 = C.dim, TextSize = 10, Font = GM,
-						Position = UDim2.fromOffset(8, 0), Size = U2(0.38, -8, 1, 0),
-						TextTruncate = Enum.TextTruncate.AtEnd,
-					}, row)
-					local valueLabel = txt("TextLabel", {
-						Text = tostring(value), TextColor3 = C.txt, TextSize = 10,
-						Position = U2(0.38, 0, 0, 0), Size = U2(0.62, -12, 1, 0),
-						TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd,
-					}, row)
-					valueLabel.ClipsDescendants = true
-				end
-			end
-			local childCount = #selected:GetChildren()
-			local footer = txt("TextLabel", {
-				Text = tostring(childCount) .. " direct children",
-				TextColor3 = C.dim, TextSize = 9, Size = U2(1, 0, 0, 18),
-				LayoutOrder = #keys + 3,
-			}, propertiesHost)
-		end
-
-		local function renderTree()
-			for _, child in ipairs(treeHost:GetChildren()) do
-				if child ~= treeLayout then child:Destroy() end
-			end
-			rowCount = 0
-			local function addNode(item, depth)
-				if rowCount >= MAX_ROWS or depth > MAX_DEPTH then return end
-				rowCount = rowCount + 1
-				local children = item:GetChildren()
-				local hasChildren = #children > 0
-				local isOpen = expanded[item] == true
-				local active = selected == item
-				local row = txt("TextButton", {
-					Name = "Node_" .. tostring(rowCount), Text = "",
-					BackgroundColor3 = active and ACCENTS[1] or C.panel,
-					BackgroundTransparency = active and 0.88 or 1,
-					Size = U2(1, 0, 0, 27), LayoutOrder = rowCount,
-					AutoButtonColor = false,
-				}, treeHost)
-				corner(row, 6)
-				if active then
-					stroke(row, ACCENTS[1], 1.25)
-				end
-				local indent = math.min(depth, MAX_DEPTH) * 13
-				local toggle = txt("TextButton", {
-					Text = "", BackgroundTransparency = 1,
-					Position = UDim2.fromOffset(indent, 0), Size = UDim2.fromOffset(18, 27),
-				}, row)
-				local arrow = mkIcon(toggle, "chevron-right", 11, hasChildren and C.dim or C.border)
-				arrow.AnchorPoint = V2(0.5, 0.5)
-				arrow.Position = U2(0.5, 0, 0.5, 0)
-				arrow.Rotation = isOpen and 90 or 0
-				arrow.Visible = hasChildren
-				toggle.Activated:Connect(function()
-					if hasChildren then
-						expanded[item] = not expanded[item]
-						renderTree()
-					end
-				end)
-				local ic = mkIcon(row, classIcon(item), 14, active and ACCENTS[1] or C.dim)
-				ic.Position = UDim2.fromOffset(indent + 21, 6)
-				ic.Active = false
-				txt("TextLabel", {
-					Text = tostring(item.Name), TextColor3 = active and C.txt or C.dim,
-					Font = active and GB or GM, TextSize = 10,
-					Position = UDim2.fromOffset(indent + 41, 0), Size = U2(1, -(indent + 47), 1, 0),
-					TextTruncate = Enum.TextTruncate.AtEnd,
-				}, row)
-				row.Activated:Connect(function()
-					selected = item
-					renderTree()
-					renderProperties()
-				end)
-				if isOpen then
-					for _, child in ipairs(children) do
-						addNode(child, depth + 1)
-						if rowCount >= MAX_ROWS then break end
-					end
-				end
-			end
-			addNode(sourceModel, 0)
-			if total > MAX_ROWS then
-				txt("TextLabel", {
-					Text = "Tree limited to first " .. tostring(MAX_ROWS) .. " visible rows",
-					TextColor3 = C.dim, TextSize = 9, Size = U2(1, 0, 0, 18),
-					LayoutOrder = rowCount + 1,
-				}, treeHost)
-			end
-		end
-
-		renderTree()
-		renderProperties()
-		return function()
-			if ownedModel and sourceModel then
-				pcall(function() sourceModel:Destroy() end)
-			end
-		end
-	end,
-}
-
 -- Preview: плавное 3D (камера крутится вокруг модели, инерция при перетаскивании, зум колесом/щипком)
 PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
@@ -3313,6 +3024,24 @@ function M:Page(o)
 		self:_refreshDrawer(false)
 	end
 	return p
+end
+
+function M:RemovePage(page)
+	local target = type(page) == "table" and page or nil
+	for i = #self._pages, 1, -1 do
+		local current = self._pages[i]
+		if current == target or current.id == page then
+			table.remove(self._pages, i)
+			if self._page == current.id then
+				self._page = nil
+			end
+			if self._root and self._selected then
+				self:_refreshDrawer(false)
+			end
+			return true
+		end
+	end
+	return false
 end
 
 function M:GetTab(name)
@@ -5016,7 +4745,7 @@ function M:_pagesFor(asset)
 	end
 	if hasPreview(asset) then
 		if asset.Model ~= nil or type(asset.Build) == "function" then
-			out[#out + 1] = PAGES.structure
+			-- Model inspection is provided by the optional Explorer plugin.
 		end
 		out[#out + 1] = PAGES.preview
 	end
