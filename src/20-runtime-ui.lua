@@ -400,10 +400,8 @@ local function unloadDialog()
     local exitIcon = dlgIcon(unloadBtn,"log-out",15,Color3.new(1,1,1),14)
     if exitIcon then exitIcon.Position = UDim2.new(0,17,0.5,-7) end
     newTxt({Parent=unloadBtn,Text="Unload",Font=GB,Size=13,Color=Color3.new(1,1,1),XAlign=exitIcon and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center,Sz=UDim2.new(1,exitIcon and -42 or 0,1,0),Pos=UDim2.new(0,exitIcon and 37 or 0,0,0),Z=14})
-    cancelBtn.MouseEnter:Connect(function() if touchLast() then return end tw(cancelBtn,{BackgroundColor3 = C.btnHov},.1) end)
-    cancelBtn.MouseLeave:Connect(function() tw(cancelBtn,{BackgroundColor3 = C.btnBg},.1) end)
-    unloadBtn.MouseEnter:Connect(function() tw(unloadBtn,{BackgroundColor3 = C.danger:Lerp(Color3.new(1,1,1),0.1)},.1) end)
-    unloadBtn.MouseLeave:Connect(function() tw(unloadBtn,{BackgroundColor3 = C.danger},.1) end)
+    buttonFeedback(cancelBtn,C.btnBg,C.btnHov)
+    buttonFeedback(unloadBtn,C.danger,C.danger:Lerp(Color3.new(1,1,1),0.1))
     local result = nil
     cancelBtn.Activated:Connect(function() if result == nil then result = false end end)
     unloadBtn.Activated:Connect(function() if result == nil then result = true end end)
@@ -446,8 +444,7 @@ local function restartPrompt(titleText, descriptionText, actionText)
     local cancelBtn = Instance.new("TextButton"); cancelBtn.Size = UDim2.new(1,-32,0,32); cancelBtn.Position = UDim2.new(0,16,1,-40); cancelBtn.BackgroundTransparency = 1; cancelBtn.AutoButtonColor = false; cancelBtn.Text = ""; cancelBtn.Parent = card
     newTxt({Parent=cancelBtn,Text="Cancel",Font=GB,Size=12,Color=C.dim,XAlign=Enum.TextXAlignment.Center})
     local result = nil
-    restartBtn.MouseEnter:Connect(function() tw(restartBtn,{BackgroundColor3 = ACCENTS[1]:Lerp(Color3.new(1,1,1),0.1)},.1) end)
-    restartBtn.MouseLeave:Connect(function() tw(restartBtn,{BackgroundColor3 = ACCENTS[1]},.1) end)
+    buttonFeedback(restartBtn,ACCENTS[1],ACCENTS[1]:Lerp(Color3.new(1,1,1),0.1))
     restartBtn.MouseButton1Click:Connect(function() if result == nil then result = true end end)
     cancelBtn.MouseButton1Click:Connect(function() if result == nil then result = false end end)
     showPopup()
