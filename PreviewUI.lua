@@ -2042,7 +2042,12 @@ function M:Source(o)
 		entry._liveMotionEnabled = enabled == true
 		entry.asset._liveMotionEnabled = entry._liveMotionEnabled
 		entry.asset._liveMotionRate = entry._liveMotionRate
-		self._pv:_assetUpdated(entry.asset)
+		for h in pairs(self._pv._viewers or {}) do
+			if h.asset == entry.asset then
+				h.motionEnabled = entry._liveMotionEnabled
+				h.motionElapsed = 0
+			end
+		end
 		return true
 	end
 	function source:Add(key, data)
@@ -2981,7 +2986,7 @@ function M:_build()
 		end
 		for h, st in pairs(self._viewers) do
 			h.step(dt, self._auto and not h.manualOnly and not st.dragging and os.clock() > st.resumeAt, self._speed)
-			if h.motionEnabled and h.motionSync and h.manualOnly and self._drawerOpen
+			if h.motionEnabled and h.syncMotion and h.manualOnly and self._drawerOpen
 				and self._selected == h.asset then
 				h.motionElapsed = h.motionElapsed + dt
 				local interval = 1 / (h.motionRate or 30)
