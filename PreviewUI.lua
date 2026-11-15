@@ -1542,7 +1542,6 @@ PAGES.info = {
 			TextTruncate = Enum.TextTruncate.AtEnd,
 		}, top)
 
-		new("Frame", { BackgroundColor3 = C.divLine, BorderSizePixel = 0, Size = U2(1, 0, 0, 1), LayoutOrder = 2 }, content)
 
 		local order = 3
 		local function add(icon, label, value)
@@ -1561,8 +1560,6 @@ PAGES.info = {
 		end
 
 		if a.Description and a.Description ~= "" then
-			new("Frame", { BackgroundColor3 = C.divLine, BorderSizePixel = 0, Size = U2(1, 0, 0, 1), LayoutOrder = order }, content)
-			order = order + 1
 			txt("TextLabel", {
 				Text = tostring(a.Description), TextSize = 12, TextColor3 = C.txt, TextWrapped = true, LineHeight = 1.3,
 				TextYAlignment = Enum.TextYAlignment.Top, Size = U2(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order,
