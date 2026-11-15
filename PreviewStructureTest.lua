@@ -1,9 +1,9 @@
 -- JustXLibrary Preview Structure Inspector Test
 -- Loader:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua?v=20261115-icon-cache-1"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewStructureTest.lua?v=20261115-icon-trace-2"))()
 
 local Library = loadstring(game:HttpGet(
-	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261115-icon-cache-1"
+	"https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261115-icon-trace-2"
 ))()
 
 if not Library then
@@ -51,6 +51,7 @@ for _, iconName in ipairs({ "network", "box", "grid-2x2", "flask-conical" }) do
 		detail = detail .. " " .. tostring(value)
 	end
 	warn("[Structure Test] Bridge icon " .. iconName .. ": " .. tostring(ok) .. " / " .. detail)
+	warn("[Structure Test] Bridge icon error " .. iconName .. ": " .. tostring(Library._lastIconResolveError))
 end
 
 local Window = Library:Window({
@@ -152,7 +153,7 @@ local function openPreview()
 		Title = "Structure Inspector",
 		Icon = "network",
 		TabName = "Preview",
-		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua?v=20261115-icon-cache-1",
+		Source = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewUI.lua?v=20261115-icon-trace-2",
 	})
 
 	if not Preview or Preview.IsStub then
