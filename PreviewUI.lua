@@ -2701,7 +2701,8 @@ function M:_renderPluginsSurface(selectedId)
 	local function actionButton(parent, label, color, callback, position, size)
 		local button = txt("TextButton", {
 			Text = label, Font = GB, TextSize = 11, TextColor3 = Color3.new(1, 1, 1),
-			BackgroundColor3 = color, BorderSizePixel = 0,
+			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+			BackgroundColor3 = color, BackgroundTransparency = 0, BorderSizePixel = 0,
 			Position = position, Size = size, AutoButtonColor = false,
 		}, parent)
 		corner(button, 8)
@@ -2812,10 +2813,16 @@ function M:_renderPluginsSurface(selectedId)
 	local function updateColumns()
 		if not list.Parent then return end
 		local width = list.AbsoluteSize.X
+		if width <= 0 then
+			list.Visible = false
+			return
+		end
 		layout.CellSize = width < 390 and UDim2.new(1, -4, 0, 166) or UDim2.new(0.5, -5, 0, 174)
+		list.Visible = true
 	end
-	updateColumns()
+	list.Visible = false
 	list:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateColumns)
+	updateColumns()
 
 	for index, definition in ipairs(definitions) do
 		local id = definition.Id
@@ -2860,7 +2867,9 @@ function M:_renderPluginsSurface(selectedId)
 		local label = installed and "Manage Plugin" or "Install Plugin"
 		local button = txt("TextButton", {
 			Text = label, Font = GB, TextSize = 10,
-			TextColor3 = Color3.new(1, 1, 1), BackgroundColor3 = accent,
+			TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			BackgroundColor3 = accent, BackgroundTransparency = 0,
 			Position = U2(0, 12, 1, -38), Size = U2(1, -24, 0, 27),
 			BorderSizePixel = 0, AutoButtonColor = false,
 		}, card)
