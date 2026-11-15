@@ -1755,6 +1755,7 @@ function M.new(bridge, opts)
 	self.Icon = opts.Icon or "⬡"
 	self._opts = opts
 	self._tabs, self._side, self._assets, self._pages = {}, {}, {}, {}
+	self._sources = {}
 	self._cards = {}
 	self._cons = {}
 	self._closedCbs = {}
@@ -1822,6 +1823,120 @@ function M:Tab(o)
 		end
 	end
 	return T
+end
+
+-- Источники данных: стабильные ключи, обновление без пересоздания Preview.
+function M:Source(o)
+	o = o or {}
+	local tab = type(o.Tab) == "string" and self:GetTab(o.Tab) or o.Tab
+	if not tab then
+		tab = self:Tab({ Name = o.TabName or o.Name or "Source", Icon = o.Icon or "◼" })
+	end
+	assert(tab._isTab and tab._pv == self, "Preview:Source Tab must belong to this Preview")
+	local source = {
+		_pv = self, _tab = tab, _items = {}, _order = {},
+		Name = o.Name or tab.Name, _alive = true, _connections = {},
+		_map = o.Map, _key = o.Key,
+	}
+	local function resolveKey(item)
+		if type(source._key) == "function" then
+			local ok, key = pcall(source._key, item, source)
+			if ok and key ~= nil then return key end
+			return nil
+		end
+		return item
+	end
+	function source:Get(key)
+		local entry = self._items[key]
+		return entry and entry.asset or nil
+	end
+	function source:Add(key, data)
+		if not self._alive or key == nil then return nil end
+		local existing = self._items[key]
+		local payload = data
+		if payload == nil then payload = key end
+		if type(self._map) == "function" then
+			local ok, mapped = pcall(self._map, payload, key, self)
+			if not ok then
+				warn("[PreviewUI] source map failed: " .. tostring(mapped))
+				return nil
+			end
+			payload = mapped
+		end
+		if type(payload) ~= "table" then
+			payload = { Name = tostring(payload) }
+		end
+		if existing and existing.asset and existing.asset._alive then
+			existing.asset:Update(payload)
+			return existing.asset
+		end
+		local asset = self._pv:_addAsset(self._tab, payload, true)
+		asset._source, asset._sourceKey = self, key
+		self._items[key] = { asset = asset }
+		self._order[#self._order + 1] = key
+		self._pv:_assetsChanged()
+		return asset
+	end
+	function source:Update(key, patch)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return nil end
+		entry.asset:Update(patch or {})
+		return entry.asset
+	end
+	function source:Remove(key)
+		local entry = self._items[key]
+		if not entry then return false end
+		self._items[key] = nil
+		for i, value in ipairs(self._order) do
+			if value == key then table.remove(self._order, i) break end
+		end
+		if entry.asset and entry.asset._alive then entry.asset:Remove(true) end
+		self._pv:_assetsChanged()
+		return true
+	end
+	function source:Clear()
+		for i = #self._order, 1, -1 do self:Remove(self._order[i]) end
+		return self
+	end
+	function source:Destroy()
+		if not self._alive then return end
+		self:Clear()
+		self._alive = false
+		for _, connection in ipairs(self._connections) do
+			pcall(function() connection:Disconnect() end)
+		end
+		self._connections = {}
+		for i, value in ipairs(self._pv._sources) do
+			if value == self then table.remove(self._pv._sources, i) break end
+		end
+	end
+	local function connect(signal, callback)
+		if signal and type(signal.Connect) == "function" then
+			local ok, connection = pcall(function() return signal:Connect(callback) end)
+			if ok and connection then source._connections[#source._connections + 1] = connection end
+		end
+	end
+	if type(o.GetItems) == "function" then
+		local ok, items = pcall(o.GetItems, source)
+		if ok and type(items) == "table" then
+			for _, item in pairs(items) do
+				local key = resolveKey(item)
+				if key ~= nil then source:Add(key, item) end
+			end
+		elseif not ok then
+			warn("[PreviewUI] source GetItems failed: " .. tostring(items))
+		end
+	end
+	connect(o.Added, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Add(key, item) end
+	end)
+	connect(o.Removed, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Remove(key) end
+	end)
+	self._sources[#self._sources + 1] = source
+	return source
 end
 
 function M:Header(text)
@@ -2188,6 +2303,7 @@ function M:Destroy()
 		return
 	end
 	self.alive = false
+	for i = #self._sources, 1, -1 do self._sources[i]:Destroy() end
 	self:_teardown(true)
 	for _, d in ipairs(self:_allControls()) do
 		if d.o.Flag and B.registry[d.o.Flag] == d then
