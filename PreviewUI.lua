@@ -215,10 +215,18 @@ local function mkIcon(parent, icon, size, color)
 	local fallbackGlyphs = {
 		pin = "⌖", layers = "▱", filter = "▽", ["list-filter"] = "☷",
 		["sliders-horizontal"] = "☷", ["chevron-down"] = "⌄",
+		network = "⌘", box = "▣", info = "ⓘ", play = "▶", pause = "Ⅱ",
+		["maximize-2"] = "□", ["minimize-2"] = "▱", crosshair = "⊕",
+		image = "▧", shapes = "⬡", palette = "◉", clapperboard = "▤",
+		["volume-2"] = "♫", sparkles = "✦", ["user-round"] = "◉",
+		search = "⌕", ["sort-asc"] = "↥", ["sort-desc"] = "↧",
+		["chevron-right"] = "›", ["chevron-left"] = "‹", x = "×",
+		check = "✓", plus = "+", settings = "⚙", ["more-horizontal"] = "•••",
+		["external-link"] = "↗", copy = "▢", refresh = "↻", trash = "⌫",
 	}
 	if type(raw) == "string" and B and B.icon then
 		local ok, value = pcall(B.icon, raw)
-		if ok then
+		if ok and value ~= nil then
 			resolved = value
 		end
 	end
@@ -231,10 +239,12 @@ local function mkIcon(parent, icon, size, color)
 		rectOffset = resolved.ImageRectOffset
 		rectSize = resolved.ImageRectSize
 	elseif type(resolved) == "string" or type(resolved) == "number" then
-		url = resolved
-	end
-	if url == nil then
-		url = raw
+		local resolvedValue = tostring(resolved)
+		if resolvedValue:match("^%d+$") or resolvedValue:match("^rbxassetid://") or resolvedValue:match("^rbxasset://") or resolvedValue:match("^https?://") then
+			url = resolvedValue
+		elseif resolvedValue ~= tostring(raw or "") then
+			glyph = resolvedValue
+		end
 	end
 	local value = tostring(url or "")
 	if value:match("^%d+$") then
