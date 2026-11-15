@@ -5519,7 +5519,15 @@ function JL:Window(opts)
         local u = tabUI[id]; if not u then return end
         tw(u.btn,{BackgroundColor3 = active and Color3.fromRGB(24,44,74) or Color3.fromRGB(34,34,40)},.15)
         local col = active and ACCENTS[1] or C.dim
-        if u.icon:IsA("TextLabel") then u.icon.TextColor3 = col else u.icon.ImageColor3 = col end
+        if u.icon:IsA("TextLabel") then
+            u.icon.TextColor3 = col
+            pcall(function()
+                local iconAsset = u.icon:FindFirstChild("JLIconAsset")
+                if iconAsset and iconAsset:IsA("ImageLabel") then iconAsset.ImageColor3 = col end
+            end)
+        else
+            u.icon.ImageColor3 = col
+        end
         if u.label then u.label.TextColor3 = col end
         u.ind.Visible = active
     end
