@@ -155,7 +155,7 @@ function Explorer.Init(context)
                 local ok, value = pcall(function() return item[key] end)
                 if not ok or value == nil then return nil end
                 if typeof(value) == "Color3" then
-                    return string.format("RGB(%d, %d, %d)", value.R * 255, value.G * 255, value.B * 255)
+                    return string.format("RGB(%d, %d, %d)", math.floor(value.R * 255 + 0.5), math.floor(value.G * 255 + 0.5), math.floor(value.B * 255 + 0.5))
                 end
                 if typeof(value) == "Vector3" then
                     return string.format("%.2f, %.2f, %.2f", value.X, value.Y, value.Z)
