@@ -559,7 +559,7 @@ local function makeViewport(parent, src)
 	local dir = V3(0.45, 0.4, -1).Unit
 	local light = V3(-0.4, -1, 0.8)
 	local startYaw = -(src.Yaw or 0)
-	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0, asset = src }
+	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0, asset = src, model = model, animationActive = false }
 	if motionSource and #motionParts > 0 then
 		local ok, sourcePivot = pcall(function() return motionSource:GetPivot() end)
 		if ok then
@@ -1526,6 +1526,7 @@ local function discoverAnimations(asset)
 		local entry = {
 			Name = animation.Name ~= "" and animation.Name or "Animation",
 			AnimationId = id,
+			Object = animation,
 			State = state or "Available",
 			}
 			seen[key] = entry
@@ -1639,50 +1640,6 @@ PAGES.info = {
 	end,
 }
 
--- Animations: read-only discovery for Animation instances and active Animator tracks.
-PAGES.animations = {
-	id = "animations", name = "Animations", icon = "clapperboard",
-	build = function(parent, asset, pv)
-		local _, content = pageScroll(parent, pv)
-		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
-		local animations = discoverAnimations(asset)
-		if #animations == 0 then
-			txt("TextLabel", {
-				Text = "No animations found on this model.", TextSize = 12, TextColor3 = C.dim,
-				TextWrapped = true, Size = U2(1, 0, 0, 42), LayoutOrder = 1,
-			}, content)
-			return
-		end
-		txt("TextLabel", {
-			Text = tostring(#animations) .. " animation" .. (#animations == 1 and "" or "s") .. " discovered",
-			Font = GB, TextSize = 12, TextColor3 = C.dim, Size = U2(1, 0, 0, 22), LayoutOrder = 1,
-		}, content)
-		for i, animation in ipairs(animations) do
-			local row = new("Frame", {
-				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.12,
-				Size = U2(1, 0, 0, 54), LayoutOrder = i + 1,
-			}, content)
-			corner(row, 8)
-			stroke(row, C.border, 1)
-			local icon = mkIcon(row, "film", 16, ACCENTS[1])
-			icon.Position = UDim2.fromOffset(10, 10)
-			txt("TextLabel", {
-				Text = animation.Name, Font = GB, TextSize = 12, TextColor3 = C.txt,
-				Position = UDim2.fromOffset(34, 7), Size = U2(1, -44, 0, 17),
-				TextTruncate = Enum.TextTruncate.AtEnd,
-			}, row)
-			local idText = animation.AnimationId ~= "" and animation.AnimationId or "Animation ID unavailable"
-			txt("TextLabel", {
-				Text = idText .. (animation.State == "Playing" and "  ·  Playing" or ""),
-				Font = GM, TextSize = 10, TextColor3 = C.dim,
-				Position = UDim2.fromOffset(34, 27), Size = U2(1, -44, 0, 16),
-				TextTruncate = Enum.TextTruncate.AtEnd,
-			}, row)
-		end
-		new("Frame", { BackgroundTransparency = 1, Size = U2(1, 0, 0, 8), LayoutOrder = #animations + 2 }, content)
-	end,
-}
-
 -- Preview: плавное 3D (камера крутится вокруг модели, инерция при перетаскивании, зум колесом/щипком)
 PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
@@ -1692,7 +1649,7 @@ PAGES.preview = {
 		local topOffset = 0
 		local box = new("Frame", {
 			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
-			Size = U2(1, 0, 1, -topOffset),
+			Size = U2(1, 0, 1, -108 - topOffset),
 			ClipsDescendants = true,
 		}, parent)
 		corner(box, 12)
@@ -1766,6 +1723,310 @@ PAGES.preview = {
 				Position = UDim2.fromOffset(34, 0), Size = UDim2.fromOffset(64, 34), ZIndex = 26,
 			}, pager)
 			makePageButton("NextVariant", "›", 101, 1)
+		end
+
+		local animations = discoverAnimations(a)
+		local player = new("Frame", {
+			Name = "AnimationTimelinePlayer", BackgroundColor3 = C.panel, BorderSizePixel = 0,
+			Position = U2(0, 0, 1, -100), Size = U2(1, 0, 0, 92), ClipsDescendants = false,
+		}, parent)
+		corner(player, 10)
+		stroke(player, C.border, 1)
+
+		local selector = txt("TextButton", {
+			Name = "AnimationSelector", Text = #animations > 0 and animations[1].Name or "No animations found",
+			Font = GB, TextSize = 11, TextColor3 = #animations > 0 and C.txt or C.dim,
+			BackgroundTransparency = 1, Position = U2(0, 10, 0, 5), Size = U2(0.58, -10, 0, 22),
+			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
+		}, player)
+		local selectorArrow = txt("TextLabel", {
+			Text = "⌄", Font = GB, TextSize = 13, TextColor3 = C.dim,
+			Position = U2(1, -18, 0, 0), Size = U2(0, 16, 1, 0), TextXAlignment = Enum.TextXAlignment.Center,
+		}, selector)
+
+		local timeLabel = txt("TextLabel", {
+			Name = "TimelineTime", Text = "00:00.00 / 00:00.00",
+			Font = GM, TextSize = 10, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
+			Position = U2(0.58, 0, 0, 5), Size = U2(0.42, -10, 0, 22),
+		}, player)
+
+		local timeline = new("Frame", {
+			Name = "TimelineTrack", BackgroundColor3 = C.slTrack, BorderSizePixel = 0,
+			Position = U2(0, 10, 0, 34), Size = U2(1, -20, 0, 6),
+		}, player)
+		corner(timeline, 3)
+		local timelineFill = new("Frame", {
+			Name = "TimelineFill", BackgroundColor3 = ACCENTS[1], BorderSizePixel = 0,
+			Size = U2(0, 0, 1, 0),
+		}, timeline)
+		corner(timelineFill, 3)
+		local timelineKnob = new("Frame", {
+			Name = "TimelineKnob", BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
+			AnchorPoint = V2(0.5, 0.5), Position = U2(0, 0, 0.5, 0), Size = UDim2.fromOffset(12, 12),
+		}, timeline)
+		corner(timelineKnob, 6)
+		local timelineHit = txt("TextButton", {
+			Name = "TimelineInput", Text = "", Position = U2(0, 0, 0.5, -13),
+			Size = U2(1, 0, 0, 26), ZIndex = 4,
+		}, timeline)
+
+		local controls = new("Frame", {
+			BackgroundTransparency = 1, Position = U2(0, 8, 0, 48), Size = U2(1, -16, 0, 36),
+		}, player)
+		local function controlButton(name, textValue, x, width)
+			local button = txt("TextButton", {
+				Name = name, Text = textValue, Font = GB, TextSize = 13, TextColor3 = C.txt,
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.12,
+				Position = U2(0, x, 0, 2), Size = UDim2.fromOffset(width, 30),
+			}, controls)
+			corner(button, 7)
+			stroke(button, C.border, 1)
+			return button
+		end
+		local playButton = controlButton("PlayPause", "▶", 0, 34)
+		local stopButton = controlButton("Stop", "■", 40, 30)
+		local backButton = controlButton("SeekBack", "−5", 76, 38)
+		local forwardButton = controlButton("SeekForward", "+5", 120, 38)
+		local speedButton = controlButton("PlaybackSpeed", "1x", 164, 42)
+
+		local menu = new("Frame", {
+			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
+			AnchorPoint = V2(0, 1), Position = U2(0, 8, 1, -104),
+			Size = U2(0.72, 0, 0, 0), Visible = false, ZIndex = 50,
+		}, parent)
+		corner(menu, 8)
+		stroke(menu, C.border, 1)
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
+
+		local currentTrack, currentAnimation, currentIndex
+		local currentLength, playbackSpeed = 0, 1
+		local isPlaying, isLoading, disposed = false, false, false
+		local function formatTime(value)
+			value = math.max(tonumber(value) or 0, 0)
+			return string.format("%02d:%05.2f", math.floor(value / 60), value % 60)
+		end
+		local function updateTimeline()
+			local position = 0
+			if currentTrack then
+				pcall(function() position = currentTrack.TimePosition end)
+			end
+			local length = currentLength
+			local alpha = length > 0 and math.clamp(position / length, 0, 1) or 0
+			timelineFill.Size = U2(alpha, 0, 1, 0)
+			timelineKnob.Position = U2(alpha, 0, 0.5, 0)
+			timeLabel.Text = formatTime(position) .. " / " .. formatTime(length)
+			playButton.Text = isPlaying and "Ⅱ" or "▶"
+		end
+		local function stopCurrent()
+			if currentTrack then
+				pcall(function() currentTrack:Stop(0.08) end)
+				pcall(function() currentTrack:Destroy() end)
+				currentTrack = nil
+			end
+			currentAnimation = nil
+			currentLength = 0
+			isPlaying = false
+			isLoading = false
+			if h then h.animationActive = false end
+			updateTimeline()
+		end
+		local function setPosition(value)
+			if not currentTrack or currentLength <= 0 then return end
+			local target = math.clamp(value, 0, currentLength)
+			if not currentTrack.IsPlaying then
+				pcall(function() currentTrack:Play(0) end)
+				pcall(function() currentTrack:AdjustSpeed(0) end)
+			end
+			pcall(function() currentTrack.TimePosition = target end)
+			updateTimeline()
+		end
+		local function setPlaying(enabled)
+			if not currentTrack then return end
+			if enabled then
+				if currentLength > 0 and currentTrack.TimePosition >= currentLength - 0.03 then
+					pcall(function() currentTrack.TimePosition = 0 end)
+				end
+				if not currentTrack.IsPlaying then
+					pcall(function() currentTrack:Play(0.08) end)
+				end
+				pcall(function() currentTrack:AdjustSpeed(playbackSpeed) end)
+				isPlaying = true
+				if h then h.animationActive = true end
+			else
+				pcall(function() currentTrack:AdjustSpeed(0) end)
+				isPlaying = false
+				if h then h.animationActive = false end
+			end
+			updateTimeline()
+		end
+		local function loadAnimation(index)
+			if disposed or #animations == 0 then return end
+			index = math.clamp(index, 1, #animations)
+			local entry = animations[index]
+			stopCurrent()
+			currentIndex = index
+			selector.Text = entry.Name
+			if not entry.AnimationId or entry.AnimationId == "" then
+				timeLabel.Text = "Animation ID unavailable"
+				return
+			end
+			local model = h and h.model
+			if not model then
+				timeLabel.Text = "Preview model unavailable"
+				return
+			end
+			local controller = model:FindFirstChildOfClass("Humanoid") or model:FindFirstChildOfClass("AnimationController")
+			if not controller then
+				controller = Instance.new("AnimationController")
+				controller.Name = "PreviewAnimationController"
+				controller.Parent = model
+			end
+			local animator = controller:FindFirstChildOfClass("Animator")
+			if not animator then
+				animator = Instance.new("Animator")
+				animator.Parent = controller
+			end
+			local animation = Instance.new("Animation")
+			animation.Name = entry.Name
+			animation.AnimationId = entry.AnimationId
+			local ok, track = pcall(function() return animator:LoadAnimation(animation) end)
+			if not ok or not track then
+				animation:Destroy()
+				timeLabel.Text = "Could not load animation"
+				return
+			end
+			currentTrack = track
+			currentAnimation = animation
+			isLoading = true
+			timeLabel.Text = "Loading animation..."
+			pcall(function()
+				track.Looped = false
+				track:Play(0)
+				track:AdjustSpeed(0)
+			end)
+			task.spawn(function()
+				local started = os.clock()
+				while not disposed and currentTrack == track and os.clock() - started < 8 do
+					local length = 0
+					pcall(function() length = track.Length end)
+					if length > 0 then
+						currentLength = length
+						pcall(function() track.TimePosition = 0 end)
+						isLoading = false
+						isPlaying = false
+						if h then h.animationActive = false end
+						updateTimeline()
+						return
+					end
+					task.wait(0.08)
+				end
+				if not disposed and currentTrack == track then
+					isLoading = false
+					timeLabel.Text = "Length unavailable"
+				end
+			end)
+			updateTimeline()
+		end
+
+		local menuButtons = {}
+		local function rebuildMenu()
+			for _, button in ipairs(menuButtons) do button:Destroy() end
+			menuButtons = {}
+			for i, entry in ipairs(animations) do
+				local button = txt("TextButton", {
+					Text = entry.Name, Font = GM, TextSize = 11, TextColor3 = C.txt,
+					BackgroundTransparency = 1, Size = U2(1, -8, 0, 25),
+					Position = U2(0, 4, 0, 0), LayoutOrder = i, ZIndex = 51,
+					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+				}, menu)
+				pad(button, 8, 6, 0, 0)
+				button.Activated:Connect(function()
+					menu.Visible = false
+					loadAnimation(i)
+				end)
+				menuButtons[#menuButtons + 1] = button
+			end
+			local height = math.min(#animations * 27 + 6, 162)
+			menu.Size = U2(0.72, 0, 0, height)
+		end
+		rebuildMenu()
+		selector.Activated:Connect(function()
+			if #animations > 0 then menu.Visible = not menu.Visible end
+		end)
+		selectorArrow.InputBegan:Connect(function(input)
+			if isPtr(input) and #animations > 0 then menu.Visible = not menu.Visible end
+		end)
+
+		playButton.Activated:Connect(function()
+			if not currentTrack and #animations > 0 then
+				loadAnimation(currentIndex or 1)
+				return
+			end
+			if isLoading then return end
+			setPlaying(not isPlaying)
+		end)
+		stopButton.Activated:Connect(function()
+			if currentTrack then
+				pcall(function() currentTrack:Stop(0.08) end)
+				pcall(function() currentTrack.TimePosition = 0 end)
+				isPlaying = false
+				if h then h.animationActive = false end
+				updateTimeline()
+			end
+		end)
+		backButton.Activated:Connect(function()
+			if currentTrack then setPosition((currentTrack.TimePosition or 0) - 5) end
+		end)
+		forwardButton.Activated:Connect(function()
+			if currentTrack then setPosition((currentTrack.TimePosition or 0) + 5) end
+		end)
+		local speeds = { 0.25, 0.5, 1, 1.5, 2 }
+		speedButton.Activated:Connect(function()
+			local nextIndex = 1
+			for i, speed in ipairs(speeds) do
+				if speed == playbackSpeed then nextIndex = i % #speeds + 1 break end
+			end
+			playbackSpeed = speeds[nextIndex]
+			speedButton.Text = tostring(playbackSpeed) .. "x"
+			if isPlaying and currentTrack then
+				pcall(function() currentTrack:AdjustSpeed(playbackSpeed) end)
+			end
+		end)
+		local function scrub(input)
+			if currentLength <= 0 then return end
+			local position, size = timeline.AbsolutePosition, timeline.AbsoluteSize
+			local alpha = math.clamp((input.Position.X - position.X) / math.max(size.X, 1), 0, 1)
+			setPosition(alpha * currentLength)
+		end
+		timelineHit.InputBegan:Connect(function(input)
+			if isPtr(input) then
+				scrub(input)
+				dragLocked(timelineHit, scrub)
+			end
+		end)
+
+		local updateConnection = RunService.RenderStepped:Connect(function()
+			if disposed then return end
+			if currentTrack then
+				if isPlaying and not currentTrack.IsPlaying then
+					isPlaying = false
+					if h then h.animationActive = false end
+				end
+				updateTimeline()
+			end
+		end)
+		cleanups[#cleanups + 1] = function()
+			disposed = true
+			updateConnection:Disconnect()
+			stopCurrent()
+			if menu and menu.Parent then menu:Destroy() end
+		end
+		if #animations > 0 then
+			loadAnimation(1)
+		else
+			selector.Text = "No animations found"
+			timeLabel.Text = "Add an Animation to the model"
+			playButton.TextColor3 = C.dim
 		end
 
 		local h = makeThumb(inner, a)
@@ -3078,7 +3339,7 @@ function M:_build()
 		end
 		for h, st in pairs(self._viewers) do
 			h.step(dt, self._auto and not h.manualOnly and not st.dragging and os.clock() > st.resumeAt, self._speed)
-			if h.motionEnabled and h.syncMotion and h.manualOnly and self._drawerOpen
+			if h.motionEnabled and not h.animationActive and h.syncMotion and h.manualOnly and self._drawerOpen
 				and self._selected == h.asset then
 				h.motionElapsed = h.motionElapsed + dt
 				local interval = 1 / (h.motionRate or 30)
@@ -3762,9 +4023,6 @@ function M:_pagesFor(asset)
 	local hasVariants = asset and type(asset._variants) == "table" and #asset._variants > 1
 	if #controls > 0 or hasVariants then
 		out[#out + 1] = PAGES.controllers
-	end
-	if #discoverAnimations(asset) > 0 then
-		out[#out + 1] = PAGES.animations
 	end
 	if hasPreview(asset) then
 		out[#out + 1] = PAGES.preview
