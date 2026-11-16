@@ -514,6 +514,10 @@ local function makeViewport(parent, src)
 				d:Destroy()
 			elseif d:IsA("BasePart") then
 				d.Anchored = true
+			elseif d:IsA("Motor6D") then
+				pcall(function() d.Transform = CFrame.identity end)
+			elseif d:IsA("Bone") then
+				pcall(function() d.Transform = CFrame.identity end)
 			end
 		end
 		model = c
@@ -584,6 +588,14 @@ local function makeViewport(parent, src)
 	local cam = new("Camera", { FieldOfView = fov }, vp)
 	vp.CurrentCamera = cam
 	local dir = V3(0.45, 0.4, -1).Unit
+	local facingPart = model:FindFirstChild("HumanoidRootPart", true) or model.PrimaryPart
+	if facingPart and facingPart:IsA("BasePart") then
+		local look = facingPart.CFrame.LookVector
+		local horizontal = V3(look.X, 0, look.Z)
+		if horizontal.Magnitude > 0.001 then
+			dir = (horizontal.Unit + V3(0, 0.4, 0)).Unit
+		end
+	end
 	local light = V3(-0.4, -1, 0.8)
 	local startYaw = -(src.Yaw or 0)
 	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0, asset = src, model = model, animationActive = false }
