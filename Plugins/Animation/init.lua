@@ -15,17 +15,15 @@ local function discover(asset)
             return
         end
         local name = tostring(animation.Name or "")
-        local generic = name == "" or name:lower() == "animation"
+        local generic = name == "" or name:lower():match("^animation%d*$") ~= nil
         if generic then
             local p = animation.Parent
             while p and p ~= model do
                 local n = tostring(p.Name or "")
                 local lower = n:lower()
-                n = n:gsub("[Aa]nim$", "")
-                lower = n:lower()
                 if n ~= "" and lower ~= "animations" and lower ~= "animate"
                     and lower ~= "animator" and lower ~= "humanoid"
-                    and lower ~= "animationcontroller" and lower ~= "animation" then
+                    and lower ~= "animationcontroller" and not lower:match("^animation%d*$") then
                     name = n
                     break
                 end
@@ -34,7 +32,7 @@ local function discover(asset)
         else
             name = name:gsub("[Aa]nim$", "")
         end
-        if name == "" or name:lower() == "animation" then
+        if name == "" or name:lower():match("^animation%d*$") then
             name = "Animation • " .. id:sub(-6)
         end
         seen[key] = { Name = name, AnimationId = id, Object = animation, State = state or "Available" }
@@ -170,10 +168,14 @@ function Plugin.Init(context)
         local pauseIcon=icon(play,"pause",13,C.txt); pauseIcon.AnchorPoint=Vector2.new(.5,.5); pauseIcon.Position=U(.5,0,.5,0); pauseIcon.Visible=false
         local menu=make("ScrollingFrame",{Name="AnimationList",BackgroundColor3=C.panel or Color3.fromRGB(32,34,43),
             BorderSizePixel=0,AnchorPoint=Vector2.new(0,1),Position=U(0,8,1,-104),Size=U(.58,-18,0,162),
-            Visible=false,ZIndex=50,CanvasSize=U(0,0,0,#list*27+6),ScrollBarThickness=3,
+            Visible=false,ZIndex=50,Active=true,ScrollingEnabled=true,ScrollingDirection=Enum.ScrollingDirection.Y,
+            AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=U(0,0,0,0),ScrollBarThickness=4,
             ScrollBarImageColor3=C.dim or Color3.fromRGB(130,135,150)},parent)
         ui.Corner(menu,8); ui.Stroke(menu,C.border or Color3.fromRGB(65,68,82),1)
-        make("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)},menu)
+        local menuLayout=make("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)},menu)
+        menuLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            menu.CanvasSize=U(0,0,0,menuLayout.AbsoluteContentSize.Y+8)
+        end)
 
         local track, object, length, index, rate = nil,nil,0,1,1
         local playing, loading, disposed = false,false,false
@@ -221,14 +223,16 @@ function Plugin.Init(context)
             update()
         end
         for i,entry in ipairs(list) do
+            local row=make("Frame",{Name="AnimationRow",BackgroundTransparency=1,Size=U(1,-8,0,27),
+                LayoutOrder=i,ZIndex=51},menu)
             local item=text("TextButton",{Text=entry.Name,Font=Enum.Font.GothamMedium,TextSize=11,
-                TextColor3=C.txt or Color3.new(1,1,1),BackgroundTransparency=1,Size=U(1,-58,0,25),
-                Position=U(0,4,0,0),LayoutOrder=i,ZIndex=51,TextXAlignment=Enum.TextXAlignment.Left},menu)
+                TextColor3=C.txt or Color3.new(1,1,1),BackgroundTransparency=1,Size=U(1,-58,1,0),
+                Position=U(0,4,0,0),ZIndex=52,TextXAlignment=Enum.TextXAlignment.Left},row)
             ui.Pad(item,8,6,0,0)
             local duration=text("TextLabel",{Text="--:--",Font=Enum.Font.Code,TextSize=9,
                 TextColor3=C.dim or Color3.fromRGB(140,145,160),BackgroundTransparency=1,
-                AnchorPoint=Vector2.new(1,0),Position=U(1,-8,0,0),Size=U(0,44,0,25),
-                TextXAlignment=Enum.TextXAlignment.Right,LayoutOrder=i,ZIndex=51},menu)
+                AnchorPoint=Vector2.new(1,0),Position=U(1,-8,0,0),Size=U(0,48,1,0),
+                TextXAlignment=Enum.TextXAlignment.Right,ZIndex=52},row)
             durationLabels[i]=duration
             item.Activated:Connect(function() menu.Visible=false; load(i) end)
         end
@@ -242,11 +246,24 @@ function Plugin.Init(context)
                 return
             end
             if playing then
-                pcall(function() track:AdjustSpeed(0) end)
+                pcall(function()
+                    track.TimePosition = track.TimePosition
+                    track:AdjustSpeed(0)
+                end)
                 playing=false
             else
-                if length>0 and track.TimePosition>=length-.03 then pcall(function() track.TimePosition=0 end) end
-                local ok=pcall(function() track:Play(.08); track:AdjustSpeed(rate) end)
+                local ok=pcall(function()
+                    if length>0 and track.TimePosition>=length-.03 then
+                        track.TimePosition=0
+                    end
+                    if track.IsPlaying then
+                        -- A paused track is still active; restore its speed without calling Play again.
+                        track:AdjustSpeed(rate)
+                    else
+                        track:Play(.08)
+                        track:AdjustSpeed(rate)
+                    end
+                end)
                 playing=ok
             end
             update()
