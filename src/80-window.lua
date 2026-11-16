@@ -60,7 +60,7 @@ local function createConsoleUI(bridge, parent, opts)
             if matches(r) then
                 shown=shown+1
                 local row=Instance.new("Frame"); row.Size=UDim2.new(1,-4,0,31); row.LayoutOrder=r.id
-                row.BackgroundColor3=selected[r.id] and C.pHdr or C.card; row.BorderSizePixel=0; row.Parent=list; round(row,5)
+                row.BackgroundColor3=selected[r.id] and C.pHdr or C.backdrop; row.BorderSizePixel=0; row.Parent=list; round(row,5)
                 local accent=r.kind=="Error" and Color3.fromRGB(238,65,78) or (r.kind=="Warn" and Color3.fromRGB(230,166,55) or ACCENTS[1])
                 local bar=Instance.new("Frame"); bar.Size=UDim2.new(0,3,1,-8); bar.Position=UDim2.new(0,0,0,4); bar.BackgroundColor3=accent; bar.BorderSizePixel=0; bar.Parent=row; round(bar,2)
                 local pick=Instance.new("TextButton"); pick.Size=UDim2.new(0,25,1,0); pick.BackgroundTransparency=1; pick.Text=selected[r.id] and "✓" or "□"; pick.TextColor3=ACCENTS[1]; pick.TextSize=13; pick.Parent=row
