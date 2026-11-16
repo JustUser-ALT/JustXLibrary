@@ -1842,7 +1842,11 @@ PAGES.preview = {
 				end
 				return false
 			end
-			local began = UIS.TouchStarted:Connect(function(i)
+			-- Start touches from the preview hit surface itself. The animation list
+			-- sits above this button, so its own scrolling gestures never reach here.
+			-- This is more reliable on mobile clients than UIS.TouchStarted.
+			local began = hit.InputBegan:Connect(function(i)
+				if i.UserInputType ~= Enum.UserInputType.Touch then return end
 				if not insideHit(i.Position) or overScrollingFrame(i.Position) then return end
 				touches[i] = i.Position
 				resetTouchAnchor()
