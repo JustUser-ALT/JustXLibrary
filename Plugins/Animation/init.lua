@@ -8,24 +8,35 @@ local function discover(asset)
     local function add(animation, state)
         if not animation or not animation:IsA("Animation") then return end
         local id = tostring(animation.AnimationId or "")
-        local key = id ~= "" and id or animation:GetFullName()
+        if id == "" then return end
+        local key = id
         if seen[key] then
             if state == "Playing" then seen[key].State = state end
             return
         end
-        local name = animation.Name
-        if name == "" or name:lower() == "animation" then
+        local name = tostring(animation.Name or "")
+        local generic = name == "" or name:lower() == "animation"
+        if generic then
             local p = animation.Parent
             while p and p ~= model do
                 local n = tostring(p.Name or "")
-                if n ~= "" and n:lower() ~= "animations" and n:lower() ~= "animate"
-                    and n:lower() ~= "animator" and n:lower() ~= "humanoid" then name = n; break end
+                local lower = n:lower()
+                n = n:gsub("[Aa]nim$", "")
+                lower = n:lower()
+                if n ~= "" and lower ~= "animations" and lower ~= "animate"
+                    and lower ~= "animator" and lower ~= "humanoid"
+                    and lower ~= "animationcontroller" and lower ~= "animation" then
+                    name = n
+                    break
+                end
                 p = p.Parent
             end
+        else
+            name = name:gsub("[Aa]nim$", "")
         end
-        if name == "" or name:lower() == "animation" then name = "Animation " .. (#out + 1) end
-        name = name:gsub("[Aa]nim$", "")
-        if name == "" then name = "Animation " .. (#out + 1) end
+        if name == "" or name:lower() == "animation" then
+            name = "Animation • " .. id:sub(-6)
+        end
         seen[key] = { Name = name, AnimationId = id, Object = animation, State = state or "Available" }
         out[#out + 1] = seen[key]
     end
@@ -152,7 +163,7 @@ function Plugin.Init(context)
             if glyph then local i=icon(b,glyph,13,C.txt); i.AnchorPoint=Vector2.new(.5,.5); i.Position=U(.5,0,.5,0) end
             return b
         end
-        local play,stop,back,forward,speed=button("PlayPause","play",0,30),button("Stop","square",36,28),
+        local play,stop,back,forward,speed=button("PlayPause",nil,0,30),button("Stop","square",36,28),
             button("SeekBack","rewind",70,32),button("SeekForward","fast-forward",108,32),button("PlaybackSpeed",nil,146,40)
         speed.Font=Enum.Font.Code; speed.Text="1.0x"
         local playIcon=icon(play,"play",13,C.txt); playIcon.AnchorPoint=Vector2.new(.5,.5); playIcon.Position=U(.5,0,.5,0)
@@ -166,6 +177,7 @@ function Plugin.Init(context)
 
         local track, object, length, index, rate = nil,nil,0,1,1
         local playing, loading, disposed = false,false,false
+        local durationLabels = {}
         local function update()
             local pos=0; if track then pcall(function() pos=track.TimePosition end) end
             local alpha=length>0 and math.clamp(pos/length,0,1) or 0
@@ -210,21 +222,32 @@ function Plugin.Init(context)
         end
         for i,entry in ipairs(list) do
             local item=text("TextButton",{Text=entry.Name,Font=Enum.Font.GothamMedium,TextSize=11,
-                TextColor3=C.txt or Color3.new(1,1,1),BackgroundTransparency=1,Size=U(1,-8,0,25),
+                TextColor3=C.txt or Color3.new(1,1,1),BackgroundTransparency=1,Size=U(1,-58,0,25),
                 Position=U(0,4,0,0),LayoutOrder=i,ZIndex=51,TextXAlignment=Enum.TextXAlignment.Left},menu)
-            ui.Pad(item,8,6,0,0); item.Activated:Connect(function() menu.Visible=false; load(i) end)
+            ui.Pad(item,8,6,0,0)
+            local duration=text("TextLabel",{Text="--:--",Font=Enum.Font.Code,TextSize=9,
+                TextColor3=C.dim or Color3.fromRGB(140,145,160),BackgroundTransparency=1,
+                AnchorPoint=Vector2.new(1,0),Position=U(1,-8,0,0),Size=U(0,44,0,25),
+                TextXAlignment=Enum.TextXAlignment.Right,LayoutOrder=i,ZIndex=51},menu)
+            durationLabels[i]=duration
+            item.Activated:Connect(function() menu.Visible=false; load(i) end)
         end
         selector.Active = #list > 0
         selector.Activated:Connect(function()
             if #list > 0 then menu.Visible=not menu.Visible end
         end)
         play.Activated:Connect(function()
-            if not track then load(index); return end
-            if loading then return end
-            if playing then pcall(function() track:AdjustSpeed(0) end); playing=false
+            if not track then
+                if #list > 0 then load(index) end
+                return
+            end
+            if playing then
+                pcall(function() track:AdjustSpeed(0) end)
+                playing=false
             else
                 if length>0 and track.TimePosition>=length-.03 then pcall(function() track.TimePosition=0 end) end
-                pcall(function() track:Play(.08); track:AdjustSpeed(rate) end); playing=true
+                local ok=pcall(function() track:Play(.08); track:AdjustSpeed(rate) end)
+                playing=ok
             end
             update()
         end)
@@ -253,9 +276,38 @@ function Plugin.Init(context)
             end
         end)
         if #list > 0 then
-            load(1)
+            selector.Text = "Select animation"
+            -- Read durations in the background. Temporary tracks are immediately destroyed
+            -- after their Length becomes available, so the list does not retain extra tracks.
+            task.spawn(function()
+                for i,entry in ipairs(list) do
+                    if disposed then break end
+                    local metaTrack,metaObject=createTrack(entry.Object or entry.AnimationId,ctx.Model)
+                    if metaTrack then
+                        local started=os.clock()
+                        local durationValue=0
+                        repeat
+                            pcall(function() durationValue=metaTrack.Length end)
+                            if durationValue>0 or disposed then break end
+                            task.wait(.1)
+                        until os.clock()-started>=2.5
+                        pcall(function() metaTrack:Stop(0); metaTrack:Destroy() end)
+                        if metaObject then metaObject:Destroy() end
+                        if durationValue>0 then
+                            entry.Duration=durationValue
+                            local mins=math.floor(durationValue/60)
+                            local secs=durationValue-mins*60
+                            if durationLabels[i] and durationLabels[i].Parent then
+                                durationLabels[i].Text=string.format("%d:%04.1f",mins,secs)
+                            end
+                        end
+                    end
+                    task.wait(.08)
+                end
+            end)
         else
-            time.Text = "No Animation objects found in this model"
+            selector.Text = "No animations found"
+            time.Text = "No usable Animation objects found in this model"
         end
         return function()
             disposed=true; if connection then connection:Disconnect() end
