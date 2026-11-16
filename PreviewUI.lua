@@ -518,6 +518,12 @@ local function makeViewport(parent, src)
 				pcall(function() d.Transform = CFrame.identity end)
 			elseif d:IsA("Bone") then
 				pcall(function() d.Transform = CFrame.identity end)
+			elseif d:IsA("Animator") then
+				pcall(function()
+					for _, track in ipairs(d:GetPlayingAnimationTracks()) do
+						track:Stop(0)
+					end
+				end)
 			end
 		end
 		model = c
