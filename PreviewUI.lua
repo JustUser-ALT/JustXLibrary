@@ -1757,7 +1757,9 @@ PAGES.preview = {
 			end
 			local hit = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 5 }, box)
 			local function insideHit(pos)
-				local p, s = hit.AbsolutePosition, hit.AbsoluteSize
+				-- Use the preview container bounds, not the TextButton's input hit-test.
+				-- Some Android clients do not route touch starts to overlay TextButtons.
+				local p, s = box.AbsolutePosition, box.AbsoluteSize
 				local inPreview = pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
 				if not inPreview then return false end
 				local bp, bs = fullButton.AbsolutePosition, fullButton.AbsoluteSize
@@ -1842,12 +1844,12 @@ PAGES.preview = {
 				end
 				return false
 			end
-			-- Start touches from the preview hit surface itself. The animation list
-			-- sits above this button, so its own scrolling gestures never reach here.
-			-- This is more reliable on mobile clients than UIS.TouchStarted.
-			local began = hit.InputBegan:Connect(function(i)
-				if i.UserInputType ~= Enum.UserInputType.Touch then return end
-				if not insideHit(i.Position) or overScrollingFrame(i.Position) then return end
+			-- Register touch starts globally: Android may not route the initial
+			-- touch to the preview TextButton even when it is visually on top.
+			-- Ignore touches that begin inside the visible animation list.
+			local began = UIS.TouchStarted:Connect(function(i, gameProcessed)
+				if not insideHit(i.Position) then return end
+				if overScrollingFrame(i.Position) then return end
 				touches[i] = i.Position
 				resetTouchAnchor()
 			end)
