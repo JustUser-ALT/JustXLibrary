@@ -5203,8 +5203,7 @@ local function createConsoleUI(bridge, parent, opts)
     end
     search:GetPropertyChangedSignal("Text"):Connect(function() query=search.Text; refresh() end)
     clear.MouseButton1Click:Connect(function()
-        for i=#records,1,-1 do if not selected[records[i].id] then table.remove(records,i) end end
-        selected={}; refresh()
+        records={}; selected={}; refresh()
     end)
     copy.MouseButton1Click:Connect(function()
         local out={}
@@ -6376,6 +6375,7 @@ function JL:Window(opts)
         function api:Destroy()
             pcall(destroy,self)
             if JL._console==self then JL._console=nil end
+            self.alive=false
             if not tab:IsRemoved() then tab:Remove() end
         end
         JL._console=api
