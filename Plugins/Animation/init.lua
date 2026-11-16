@@ -163,7 +163,7 @@ function Plugin.Init(context)
         end
         local play,stop,back,forward,speed=button("PlayPause",nil,0,30),button("Stop","square",36,28),
             button("SeekBack","rewind",70,32),button("SeekForward","fast-forward",108,32),button("PlaybackSpeed",nil,146,40)
-        speed.Font=Enum.Font.Code; speed.Text="1.0x"
+        speed.Font=Enum.Font.Code; speed.Text="1.0x"; speed.TextXAlignment=Enum.TextXAlignment.Center; speed.TextYAlignment=Enum.TextYAlignment.Center
         local playIcon=icon(play,"play",13,C.txt); playIcon.AnchorPoint=Vector2.new(.5,.5); playIcon.Position=U(.5,0,.5,0)
         local pauseIcon=icon(play,"pause",13,C.txt); pauseIcon.AnchorPoint=Vector2.new(.5,.5); pauseIcon.Position=U(.5,0,.5,0); pauseIcon.Visible=false
         local menu=make("ScrollingFrame",{Name="AnimationList",BackgroundColor3=C.panel or Color3.fromRGB(32,34,43),
