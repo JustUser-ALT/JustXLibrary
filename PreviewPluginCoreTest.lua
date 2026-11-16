@@ -1,9 +1,9 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-13"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-14"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-13"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-14"))()
 if not Library then
     warn("[Plugin Core Test] JustLib failed to load")
     return
@@ -23,7 +23,7 @@ local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-13",
+    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-14",
 })
 if not Preview or Preview.IsStub then
     warn("[Plugin Core Test] Preview failed to initialize")
@@ -97,8 +97,22 @@ local CharacterSource = Preview:Source({
             Preview = true,
         }
     end,
-    Discover = {Enabled = true, Interval = 2, RemoveMissing = true},
+    Discover = false,
 })
+
+local CharacterAddedConnection
+if LocalPlayer then
+    CharacterAddedConnection = LocalPlayer.CharacterAdded:Connect(function(character)
+        task.spawn(function()
+            character:WaitForChild("Humanoid", 10)
+            task.wait(0.5)
+            CharacterSource:Update(LocalPlayer.UserId, {
+                Model = character,
+                Description = "Your current character. Animation objects are detected from the live character hierarchy.",
+            })
+        end)
+    end)
+end
 
 local available = Preview:GetPlugins()
 warn("[Plugin Core Test] Available plugins: " .. tostring(#available))
