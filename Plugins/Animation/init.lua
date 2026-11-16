@@ -100,6 +100,23 @@ function Plugin.Init(context)
     local function build(parent, asset, pv, ctx)
         local list = discover(asset)
         if not alive or #list == 0 then return end
+        -- The Preview viewport anchors every part by default. Keep the rig root fixed,
+        -- but allow Motor6D joints to move so the animation is visible.
+        local rig = ctx.Model
+        if typeof(rig) == "Instance" and (rig:FindFirstChildOfClass("Humanoid") or rig:FindFirstChildOfClass("AnimationController")) then
+            local root = rig:FindFirstChild("HumanoidRootPart") or rig.PrimaryPart
+            if not root then
+                for _, part in ipairs(rig:GetDescendants()) do
+                    if part:IsA("BasePart") then root = part; break end
+                end
+            end
+            for _, part in ipairs(rig:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = part == root
+                    part.CanCollide = false
+                end
+            end
+        end
         local C, U = ui.Colors or {}, ui.U2 or UDim2.new
         local make, text, icon = ui.Create, ui.Text, ui.Icon
         if not make or not text or not icon then return end
@@ -245,4 +262,4 @@ function Plugin.Init(context)
     end }
 end
 
-return { Manifest={Id="animation",Name="Animation",Version="0.2.0",ApiVersion=1}, Init=Plugin.Init }
+return { Manifest={Id="animation",Name="Animation",Version="0.3.0",ApiVersion=1}, Init=Plugin.Init }
