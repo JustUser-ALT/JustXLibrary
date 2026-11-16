@@ -1,37 +1,37 @@
--- Preview Plugin Core test
+-- Preview Touch Diagnostic test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-touch-diag-01"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewTouchDiagnosticTest.lua?v=20261116-touch-diag-01"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
 local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-touch-diag-01"))()
 if not Library then
-    warn("[Plugin Core Test] JustLib failed to load")
+    warn("[Preview Touch Diagnostic] JustLib failed to load")
     return
 end
 
 local Window = Library:Window({
     Title = "Preview Touch Diagnostic",
-    Config = "JustLib_PreviewPluginCoreTest",
+    Config = "JustLib_PreviewTouchDiagnostic",
 })
 if not Window then
-    warn("[Plugin Core Test] Window creation failed")
+    warn("[Preview Touch Diagnostic] Window creation failed")
     return
 end
 
 local Host = Window:Tab({Name = "Plugin Tests", Icon = "plug"})
 local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
-    Title = "Plugin Core Test",
+    Title = "Preview Touch Diagnostic",
     TabName = "Preview",
     Source = ROOT .. "PreviewUIDiagnostic.lua?v=20261116-touch-diag-01",
 })
 if not Preview or Preview.IsStub then
-    warn("[Plugin Core Test] Preview failed to initialize")
+    warn("[Preview Touch Diagnostic] Preview failed to initialize")
     Tests:Button({
         Name = "Preview initialization failed",
         Icon = "alert-circle",
         Callback = function()
-            warn("[Plugin Core Test] Preview is unavailable")
+            warn("[Preview Touch Diagnostic] Preview is unavailable")
         end,
     })
     Window:Open()
@@ -39,7 +39,7 @@ if not Preview or Preview.IsStub then
 end
 
 local function log(label, ok, result)
-    warn("[Plugin Core Test] " .. label .. " => " .. tostring(ok) .. " / " .. tostring(result))
+    warn("[Preview Touch Diagnostic] " .. label .. " => " .. tostring(ok) .. " / " .. tostring(result))
 end
 
 local SampleTab = Preview:Tab({Name = "Plugin Samples", Icon = "box"})
@@ -116,7 +116,7 @@ if LocalPlayer then
 end
 
 local available = Preview:GetPlugins()
-warn("[Plugin Core Test] Available plugins: " .. tostring(#available))
+warn("[Preview Touch Diagnostic] Available plugins: " .. tostring(#available))
 for _, item in ipairs(available) do
     log("Registry " .. tostring(item.Id), item.Id ~= nil and item.Entry ~= nil, tostring(item.Name) .. " v" .. tostring(item.Version))
 end
@@ -189,4 +189,4 @@ Tests:Button({
 
 Preview:Open()
 Window:Open()
-warn("[Plugin Core Test] Loaded. Run 'Test install lifecycle' and inspect output.")
+warn("[Preview Touch Diagnostic] Loaded. Run 'Test install lifecycle' and inspect output.")
