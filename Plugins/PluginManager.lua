@@ -116,6 +116,7 @@ function Manager:_context(id)
     local context = {
         Preview = self.Preview,
         Bridge = self.Bridge,
+        UI = self.Preview and self.Preview:GetPluginUI() or {},
         Icon = function(parent, name, size, color)
             return manager.Preview:CreateIcon(parent, name, size, color)
         end,
