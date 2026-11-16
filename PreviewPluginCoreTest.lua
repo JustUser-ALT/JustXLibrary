@@ -1,9 +1,9 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-console-01"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-console-02"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-console-01"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-console-02"))()
 if not Library then
     warn("[Plugin Core Test] JustLib failed to load")
     return
