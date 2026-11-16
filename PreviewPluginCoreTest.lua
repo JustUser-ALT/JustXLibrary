@@ -1,6 +1,6 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-23"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-24"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
 local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-23"))()
@@ -23,7 +23,7 @@ local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-23",
+    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-24",
 })
 if not Preview or Preview.IsStub then
     warn("[Plugin Core Test] Preview failed to initialize")
