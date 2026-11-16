@@ -323,4 +323,4 @@ function Plugin.Init(context)
     end }
 end
 
-return { Manifest={Id="animation",Name="Animation",Version="0.4.0",ApiVersion=1}, Init=Plugin.Init }
+return { Manifest={Id="animation",Name="Animation",Version="0.4.1",ApiVersion=1}, Init=Plugin.Init }
