@@ -1797,10 +1797,19 @@ PAGES.preview = {
 			-- input routing on some mobile clients, so calculate pinch distance ourselves.
 			local touches = {}
 			local touchAnchor, pinchDistance, pinchZoom
+			-- InputObject instances can differ between TouchStarted, TouchMoved and
+			-- TouchEnded on some Android clients. TouchId is the stable finger key.
+			local function touchKey(input)
+				local ok, id = pcall(function() return input.TouchId end)
+				if ok and id ~= nil then
+					return id
+				end
+				return input
+			end
 			local function touchList()
 				local list = {}
-				for input, pos in pairs(touches) do
-					list[#list + 1] = { input = input, pos = pos }
+				for id, pos in pairs(touches) do
+					list[#list + 1] = { id = id, pos = pos }
 				end
 				return list
 			end
@@ -1850,13 +1859,14 @@ PAGES.preview = {
 			local began = UIS.TouchStarted:Connect(function(i, gameProcessed)
 				if not insideHit(i.Position) then return end
 				if overScrollingFrame(i.Position) then return end
-				touches[i] = i.Position
+				touches[touchKey(i)] = i.Position
 				resetTouchAnchor()
 			end)
 			local moved = UIS.TouchMoved:Connect(function(i)
-				if not touches[i] then return end
-				local previous = touches[i]
-				touches[i] = i.Position
+				local key = touchKey(i)
+				local previous = touches[key]
+				if not previous then return end
+				touches[key] = i.Position
 				local list = touchList()
 				if #list >= 2 then
 					local currentDistance = math.max(distance(list[1].pos, list[2].pos), 1)
@@ -1868,13 +1878,13 @@ PAGES.preview = {
 					h.vel = 0
 				elseif #list == 1 then
 					local dx = i.Position.X - previous.X
-					local dy = i.Position.Y - previous.Y
 					h.drag(dx * 0.011)
 				end
 			end)
 			local ended = UIS.TouchEnded:Connect(function(i)
-				if touches[i] then
-					touches[i] = nil
+				local key = touchKey(i)
+				if touches[key] then
+					touches[key] = nil
 					resetTouchAnchor()
 					st.resumeAt = os.clock() + 0.25
 				end
