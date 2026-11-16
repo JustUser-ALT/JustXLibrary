@@ -1839,7 +1839,9 @@ PAGES.preview = {
 			local function overScrollingFrame(pos)
 				-- Only the animation dropdown should capture this touch.
 				-- Other Preview scrolling containers must not disable model rotation.
-				local root = self._root
+				-- Resolve the GUI from the preview itself. The page builder's
+				-- self is not guaranteed to be the main Preview controller.
+				local root = box:FindFirstAncestorWhichIsA("ScreenGui") or box.Parent
 				if not root then return false end
 				for _, object in ipairs(root:GetDescendants()) do
 					if object:IsA("ScrollingFrame") and object.Name == "AnimationList"
