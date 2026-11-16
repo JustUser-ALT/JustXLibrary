@@ -8,7 +8,7 @@ return {
             Name = "Animation",
             Description = "Animation playback, tracks and animation asset tools.",
             Icon = "clapperboard",
-            Version = "0.2.0",
+            Version = "0.3.0",
             Author = "JustXLibrary",
             Entry = "Plugins/Animation/init.lua",
             Manifest = "Plugins/Animation/manifest.lua",
