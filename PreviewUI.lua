@@ -1826,15 +1826,13 @@ PAGES.preview = {
 				end
 			end
 			local function overScrollingFrame(pos)
-				-- Do not depend on GuiService hit-testing here: on some mobile clients
-				-- TouchStarted is delivered before GUI hit results are reliable.
-				-- Check the actual screen-space bounds of every active ScrollingFrame
-				-- inside this Preview instead.
+				-- Only the animation dropdown should capture this touch.
+				-- Other Preview scrolling containers must not disable model rotation.
 				local root = self._root
 				if not root then return false end
 				for _, object in ipairs(root:GetDescendants()) do
-					if object:IsA("ScrollingFrame") and object.Visible and object.Active
-						and object.ScrollingEnabled then
+					if object:IsA("ScrollingFrame") and object.Name == "AnimationList"
+						and object.Visible and object.Active and object.ScrollingEnabled then
 						local p, s = object.AbsolutePosition, object.AbsoluteSize
 						if pos.X >= p.X and pos.X <= p.X + s.X
 							and pos.Y >= p.Y and pos.Y <= p.Y + s.Y then
