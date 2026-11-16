@@ -487,7 +487,20 @@ local function makeViewport(parent, src)
 	local model
 	local motionSource = src.Model
 	if src.Model then
-		local ok, c = pcall(function() return src.Model:Clone() end)
+		local source = src.Model
+		local archivable = {}
+		local function allowClone(instance)
+			archivable[#archivable + 1] = { instance, instance.Archivable }
+			instance.Archivable = true
+		end
+		allowClone(source)
+		for _, descendant in ipairs(source:GetDescendants()) do
+			allowClone(descendant)
+		end
+		local ok, c = pcall(function() return source:Clone() end)
+		for _, state in ipairs(archivable) do
+			pcall(function() state[1].Archivable = state[2] end)
+		end
 		if not ok or not c then
 			return nil
 		end
