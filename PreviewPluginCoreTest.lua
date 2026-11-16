@@ -1,9 +1,9 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-11"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-12"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-11"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-plugins-12"))()
 if not Library then
     warn("[Plugin Core Test] JustLib failed to load")
     return
@@ -23,7 +23,7 @@ local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-11",
+    Source = ROOT .. "PreviewUI.lua?v=20261116-plugins-12",
 })
 if not Preview or Preview.IsStub then
     warn("[Plugin Core Test] Preview failed to initialize")
@@ -73,6 +73,33 @@ local SampleAsset = SampleTab:Asset({
     end,
 })
 
+-- Live local-character sample: uses the current character as a model source.
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local CharacterSource = Preview:Source({
+    Name = "My Character",
+    Tab = Preview:Tab({Name = "My Character", Icon = "user-round"}),
+    GetItems = function()
+        local character = LocalPlayer and LocalPlayer.Character
+        return character and {LocalPlayer} or {}
+    end,
+    Key = function(player)
+        return player.UserId
+    end,
+    Map = function(player)
+        local character = player.Character
+        return {
+            Name = (player.DisplayName ~= "" and player.DisplayName or player.Name) .. " (You)",
+            Type = "Model",
+            Creator = "Local Player",
+            Description = "Your current character. The Animation plugin detects Animation objects inside the character and its Animate hierarchy.",
+            Model = character,
+            Preview = true,
+        }
+    end,
+    Discover = {Enabled = true, Interval = 2, RemoveMissing = true},
+})
+
 local available = Preview:GetPlugins()
 warn("[Plugin Core Test] Available plugins: " .. tostring(#available))
 for _, item in ipairs(available) do
@@ -103,6 +130,19 @@ Tests:Button({
     Icon = "network",
     Callback = function()
         Preview:Open(SampleAsset)
+    end,
+})
+
+Tests:Button({
+    Name = "Open My Character",
+    Icon = "user-round",
+    Callback = function()
+        local asset = CharacterSource:Get(LocalPlayer.UserId)
+        if asset then
+            Preview:Open(asset)
+        else
+            log("My Character", false, "Character is not available yet")
+        end
     end,
 })
 
