@@ -5126,7 +5126,7 @@ local function createConsoleUI(bridge, parent, opts)
     local maxLogs = math.clamp(tonumber(opts.MaxLogs) or 500, 50, 3000)
     local root = Instance.new("Frame")
     root.Name = "JustXConsole"; root.Size = UDim2.new(1,0,1,0)
-    root.BackgroundColor3 = C.sidebar; root.BackgroundTransparency = 0; root.BorderSizePixel = 0; root.Visible = false; root.Parent = parent
+    root.BackgroundColor3 = C.sidebar; root.BackgroundTransparency = 0; root.BorderSizePixel = 0; root.Visible = true; root.Parent = parent
     local function round(o,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=o end
     local function text(p,s,z,col,font)
         local o=Instance.new("TextLabel"); o.BackgroundTransparency=1; o.Text=tostring(s or "")
