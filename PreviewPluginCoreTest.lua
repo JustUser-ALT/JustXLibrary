@@ -1,6 +1,6 @@
 -- Preview Plugin Core test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-plugins-24"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewPluginCoreTest.lua?v=20261116-console-01"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
 local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-console-01"))()
@@ -18,8 +18,8 @@ if not Window then
     return
 end
 
-local Console = Window:Console({MaxLogs = 500})
 local Host = Window:Tab({Name = "Plugin Tests", Icon = "plug"})
+local Console = Window:Console({MaxLogs = 500})
 local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Plugin Core Test",
