@@ -2645,6 +2645,16 @@ function M:CreateIcon(parent, name, size, color)
 	return mkIcon(parent, name, size or 14, color or C.dim)
 end
 
+function M:GetPluginUI()
+	return {
+		Create = new, Text = txt, Icon = mkIcon, Corner = corner, Stroke = stroke, Pad = pad,
+		Colors = C, Accent = ACCENTS[1],
+		Fonts = { Bold = GB, Medium = GM, Regular = G },
+		U2 = U2, V2 = V2, RunService = RunService,
+		IsPointer = isPtr, DragLocked = dragLocked,
+	}
+end
+
 -- Register a plugin-owned block inside the large 3D preview.
 function M:RegisterPreviewExtension(id, build)
 	assert(type(id) == "string" and id ~= "", "Preview extension requires an id")
