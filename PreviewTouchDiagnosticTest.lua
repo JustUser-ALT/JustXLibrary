@@ -1,9 +1,9 @@
 -- Preview Touch Diagnostic test
 -- Run:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewTouchDiagnosticTest.lua?v=20261116-touch-diag-01"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/PreviewTouchDiagnosticTest.lua?v=20261116-touch-diag-02"))()
 
 local ROOT = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
-local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-touch-diag-01"))()
+local Library = loadstring(game:HttpGet(ROOT .. "JustLib.lua?v=20261116-touch-diag-02"))()
 if not Library then
     warn("[Preview Touch Diagnostic] JustLib failed to load")
     return
@@ -23,7 +23,7 @@ local Tests = Host:Section({Title = "Plugin Core"})
 local Preview = Library:Preview({
     Title = "Preview Touch Diagnostic",
     TabName = "Preview",
-    Source = ROOT .. "PreviewUIDiagnostic.lua?v=20261116-touch-diag-01",
+    Source = ROOT .. "PreviewUIDiagnostic.lua?v=20261116-touch-diag-02",
 })
 if not Preview or Preview.IsStub then
     warn("[Preview Touch Diagnostic] Preview failed to initialize")
