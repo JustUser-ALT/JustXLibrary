@@ -1520,83 +1520,6 @@ PAGES.controllers = {
 	end,
 }
 
--- Discover Animation instances stored in the model and animations exposed by its Animators.
-local function discoverAnimations(asset)
-	local model = asset and asset.Model
-	if typeof(model) ~= "Instance" then
-		return {}
-	end
-	local found, seen = {}, {}
-	local function add(animation, state)
-		if not animation or not animation:IsA("Animation") then return end
-		local id = tostring(animation.AnimationId or "")
-		local key = id ~= "" and id or animation:GetFullName()
-		if seen[key] then
-			if state == "Playing" then
-				seen[key].State = "Playing"
-			end
-			return
-		end
-		local name = animation.Name
-		if name == "" or string.lower(name) == "animation" then
-			local ancestor = animation.Parent
-			while ancestor and ancestor ~= model do
-				local candidate = tostring(ancestor.Name or "")
-				local lowered = string.lower(candidate)
-				if candidate ~= "" and lowered ~= "animations" and lowered ~= "animate"
-					and lowered ~= "animator" and lowered ~= "humanoid" then
-					name = candidate
-					break
-				end
-				ancestor = ancestor.Parent
-			end
-		end
-		if name == "" or string.lower(name) == "animation" then
-			name = "Animation " .. tostring(#found + 1)
-		end
-		local entry = {
-			Name = name,
-			AnimationId = id,
-			Object = animation,
-			State = state or "Available",
-		}
-		seen[key] = entry
-		found[#found + 1] = entry
-	end
-	local descendants = model:GetDescendants()
-	if model:IsA("Animation") then
-		add(model, "Available")
-	end
-	for _, instance in ipairs(descendants) do
-		if instance:IsA("Animation") then
-			add(instance, "Available")
-		elseif instance:IsA("Animator") then
-			local ok, tracks = pcall(function()
-					return instance:GetPlayingAnimationTracks()
-				end)
-			if ok then
-				for _, track in ipairs(tracks) do
-					local animation
-					pcall(function() animation = track.Animation end)
-					if animation then add(animation, "Playing") end
-				end
-			end
-		end
-	end
-	table.sort(found, function(a, b)
-		return string.lower(a.Name) < string.lower(b.Name)
-	end)
-	local nameCounts = {}
-	for _, entry in ipairs(found) do
-		local base = entry.Name
-		nameCounts[base] = (nameCounts[base] or 0) + 1
-		if nameCounts[base] > 1 then
-			entry.Name = base .. " " .. tostring(nameCounts[base])
-		end
-	end
-	return found
-end
-
 -- Info: название, автор, аватарка, даты и любые свои строки
 PAGES.info = {
 	id = "info", name = "Info", icon = "info",
@@ -1685,12 +1608,11 @@ PAGES.preview = {
 	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
-		local animations = discoverAnimations(a)
 		-- Use one full-width rounded preview surface instead of nested inset frames.
 		local topOffset = 0
 		local box = new("Frame", {
 			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
-			Size = U2(1, 0, 1, ( #animations > 0 and -108 or 0) - topOffset),
+			Size = U2(1, 0, 1, -topOffset),
 			ClipsDescendants = true,
 		}, parent)
 		corner(box, 12)
@@ -1768,328 +1690,33 @@ PAGES.preview = {
 
 		local h = makeThumb(inner, a)
 		if h then h.manualOnly = true end
-		if #animations > 0 then
-		local player = new("Frame", {
-			Name = "AnimationTimelinePlayer", BackgroundColor3 = C.panel, BorderSizePixel = 0,
-			Position = U2(0, 0, 1, -100), Size = U2(1, 0, 0, 92), ClipsDescendants = false,
-		}, parent)
-		corner(player, 10)
-		stroke(player, C.border, 1)
-
-		local selector = txt("TextButton", {
-			Name = "AnimationSelector", Text = animations[1].Name,
-			Font = GB, TextSize = 11, TextColor3 = C.txt,
-			BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.22,
-			Position = U2(0, 10, 0, 5), Size = U2(0.58, -18, 0, 23),
-			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
-		}, player)
-		corner(selector, 7)
-		stroke(selector, C.border, 1)
-		pad(selector, 8, 22, 0, 0)
-		local selectorArrow = mkIcon(selector, "chevron-down", 12, C.dim)
-		selectorArrow.AnchorPoint = V2(1, 0.5)
-		selectorArrow.Position = U2(1, -4, 0.5, 0)
-		selectorArrow.Active = false
-
-		local timeLabel = txt("TextLabel", {
-			Name = "TimelineTime", Text = "0.00s / 0.00s",
-			Font = Enum.Font.Code, TextSize = 9, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Right,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			Position = U2(0.58, 0, 0, 5), Size = U2(0.42, -10, 0, 22),
-		}, player)
-
-		local timeline = new("Frame", {
-			Name = "TimelineTrack", BackgroundColor3 = C.slTrack, BorderSizePixel = 0,
-			Position = U2(0, 12, 0, 35), Size = U2(1, -24, 0, 4),
-		}, player)
-		corner(timeline, 3)
-		local timelineFill = new("Frame", {
-			Name = "TimelineFill", BackgroundColor3 = ACCENTS[1], BorderSizePixel = 0,
-			Size = U2(0, 0, 1, 0),
-		}, timeline)
-		corner(timelineFill, 3)
-		local timelineKnob = new("Frame", {
-			Name = "TimelineKnob", BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0, 0, 0.5, 0), Size = UDim2.fromOffset(10, 10),
-		}, timeline)
-		corner(timelineKnob, 6)
-		local timelineHit = txt("TextButton", {
-			Name = "TimelineInput", Text = "", Position = U2(0, 0, 0.5, -13),
-			Size = U2(1, 0, 0, 26), ZIndex = 4,
-		}, timeline)
-
-		local controls = new("Frame", {
-			BackgroundTransparency = 1, Position = U2(0, 10, 0, 47), Size = U2(1, -20, 0, 34),
-		}, player)
-		local function controlButton(name, iconName, x, width)
-			local button = txt("TextButton", {
-				Name = name, Text = "", Font = GB, TextSize = 11, TextColor3 = C.txt,
-				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.08,
-				Position = U2(0, x, 0, 2), Size = UDim2.fromOffset(width, 28),
-			}, controls)
-			corner(button, 7)
-			stroke(button, C.border, 1)
-			if iconName then
-				local icon = mkIcon(button, iconName, 13, C.txt)
-				icon.AnchorPoint = V2(0.5, 0.5)
-				icon.Position = U2(0.5, 0, 0.5, 0)
-			end
-			return button
-		end
-		local playButton = controlButton("PlayPause", "play", 0, 30)
-		local stopButton = controlButton("Stop", "square", 36, 28)
-		local backButton = controlButton("SeekBack", "rewind", 70, 32)
-		local forwardButton = controlButton("SeekForward", "fast-forward", 108, 32)
-		local speedButton = controlButton("PlaybackSpeed", nil, 146, 40)
-		speedButton.Font = Enum.Font.Code
-		speedButton.TextSize = 11
-		speedButton.Text = "1.0x"
-		local playIcon = mkIcon(playButton, "play", 13, C.txt)
-		playIcon.AnchorPoint = V2(0.5, 0.5)
-		playIcon.Position = U2(0.5, 0, 0.5, 0)
-		local pauseIcon = mkIcon(playButton, "pause", 13, C.txt)
-		pauseIcon.AnchorPoint = V2(0.5, 0.5)
-		pauseIcon.Position = U2(0.5, 0, 0.5, 0)
-		pauseIcon.Visible = false
-
-		local menu = new("ScrollingFrame", {
-			Name = "AnimationList", BackgroundColor3 = C.panel, BorderSizePixel = 0,
-			AnchorPoint = V2(0, 1), Position = U2(0, 8, 1, -104),
-			Size = U2(0.58, -18, 0, 162), Visible = false, ZIndex = 50,
-			ClipsDescendants = true, CanvasSize = U2(0, 0, 0, 0),
-			AutomaticCanvasSize = Enum.AutomaticSize.None, ScrollingDirection = Enum.ScrollingDirection.Y,
-			ScrollBarThickness = 3, ScrollBarImageColor3 = C.dim,
-		}, parent)
-		corner(menu, 8)
-		stroke(menu, C.border, 1)
-		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
-
-		local currentTrack, currentAnimation, currentIndex
-		local currentLength, playbackSpeed = 0, 1
-		local isPlaying, isLoading, disposed = false, false, false
-		local function formatTime(value)
-			value = math.max(tonumber(value) or 0, 0)
-			if value < 60 then return string.format("%.2fs", value) end
-			return string.format("%02d:%05.2f", math.floor(value / 60), value % 60)
-		end
-		local function updateTimeline()
-			local position = 0
-			if currentTrack then
-				pcall(function() position = currentTrack.TimePosition end)
-			end
-			local length = currentLength
-			local alpha = length > 0 and math.clamp(position / length, 0, 1) or 0
-			timelineFill.Size = U2(alpha, 0, 1, 0)
-			timelineKnob.Position = U2(alpha, 0, 0.5, 0)
-			timeLabel.Text = formatTime(position) .. " / " .. formatTime(length)
-			playIcon.Visible = not isPlaying
-			pauseIcon.Visible = isPlaying
-		end
-		local function stopCurrent()
-			if currentTrack then
-				pcall(function() currentTrack:Stop(0.08) end)
-				pcall(function() currentTrack:Destroy() end)
-				currentTrack = nil
-			end
-			currentAnimation = nil
-			currentLength = 0
-			isPlaying = false
-			isLoading = false
-			if h then h.animationActive = false end
-			updateTimeline()
-		end
-		local function setPosition(value)
-			if not currentTrack or currentLength <= 0 then return end
-			local target = math.clamp(value, 0, currentLength)
-			if not currentTrack.IsPlaying then
-				pcall(function() currentTrack:Play(0) end)
-				pcall(function() currentTrack:AdjustSpeed(0) end)
-			end
-			pcall(function() currentTrack.TimePosition = target end)
-			updateTimeline()
-		end
-		local function setPlaying(enabled)
-			if not currentTrack then return end
-			if enabled then
-				if currentLength > 0 and currentTrack.TimePosition >= currentLength - 0.03 then
-					pcall(function() currentTrack.TimePosition = 0 end)
+		local extensionBottom = 0
+		for _, extension in ipairs(pv._previewExtensions or {}) do
+			if type(extension.Build) == "function" then
+				local context = {
+					Viewer = h,
+					Model = h and h.model,
+					Box = box,
+					UI = {
+						Create = new, Text = txt, Icon = mkIcon, Corner = corner,
+						Stroke = stroke, Pad = pad, Colors = C, Accent = ACCENTS[1],
+						Fonts = { Bold = GB, Medium = GM, Regular = G },
+						U2 = U2, V2 = V2, RunService = RunService,
+						IsPointer = isPtr, DragLocked = dragLocked,
+					},
+					SetBottomInset = function(value)
+						extensionBottom = math.max(extensionBottom, math.max(0, tonumber(value) or 0))
+						box.Size = U2(1, 0, 1, -extensionBottom)
+					end,
+				}
+				local ok, cleanup = pcall(extension.Build, parent, a, pv, context)
+				if ok and type(cleanup) == "function" then
+					cleanups[#cleanups + 1] = cleanup
+				elseif not ok then
+					warn("[PreviewUI] preview extension '" .. tostring(extension.Id) .. "' failed: " .. tostring(cleanup))
 				end
-				if not currentTrack.IsPlaying then
-					pcall(function() currentTrack:Play(0.08) end)
-				end
-				pcall(function() currentTrack:AdjustSpeed(playbackSpeed) end)
-				isPlaying = true
-				if h then h.animationActive = true end
-			else
-				pcall(function() currentTrack:AdjustSpeed(0) end)
-				isPlaying = false
-				if h then h.animationActive = currentTrack ~= nil end
 			end
-			updateTimeline()
 		end
-		local function loadAnimation(index)
-			if disposed or #animations == 0 then return end
-			index = math.clamp(index, 1, #animations)
-			local entry = animations[index]
-			stopCurrent()
-			currentIndex = index
-			selector.Text = entry.Name
-			if not entry.AnimationId or entry.AnimationId == "" then
-				timeLabel.Text = "Animation ID unavailable"
-				return
-			end
-			local model = h and h.model
-			if not model then
-				timeLabel.Text = "Preview model unavailable"
-				return
-			end
-			local controller = model:FindFirstChildOfClass("Humanoid") or model:FindFirstChildOfClass("AnimationController")
-			if not controller then
-				controller = Instance.new("AnimationController")
-				controller.Name = "PreviewAnimationController"
-				controller.Parent = model
-			end
-			local animator = controller:FindFirstChildOfClass("Animator")
-			if not animator then
-				animator = Instance.new("Animator")
-				animator.Parent = controller
-			end
-			local animation = Instance.new("Animation")
-			animation.Name = entry.Name
-			animation.AnimationId = entry.AnimationId
-			local ok, track = pcall(function() return animator:LoadAnimation(animation) end)
-			if not ok or not track then
-				animation:Destroy()
-				timeLabel.Text = "Could not load animation"
-				return
-			end
-			currentTrack = track
-			currentAnimation = animation
-			if h then h.animationActive = true end
-			isLoading = true
-			timeLabel.Text = "Loading animation..."
-			pcall(function()
-				track.Looped = false
-				track:Play(0)
-				track:AdjustSpeed(0)
-			end)
-			task.spawn(function()
-				local started = os.clock()
-				while not disposed and currentTrack == track and os.clock() - started < 8 do
-					local length = 0
-					pcall(function() length = track.Length end)
-					if length > 0 then
-						currentLength = length
-						pcall(function() track.TimePosition = 0 end)
-						isLoading = false
-						isPlaying = false
-						if h then h.animationActive = true end
-						updateTimeline()
-						return
-					end
-					task.wait(0.08)
-				end
-				if not disposed and currentTrack == track then
-					isLoading = false
-					timeLabel.Text = "Length unavailable"
-				end
-			end)
-			updateTimeline()
-		end
-
-		local menuButtons = {}
-		local function rebuildMenu()
-			for _, button in ipairs(menuButtons) do button:Destroy() end
-			menuButtons = {}
-			for i, entry in ipairs(animations) do
-				local button = txt("TextButton", {
-					Text = entry.Name, Font = GM, TextSize = 11, TextColor3 = C.txt,
-					BackgroundTransparency = 1, Size = U2(1, -8, 0, 25),
-					Position = U2(0, 4, 0, 0), LayoutOrder = i, ZIndex = 51,
-					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
-				}, menu)
-				pad(button, 8, 6, 0, 0)
-				button.Activated:Connect(function()
-					menu.Visible = false
-					loadAnimation(i)
-				end)
-				menuButtons[#menuButtons + 1] = button
-			end
-			menu.CanvasSize = U2(0, 0, 0, #animations * 27 + 6)
-			menu.Size = U2(0.58, -18, 0, 162)
-		end
-		rebuildMenu()
-		selector.Activated:Connect(function()
-			if #animations > 0 then menu.Visible = not menu.Visible end
-		end)
-
-		playButton.Activated:Connect(function()
-			if not currentTrack and #animations > 0 then
-				loadAnimation(currentIndex or 1)
-				return
-			end
-			if isLoading then return end
-			setPlaying(not isPlaying)
-		end)
-		stopButton.Activated:Connect(function()
-			if currentTrack then
-				pcall(function() currentTrack:Stop(0.08) end)
-				pcall(function() currentTrack.TimePosition = 0 end)
-				isPlaying = false
-				if h then h.animationActive = false end
-				updateTimeline()
-			end
-		end)
-		backButton.Activated:Connect(function()
-			if currentTrack then setPosition((currentTrack.TimePosition or 0) - 1) end
-		end)
-		forwardButton.Activated:Connect(function()
-			if currentTrack then setPosition((currentTrack.TimePosition or 0) + 1) end
-		end)
-		local speeds = { 0.25, 0.5, 1, 1.5, 2 }
-		speedButton.Activated:Connect(function()
-			local nextIndex = 1
-			for i, speed in ipairs(speeds) do
-				if speed == playbackSpeed then nextIndex = i % #speeds + 1 break end
-			end
-			playbackSpeed = speeds[nextIndex]
-			speedButton.Text = string.format("%.2gx", playbackSpeed)
-			if isPlaying and currentTrack then
-				pcall(function() currentTrack:AdjustSpeed(playbackSpeed) end)
-			end
-		end)
-		local function scrub(input)
-			if currentLength <= 0 then return end
-			local position, size = timeline.AbsolutePosition, timeline.AbsoluteSize
-			local alpha = math.clamp((input.Position.X - position.X) / math.max(size.X, 1), 0, 1)
-			setPosition(alpha * currentLength)
-		end
-		timelineHit.InputBegan:Connect(function(input)
-			if isPtr(input) then
-				scrub(input)
-				dragLocked(timelineHit, scrub)
-			end
-		end)
-
-		local updateConnection = RunService.RenderStepped:Connect(function()
-			if disposed or not pv._root or not pv._root.Visible or not pv._drawerOpen then return end
-			if currentTrack then
-				if isPlaying and not currentTrack.IsPlaying then
-					isPlaying = false
-					if h then h.animationActive = false end
-				end
-				updateTimeline()
-			end
-		end)
-		cleanups[#cleanups + 1] = function()
-			disposed = true
-			updateConnection:Disconnect()
-			stopCurrent()
-			if menu and menu.Parent then menu:Destroy() end
-		end
-		loadAnimation(1)
-		end
-
 		if h then
 			local st = { dragging = false, resumeAt = 0, pinching = false }
 			pv._viewers[h] = st
@@ -2282,6 +1909,7 @@ function M.new(bridge, opts)
 	self._closedCbs = {}
 	self._scrollers, self._phs = {}, {}
 	self._viewers = {}
+	self._previewExtensions = {}
 	self._order = 0
 	self._type, self._query = "All", ""
 	self._sort = { Key = "Default", Descending = false }
@@ -3015,6 +2643,40 @@ end
 -- своя страница панели: Preview:Page({ Name, Icon, Visible = function(asset), Build = function(parent, asset, pv) return cleanup end })
 function M:CreateIcon(parent, name, size, color)
 	return mkIcon(parent, name, size or 14, color or C.dim)
+end
+
+-- Register a plugin-owned block inside the large 3D preview.
+function M:RegisterPreviewExtension(id, build)
+	assert(type(id) == "string" and id ~= "", "Preview extension requires an id")
+	assert(type(build) == "function", "Preview extension requires a Build callback")
+	self._previewExtensions = self._previewExtensions or {}
+	for _, item in ipairs(self._previewExtensions) do
+		if item.Id == id then
+			return nil, "PREVIEW_EXTENSION_EXISTS"
+		end
+	end
+	local item = { Id = id, Build = build }
+	self._previewExtensions[#self._previewExtensions + 1] = item
+	if self._selected and self._drawerOpen and self._dRightPage then
+		self:_buildLargePreview(self._selected, hasPreview(self._selected))
+	end
+	local handle = { Connected = true }
+	function handle:Destroy()
+		if not self.Connected then return end
+		self.Connected = false
+		for i = #self._owner._previewExtensions, 1, -1 do
+			if self._owner._previewExtensions[i] == self._item then
+				table.remove(self._owner._previewExtensions, i)
+			end
+		end
+		local owner = self._owner
+		self._owner, self._item = nil, nil
+		if owner.alive and owner._selected and owner._drawerOpen and owner._dRightPage then
+			owner:_buildLargePreview(owner._selected, hasPreview(owner._selected))
+		end
+	end
+	handle._owner, handle._item = self, item
+	return handle
 end
 
 function M:Page(o)
