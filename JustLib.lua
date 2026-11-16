@@ -5126,7 +5126,7 @@ local function createConsoleUI(bridge, parent, opts)
     local maxLogs = math.clamp(tonumber(opts.MaxLogs) or 500, 50, 3000)
     local root = Instance.new("Frame")
     root.Name = "JustXConsole"; root.Size = UDim2.new(1,0,1,0)
-    root.BackgroundTransparency = 1; root.Parent = parent
+    root.BackgroundColor3 = C.sidebar; root.BackgroundTransparency = 0; root.BorderSizePixel = 0; root.Visible = false; root.Parent = parent
     local function round(o,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=o end
     local function text(p,s,z,col,font)
         local o=Instance.new("TextLabel"); o.BackgroundTransparency=1; o.Text=tostring(s or "")
@@ -6364,19 +6364,40 @@ function JL:Window(opts)
         return Tab
     end
     function Win:Console(copts)
-        if JL._console and JL._console.alive then
-            if JL._console.Tab and not JL._console.Tab:IsRemoved() then JL._console.Tab:Select() end
-            return JL._console
+        if JL._console and JL._console.alive then return JL._console end
+        local api = createConsoleUI(JL._bridge, content, copts or {})
+        local consoleRoot = content:FindFirstChild("JustXConsole")
+        if consoleRoot then
+            consoleRoot.Position = UDim2.new(0,0,0,0)
+            consoleRoot.Size = UDim2.new(1,0,1,0)
+            consoleRoot.ZIndex = 120
         end
-        local tab = self:Tab({Name="Console", Icon="terminal", Type="Custom", Tooltip="Developer Console"})
-        local api = createConsoleUI(JL._bridge, tab.Frame, copts or {})
-        api.Tab = tab
+        local consoleButton = Instance.new("TextButton")
+        consoleButton.Name = "JLConsoleButton"
+        consoleButton.Size = labelsOn and UDim2.new(0,SBW - 12,0,46) or UDim2.new(0,30,0,30)
+        consoleButton.BackgroundColor3 = Color3.fromRGB(34,34,40)
+        consoleButton.Text = ""; consoleButton.AutoButtonColor = false
+        consoleButton.BorderSizePixel = 0; consoleButton.LayoutOrder = 9999
+        consoleButton.Parent = sbCols[1].scroll
+        corner(8,consoleButton)
+        local consoleIcon = mkIcon(consoleButton,"terminal",16,14)
+        consoleIcon.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8)
+        consoleIcon.Size = UDim2.new(0,16,0,16)
+        if consoleIcon:IsA("TextLabel") then consoleIcon.TextColor3 = ACCENTS[1] else consoleIcon.ImageColor3 = ACCENTS[1] end
+        if labelsOn then
+            newTxt({Parent=consoleButton,Text="Console",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-4,0,12),Pos=UDim2.new(0,2,0,28),Z=14})
+        end
+        attachTip(consoleButton,"Developer Console")
+        consoleButton.MouseButton1Click:Connect(function()
+            if consoleRoot then consoleRoot.Visible = not consoleRoot.Visible end
+        end)
+        api.Button = consoleButton
         local destroy = api.Destroy
         function api:Destroy()
             pcall(destroy,self)
+            if consoleButton then consoleButton:Destroy() end
             if JL._console==self then JL._console=nil end
             self.alive=false
-            if not tab:IsRemoved() then tab:Remove() end
         end
         JL._console=api
         return api
