@@ -1826,11 +1826,8 @@ PAGES.preview = {
 				end
 			end
 			local function overScrollingFrame(pos)
-				local player = Players.LocalPlayer
-				local playerGui = player and player:FindFirstChildOfClass("PlayerGui")
-				if not playerGui then return false end
 				local ok, objects = pcall(function()
-					return playerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
+					return game:GetService("GuiService"):GetGuiObjectsAtPosition(pos.X, pos.Y)
 				end)
 				if not ok or type(objects) ~= "table" then return false end
 				for _, object in ipairs(objects) do
@@ -4231,7 +4228,9 @@ function M:_openMenu(asset, anchor)
 		end
 	end
 	for _, page in ipairs(self:_pagesFor(asset)) do
-		items[#items + 1] = { name = page.name, icon = page.icon, fn = openPage(page.id) }
+		if page.id ~= "preview" then
+			items[#items + 1] = { name = page.name, icon = page.icon, fn = openPage(page.id) }
+		end
 	end
 	for _, action in ipairs(asset._actions) do
 		items[#items + 1] = { name = action.Name, icon = action.Icon, fn = function() safe(action.Callback, asset, action) end }
