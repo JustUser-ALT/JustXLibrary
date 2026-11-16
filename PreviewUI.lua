@@ -1825,8 +1825,25 @@ PAGES.preview = {
 					pinchDistance = nil
 				end
 			end
+			local function overScrollingFrame(pos)
+				local player = Players.LocalPlayer
+				local playerGui = player and player:FindFirstChildOfClass("PlayerGui")
+				if not playerGui then return false end
+				local ok, objects = pcall(function()
+					return playerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
+				end)
+				if not ok or type(objects) ~= "table" then return false end
+				for _, object in ipairs(objects) do
+					local scroll = object:IsA("ScrollingFrame") and object
+						or object:FindFirstAncestorWhichIsA("ScrollingFrame")
+					if scroll and scroll.Visible and scroll.Active then
+						return true
+					end
+				end
+				return false
+			end
 			local began = UIS.TouchStarted:Connect(function(i)
-				if not insideHit(i.Position) then return end
+				if not insideHit(i.Position) or overScrollingFrame(i.Position) then return end
 				touches[i] = i.Position
 				resetTouchAnchor()
 			end)
