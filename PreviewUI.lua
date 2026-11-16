@@ -572,7 +572,8 @@ local function makeViewport(parent, src)
 	-- Round the actual rendered surface too; rounding only its outer holder leaves square viewport corners.
 	corner(vp, 12)
 	-- No gradient overlay: it can tint the rendered 3D content and make the whole stage look dim.
-	model.Parent = vp
+	local world = new("WorldModel", {}, vp)
+	model.Parent = world
 
 	local fov = 35
 	local radius = math.max(size.Magnitude * 0.5, 0.5)
@@ -584,7 +585,7 @@ local function makeViewport(parent, src)
 		Material = Enum.Material.SmoothPlastic, Color = rgb(112, 117, 132),
 		Size = V3(floorSize, 0.12, floorSize),
 		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.06, center.Z),
-	}, vp)
+	}, world)
 	local cam = new("Camera", { FieldOfView = fov }, vp)
 	vp.CurrentCamera = cam
 	local dir = V3(0.45, 0.4, -1).Unit
