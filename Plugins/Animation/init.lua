@@ -24,6 +24,8 @@ local function discover(asset)
             end
         end
         if name == "" or name:lower() == "animation" then name = "Animation " .. (#out + 1) end
+        name = name:gsub("[Aa]nim$", "")
+        if name == "" then name = "Animation " .. (#out + 1) end
         seen[key] = { Name = name, AnimationId = id, Object = animation, State = state or "Available" }
         out[#out + 1] = seen[key]
     end
@@ -99,7 +101,7 @@ function Plugin.Init(context)
 
     local function build(parent, asset, pv, ctx)
         local list = discover(asset)
-        if not alive or #list == 0 then return end
+        if not alive then return end
         -- The Preview viewport anchors every part by default. Keep the rig root fixed,
         -- but allow Motor6D joints to move so the animation is visible.
         local rig = ctx.Model
@@ -127,7 +129,7 @@ function Plugin.Init(context)
         }, parent)
         ui.Corner(panel,10); ui.Stroke(panel,C.border or Color3.fromRGB(65,68,82),1)
         local selector = text("TextButton", {
-            Name="AnimationSelector", Text=list[1].Name, Font=Enum.Font.GothamBold,
+            Name="AnimationSelector", Text=list[1] and list[1].Name or "No animations found", Font=Enum.Font.GothamBold,
             TextSize=11, TextColor3=C.txt or Color3.new(1,1,1),
             BackgroundColor3=C.btnBg or Color3.fromRGB(45,48,60), Position=U(0,10,0,5),
             Size=U(0.58,-18,0,23), TextTruncate=Enum.TextTruncate.AtEnd,
@@ -212,7 +214,10 @@ function Plugin.Init(context)
                 Position=U(0,4,0,0),LayoutOrder=i,ZIndex=51,TextXAlignment=Enum.TextXAlignment.Left},menu)
             ui.Pad(item,8,6,0,0); item.Activated:Connect(function() menu.Visible=false; load(i) end)
         end
-        selector.Activated:Connect(function() menu.Visible=not menu.Visible end)
+        selector.Active = #list > 0
+        selector.Activated:Connect(function()
+            if #list > 0 then menu.Visible=not menu.Visible end
+        end)
         play.Activated:Connect(function()
             if not track then load(index); return end
             if loading then return end
@@ -247,7 +252,11 @@ function Plugin.Init(context)
                 update()
             end
         end)
-        load(1)
+        if #list > 0 then
+            load(1)
+        else
+            time.Text = "No Animation objects found in this model"
+        end
         return function()
             disposed=true; if connection then connection:Disconnect() end
             stopTrack(); if menu and menu.Parent then menu:Destroy() end
@@ -262,4 +271,4 @@ function Plugin.Init(context)
     end }
 end
 
-return { Manifest={Id="animation",Name="Animation",Version="0.3.0",ApiVersion=1}, Init=Plugin.Init }
+return { Manifest={Id="animation",Name="Animation",Version="0.4.0",ApiVersion=1}, Init=Plugin.Init }
