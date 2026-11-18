@@ -1,9 +1,9 @@
 -- JustXLibrary Subscription UI Preview Test
 -- Loader:
--- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/SubscriptionPreviewTest.lua?v=20261118-01"))()
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/SubscriptionPreviewTest.lua?v=20261118-02"))()
 
 local Library = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261118-01"
+    "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261118-02"
 ))()
 
 if not Library then
