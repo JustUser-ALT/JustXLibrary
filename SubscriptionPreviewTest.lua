@@ -1,0 +1,69 @@
+-- JustXLibrary Subscription UI Preview Test
+-- Loader:
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/SubscriptionPreviewTest.lua?v=20261118-01"))()
+
+local Library = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/JustLib.lua?v=20261118-01"
+))()
+
+if not Library then
+    warn("[Subscription Preview Test] JustXLibrary failed to load.")
+    return
+end
+
+local Window = Library:Window({
+    Title = "Subscription Preview Test",
+    Config = "JustLib_SubscriptionPreviewTest",
+    Width = 560,
+    Height = 420,
+})
+
+if not Window then
+    warn("[Subscription Preview Test] Window creation failed.")
+    return
+end
+
+-- Deliberately do not call Library:Subscriptions().
+-- The built-in demo catalog should still open.
+local guiRoots = {
+    game:GetService("CoreGui"),
+    game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"),
+}
+
+local badge
+for _,root in ipairs(guiRoots) do
+    for _,obj in ipairs(root:GetDescendants()) do
+        if obj.Name == "JLSubscriptionBadge" and obj:IsA("TextButton") then
+            badge = obj
+            break
+        end
+    end
+    if badge then break end
+end
+
+if badge then
+    print("[Subscription Preview Test] Badge width:", badge.Size.X.Offset)
+    print("[Subscription Preview Test] Expected badge width: at least 64 px.")
+else
+    warn("[Subscription Preview Test] Subscription badge not found.")
+end
+
+Library:OpenSubscriptions()
+task.wait(0.6)
+
+local previewFound = false
+for _,root in ipairs(guiRoots) do
+    for _,obj in ipairs(root:GetDescendants()) do
+        if obj:IsA("TextLabel") and obj.Text:find("Demo catalog", 1, true) then
+            previewFound = true
+            break
+        end
+    end
+    if previewFound then break end
+end
+
+if previewFound then
+    print("[Subscription Preview Test] PASS: demo subscription catalog opened without configuration.")
+else
+    warn("[Subscription Preview Test] FAIL: demo catalog label was not found.")
+end
