@@ -2888,10 +2888,19 @@ function JL:OpenSubscriptions()
         detail.CanvasPosition = Vector2.new(0,0)
         local iconNames = {"sprout","zap","crown","messages-square","code-2","flag"}
         local iconName = t.Icon or iconNames[selectedIndex] or "gem"
+        local emblemAura = Instance.new("Frame"); emblemAura.Name = "TierEmblemAura"
+        emblemAura.Size = UDim2.new(0,58,0,58); emblemAura.Position = UDim2.new(1,-67,0,11)
+        emblemAura.BackgroundColor3 = col; emblemAura.BackgroundTransparency = .88
+        emblemAura.BorderSizePixel = 0; emblemAura.Parent = detail; corner(17,emblemAura)
+        stroke(col,.8,emblemAura)
         local iconBadge = Instance.new("Frame"); iconBadge.Name = "TierEmblem"
         iconBadge.Size = UDim2.new(0,48,0,48); iconBadge.Position = UDim2.new(1,-62,0,16)
-        iconBadge.BackgroundColor3 = col:Lerp(C.pHdr,.82); iconBadge.BorderSizePixel = 0
-        iconBadge.Parent = detail; corner(13,iconBadge); stroke(col:Lerp(C.pHdr,.35),1,iconBadge)
+        iconBadge.BackgroundColor3 = col:Lerp(C.pHdr,.88); iconBadge.BorderSizePixel = 0
+        iconBadge.Parent = detail; corner(13,iconBadge); stroke(col,.8,iconBadge)
+        local emblemGradient = Instance.new("UIGradient")
+        emblemGradient.Rotation = 35
+        emblemGradient.Color = ColorSequence.new(col:Lerp(Color3.new(1,1,1),.18),col:Lerp(C.pHdr,.78))
+        emblemGradient.Parent = iconBadge
         local heroIcon = mkIcon(iconBadge,iconName,25,15)
         heroIcon.AnchorPoint = Vector2.new(.5,.5); heroIcon.Position = UDim2.fromScale(.5,.5)
         heroIcon.TextColor3 = col
@@ -2978,11 +2987,13 @@ function JL:OpenSubscriptions()
         for i,b in ipairs(selectorButtons) do
             local t = displayTiers[i]
             local selected = i == index
-            tw(b,{BackgroundColor3 = selected and (t.Color or accent):Lerp(C.pHdr,.72) or C.pHdr},.12)
+            tw(b,{BackgroundColor3 = C.pHdr},.12)
             local st = b:FindFirstChildOfClass("UIStroke")
-            if st then st.Color = selected and (t.Color or accent) or C.border; st.Transparency = selected and 0 or .35 end
+            if st then st.Color = selected and (t.Color or accent) or C.border; st.Thickness = selected and 1.5 or 1; st.Transparency = selected and 0 or .35 end
             local tx = b:FindFirstChild("TierName")
-            if tx then tx.TextColor3 = selected and C.txt or C.dim end
+            if tx then tx.TextColor3 = C.txt end
+            local marker = b:FindFirstChild("TierSelectedAccent")
+            if marker then marker.Visible = selected; marker.BackgroundColor3 = t.Color or accent end
         end
         renderDetail()
     end
@@ -2992,6 +3003,10 @@ function JL:OpenSubscriptions()
         b.Size = UDim2.new(0,compact and 126 or 142,0,compact and 42 or 44)
         b.BackgroundColor3 = C.pHdr; b.BorderSizePixel = 0; b.Text = ""; b.AutoButtonColor = false; b.LayoutOrder = i; b.Parent = selector
         corner(10,b); local st = stroke(C.border,1,b); st.Transparency = .35
+        local selectedAccent = Instance.new("Frame"); selectedAccent.Name = "TierSelectedAccent"
+        selectedAccent.Size = UDim2.new(1,-24,0,2); selectedAccent.Position = UDim2.new(0,12,1,-3)
+        selectedAccent.BackgroundColor3 = col; selectedAccent.BorderSizePixel = 0; selectedAccent.Visible = false
+        selectedAccent.Parent = b; corner(2,selectedAccent)
         local iconNames = {"sprout","zap","crown","messages-square","code-2","flag"}
         local iconName = t.Icon or iconNames[i] or "gem"
         local iconBadge = Instance.new("Frame"); iconBadge.Name = "TierIconBadge"
