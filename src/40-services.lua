@@ -339,9 +339,9 @@ function JL:OpenSubscriptions()
 
     local camera = game:GetService("Workspace").CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(800,600)
-    local compact = viewport.X < 560
-    local PW = math.max(300, math.min(compact and 430 or 720, viewport.X - 24))
-    local PH = math.max(360, math.min(compact and 650 or 540, viewport.Y - 36))
+    local compact = viewport.X < 760 or viewport.Y < 520
+    local PW = math.max(280, math.min(compact and 390 or 560, viewport.X - 24))
+    local PH = math.max(300, math.min(compact and 440 or 460, viewport.Y - 24))
     local backdrop = Instance.new("Frame")
     backdrop.Size = UDim2.fromScale(1,1); backdrop.BackgroundColor3 = Color3.fromRGB(5,8,15)
     backdrop.BackgroundTransparency = 1; backdrop.BorderSizePixel = 0; backdrop.Active = true; backdrop.Parent = sgS
@@ -361,33 +361,33 @@ function JL:OpenSubscriptions()
         ColorSequenceKeypoint.new(1,Color3.fromRGB(236,151,105))
     }); topGrad.Parent = topGlow
 
-    local header = Instance.new("Frame"); header.Size = UDim2.new(1,-32,0,64)
-    header.Position = UDim2.new(0,16,0,14); header.BackgroundTransparency = 1; header.Parent = shell
-    local mark = Instance.new("Frame"); mark.Size = UDim2.new(0,38,0,38)
+    local header = Instance.new("Frame"); header.Size = UDim2.new(1,-28,0,48)
+    header.Position = UDim2.new(0,14,0,8); header.BackgroundTransparency = 1; header.Parent = shell
+    local mark = Instance.new("Frame"); mark.Size = UDim2.new(0,32,0,32)
     mark.Position = UDim2.new(0,0,0,7); mark.BackgroundColor3 = Color3.fromRGB(34,31,59); mark.BorderSizePixel = 0; mark.Parent = header; corner(12,mark)
     local markStroke = stroke(Color3.fromRGB(91,80,158),1,mark)
-    local gem = mkIcon(mark,"gem",19,3); gem.AnchorPoint = Vector2.new(.5,.5); gem.Position = UDim2.fromScale(.5,.5)
+    local gem = mkIcon(mark,"gem",16,3); gem.AnchorPoint = Vector2.new(.5,.5); gem.Position = UDim2.fromScale(.5,.5)
     if gem:IsA("ImageLabel") then gem.ImageColor3 = Color3.fromRGB(190,180,255) else gem.TextColor3 = Color3.fromRGB(190,180,255) end
-    newTxt({Parent=header,Text="MEMBERSHIP",Font=GB,Size=9,Color=Color3.fromRGB(145,137,180),Sz=UDim2.new(1,-100,0,12),Pos=UDim2.new(0,50,0,5)})
-    newTxt({Parent=header,Text="Choose your level",Font=GB,Size=18,Color=C.txt,Sz=UDim2.new(1,-100,0,25),Pos=UDim2.new(0,50,0,18)})
-    local closeBtn = Instance.new("TextButton"); closeBtn.Size = UDim2.new(0,32,0,32)
-    closeBtn.Position = UDim2.new(1,-32,0,8); closeBtn.BackgroundColor3 = C.btnBg
+    newTxt({Parent=header,Text="MEMBERSHIP",Font=GB,Size=8,Color=Color3.fromRGB(145,137,180),Sz=UDim2.new(1,-88,0,10),Pos=UDim2.new(0,42,0,5)})
+    newTxt({Parent=header,Text="Choose your level",Font=GB,Size=16,Color=C.txt,Sz=UDim2.new(1,-88,0,22),Pos=UDim2.new(0,42,0,17)})
+    local closeBtn = Instance.new("TextButton"); closeBtn.Size = UDim2.new(0,28,0,28)
+    closeBtn.Position = UDim2.new(1,-28,0,7); closeBtn.BackgroundColor3 = C.btnBg
     closeBtn.BorderSizePixel = 0; closeBtn.Text = "×"; closeBtn.Font = GB; closeBtn.TextSize = 20
     closeBtn.TextColor3 = C.dim; closeBtn.Parent = header; corner(10,closeBtn); stroke(C.border,1,closeBtn)
 
-    local currentBar = Instance.new("Frame"); currentBar.Size = UDim2.new(1,-32,0,58)
-    currentBar.Position = UDim2.new(0,16,0,88); currentBar.BackgroundColor3 = C.pHdr
+    local currentBar = Instance.new("Frame"); currentBar.Size = UDim2.new(1,-28,0,46)
+    currentBar.Position = UDim2.new(0,14,0,64); currentBar.BackgroundColor3 = C.pHdr
     currentBar.BorderSizePixel = 0; currentBar.Parent = shell; corner(12,currentBar)
-    local currentAccent = Instance.new("Frame"); currentAccent.Size = UDim2.new(0,3,1,-16)
-    currentAccent.Position = UDim2.new(0,0,0,8); currentAccent.BackgroundColor3 = Color3.fromRGB(105,203,164)
+    local currentAccent = Instance.new("Frame"); currentAccent.Size = UDim2.new(0,3,1,-12)
+    currentAccent.Position = UDim2.new(0,0,0,6); currentAccent.BackgroundColor3 = Color3.fromRGB(105,203,164)
     currentAccent.BorderSizePixel = 0; currentAccent.Parent = currentBar; corner(2,currentAccent)
-    newTxt({Parent=currentBar,Text="YOUR CURRENT ACCESS",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-110,0,12),Pos=UDim2.new(0,14,0,9)})
-    local currentName = newTxt({Parent=currentBar,Text="Free",Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-120,0,20),Pos=UDim2.new(0,14,0,25)})
-    local currentMeta = newTxt({Parent=currentBar,Text="",Font=GM,Size=10,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,105,0,18),Pos=UDim2.new(1,-116,0,20)})
+    newTxt({Parent=currentBar,Text="YOUR CURRENT ACCESS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-100,0,10),Pos=UDim2.new(0,12,0,6)})
+    local currentName = newTxt({Parent=currentBar,Text="Free",Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-110,0,18),Pos=UDim2.new(0,12,0,21)})
+    local currentMeta = newTxt({Parent=currentBar,Text="",Font=GM,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,92,0,16),Pos=UDim2.new(1,-102,0,15)})
 
-    newTxt({Parent=shell,Text="EXPLORE LEVELS",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-32,0,14),Pos=UDim2.new(0,16,0,160)})
+    newTxt({Parent=shell,Text="EXPLORE LEVELS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-28,0,12),Pos=UDim2.new(0,14,0,118)})
     local selector = Instance.new("ScrollingFrame"); selector.Name = "TierSelector"
-    selector.Size = UDim2.new(1,-32,0,compact and 54 or 58); selector.Position = UDim2.new(0,16,0,180)
+    selector.Size = UDim2.new(1,-28,0,compact and 44 or 46); selector.Position = UDim2.new(0,14,0,134)
     selector.BackgroundTransparency = 1; selector.BorderSizePixel = 0; selector.ScrollBarThickness = 2
     selector.ScrollBarImageColor3 = C.border; selector.ScrollingDirection = Enum.ScrollingDirection.X
     selector.AutomaticCanvasSize = Enum.AutomaticSize.X; selector.CanvasSize = UDim2.new(0,0,0,0); selector.Parent = shell
@@ -395,12 +395,17 @@ function JL:OpenSubscriptions()
     selectorLayout.Padding = UDim.new(0,8); selectorLayout.SortOrder = Enum.SortOrder.LayoutOrder; selectorLayout.Parent = selector
     pad(0,0,0,4,selector)
 
-    local detail = Instance.new("Frame"); detail.Name = "TierDetails"
-    detail.Position = UDim2.new(0,16,0,compact and 246 or 252)
-    detail.Size = UDim2.new(1,-32,1,-(compact and 262 or 268))
-    detail.BackgroundColor3 = C.pHdr; detail.BorderSizePixel = 0; detail.Parent = shell; corner(14,detail)
-    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(0,110,0,110)
-    detailGlow.Position = UDim2.new(1,-96,0,0); detailGlow.BackgroundColor3 = accent
+    local detail = Instance.new("ScrollingFrame"); detail.Name = "TierDetails"
+    detail.Position = UDim2.new(0,14,0,188)
+    detail.Size = UDim2.new(1,-28,1,-202)
+    detail.BackgroundColor3 = C.pHdr; detail.BorderSizePixel = 0; detail.Parent = shell
+    detail.ScrollBarThickness = 2; detail.ScrollBarImageColor3 = C.border
+    detail.ScrollingDirection = Enum.ScrollingDirection.Y
+    detail.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    detail.CanvasSize = UDim2.new(0,0,0,0); detail.ClipsDescendants = true
+    corner(12,detail)
+    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(0,72,0,72)
+    detailGlow.Position = UDim2.new(1,-62,0,0); detailGlow.BackgroundColor3 = accent
     detailGlow.BackgroundTransparency = .91; detailGlow.BorderSizePixel = 0; detailGlow.Parent = detail; corner(55,detailGlow)
     local detailStroke = stroke(C.border,1,detail)
     local selectedIndex = 1
@@ -433,34 +438,35 @@ function JL:OpenSubscriptions()
         local info = JL:GetSubscriptionInfo()
         local col = t.Color or ACCENTS[((selectedIndex - 1) % #ACCENTS) + 1]
         detailGlow.BackgroundColor3 = col
-        local tag = Instance.new("Frame"); tag.Size = UDim2.new(0,7,0,7); tag.Position = UDim2.new(0,18,0,20)
+        detail.CanvasPosition = Vector2.new(0,0)
+        local tag = Instance.new("Frame"); tag.Size = UDim2.new(0,6,0,6); tag.Position = UDim2.new(0,14,0,15)
         tag.BackgroundColor3 = col; tag.BorderSizePixel = 0; tag.Parent = detail; corner(4,tag)
-        newTxt({Parent=detail,Text=string.upper(t.Tagline or "JUSTXLIBRARY ACCESS"),Font=GB,Size=9,Color=col,Sz=UDim2.new(1,-48,0,14),Pos=UDim2.new(0,34,0,16)})
-        newTxt({Parent=detail,Text=t.Name,Font=GB,Size=compact and 24 or 29,Color=C.txt,Sz=UDim2.new(1,-36,0,38),Pos=UDim2.new(0,18,0,38)})
+        newTxt({Parent=detail,Text=string.upper(t.Tagline or "JUSTXLIBRARY ACCESS"),Font=GB,Size=8,Color=col,Sz=UDim2.new(1,-40,0,12),Pos=UDim2.new(0,28,0,12)})
+        newTxt({Parent=detail,Text=t.Name,Font=GB,Size=compact and 20 or 23,Color=C.txt,Sz=UDim2.new(1,-28,0,30),Pos=UDim2.new(0,14,0,29)})
         local desc = t.Description or "A membership level for the JustXLibrary experience."
-        newTxt({Parent=detail,Text=desc,Font=GM,Size=11,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-36,0,36),Pos=UDim2.new(0,18,0,82)})
-        local dividerY = compact and 126 or 130
-        local div = Instance.new("Frame"); div.Size = UDim2.new(1,-36,0,1); div.Position = UDim2.new(0,18,0,dividerY)
+        newTxt({Parent=detail,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,30),Pos=UDim2.new(0,14,0,62)})
+        local dividerY = 98
+        local div = Instance.new("Frame"); div.Size = UDim2.new(1,-28,0,1); div.Position = UDim2.new(0,14,0,dividerY)
         div.BackgroundColor3 = C.border; div.BorderSizePixel = 0; div.Parent = detail
-        newTxt({Parent=detail,Text="WHAT'S INCLUDED",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-36,0,13),Pos=UDim2.new(0,18,0,dividerY + 12)})
+        newTxt({Parent=detail,Text="WHAT'S INCLUDED",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-28,0,11),Pos=UDim2.new(0,14,0,dividerY + 7)})
         local perks = t.Perks or {}
-        local perkY = dividerY + 32
-        local maxPerks = math.min(#perks, compact and 3 or 4)
+        local perkY = dividerY + 22
+        local maxPerks = math.min(#perks, 4)
         for i=1,maxPerks do
-            local p = Instance.new("Frame"); p.Size = UDim2.new(1,-36,0,22); p.Position = UDim2.new(0,18,0,perkY)
+            local p = Instance.new("Frame"); p.Size = UDim2.new(1,-28,0,20); p.Position = UDim2.new(0,14,0,perkY)
             p.BackgroundTransparency = 1; p.Parent = detail
-            local check = Instance.new("Frame"); check.Size = UDim2.new(0,15,0,15); check.Position = UDim2.new(0,0,0,3)
+            local check = Instance.new("Frame"); check.Size = UDim2.new(0,14,0,14); check.Position = UDim2.new(0,0,0,3)
             check.BackgroundColor3 = col:Lerp(C.pHdr,.72); check.BorderSizePixel = 0; check.Parent = p; corner(6,check)
-            local tick = newTxt({Parent=check,Text="✓",Font=GB,Size=10,Color=col,XAlign=Enum.TextXAlignment.Center})
-            newTxt({Parent=p,Text=tostring(perks[i]),Font=GM,Size=11,Color=C.txt,Sz=UDim2.new(1,-24,1,0),Pos=UDim2.new(0,24,0,0)})
-            perkY = perkY + 24
+            local tick = newTxt({Parent=check,Text="✓",Font=GB,Size=9,Color=col,XAlign=Enum.TextXAlignment.Center})
+            newTxt({Parent=p,Text=tostring(perks[i]),Font=GM,Size=10,Color=C.txt,Sz=UDim2.new(1,-22,1,0),Pos=UDim2.new(0,22,0,0)})
+            perkY = perkY + 21
         end
         if #perks == 0 then
-            newTxt({Parent=detail,Text="Details will be announced soon.",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-36,0,20),Pos=UDim2.new(0,18,0,perkY)})
+            newTxt({Parent=detail,Text="Details will be announced soon.",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,perkY)})
         end
 
         local action = Instance.new("Frame"); action.Name = "TierAction"
-        action.Size = UDim2.new(1,-36,0,compact and 42 or 44); action.Position = UDim2.new(0,18,1,-(compact and 56 or 60))
+        action.Size = UDim2.new(1,-28,0,38); action.Position = UDim2.new(0,14,0,perkY + 8)
         action.BackgroundTransparency = 1; action.Parent = detail
         local function idle()
             for _,ch in ipairs(action:GetChildren()) do ch:Destroy() end
@@ -479,17 +485,17 @@ function JL:OpenSubscriptions()
             elseif JL:HasTier(t.Name) then
                 newTxt({Parent=action,Text="INCLUDED WITH " .. string.upper(info.Name),Font=GB,Size=10,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
             else
-                local activate = makeButton(action,"Enter activation key   →",UDim2.new(1,0,0,40),UDim2.new(0,0,.5,-20),col,Color3.new(1,1,1))
+                local activate = makeButton(action,"Enter activation key   →",UDim2.new(1,0,0,34),UDim2.new(0,0,.5,-17),col,Color3.new(1,1,1))
                 activate:SetAttribute("JLNoRepaint",true)
                 activate.Activated:Connect(function() actionMode = "input"; renderDetail() end)
             end
         end
         if actionMode == "input" and not previewOnly then
-            local input = Instance.new("TextBox"); input.Size = UDim2.new(1,-102,0,38); input.Position = UDim2.new(0,0,.5,-19)
+            local input = Instance.new("TextBox"); input.Size = UDim2.new(1,-102,0,34); input.Position = UDim2.new(0,0,.5,-17)
             input.BackgroundColor3 = C.input; input.BorderSizePixel = 0; input.PlaceholderText = "Paste your key"
             input.PlaceholderColor3 = C.dim; input.TextColor3 = C.txt; input.Font = GB; input.TextSize = 11
             input.ClearTextOnFocus = false; input.Text = ""; input.Parent = action; corner(8,input); local inputStroke = stroke(C.border,1,input)
-            local redeem = makeButton(action,"Redeem",UDim2.new(0,92,0,38),UDim2.new(1,-92,.5,-19),col,Color3.new(1,1,1))
+            local redeem = makeButton(action,"Redeem",UDim2.new(0,92,0,34),UDim2.new(1,-92,.5,-17),col,Color3.new(1,1,1))
             redeem:SetAttribute("JLNoRepaint",true)
             redeem.Activated:Connect(function()
                 local ok,reason = JL:RedeemKey(input.Text,t.Name)
@@ -527,12 +533,12 @@ function JL:OpenSubscriptions()
     for i,t in ipairs(displayTiers) do
         local col = t.Color or ACCENTS[((i - 1) % #ACCENTS) + 1]
         local b = Instance.new("TextButton"); b.Name = "Tier_" .. tostring(i)
-        b.Size = UDim2.new(0,compact and 124 or 142,0,compact and 46 or 50)
+        b.Size = UDim2.new(0,compact and 100 or 112,0,compact and 38 or 40)
         b.BackgroundColor3 = C.pHdr; b.BorderSizePixel = 0; b.Text = ""; b.AutoButtonColor = false; b.LayoutOrder = i; b.Parent = selector
         corner(10,b); local st = stroke(C.border,1,b); st.Transparency = .35
-        local dot = Instance.new("Frame"); dot.Size = UDim2.new(0,6,0,6); dot.Position = UDim2.new(0,10,.5,-3)
+        local dot = Instance.new("Frame"); dot.Size = UDim2.new(0,5,0,5); dot.Position = UDim2.new(0,8,.5,-2.5)
         dot.BackgroundColor3 = col; dot.BorderSizePixel = 0; dot.Parent = b; corner(3,dot)
-        local label = newTxt({Parent=b,Text=t.Name,Font=GB,Size=11,Color=C.dim,Sz=UDim2.new(1,-26,1,0),Pos=UDim2.new(0,22,0,0)})
+        local label = newTxt({Parent=b,Text=t.Name,Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-20,1,0),Pos=UDim2.new(0,18,0,0)})
         label.Name = "TierName"
         selectorButtons[i] = b
         b.Activated:Connect(function() selectTier(i) end)
