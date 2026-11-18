@@ -353,8 +353,9 @@ function JL:OpenSubscriptions()
     corner(18,shell); stroke(C.border,1,shell); BG.register("Popup",shell,18)
 
     local accent = Color3.fromRGB(120,104,255)
-    local topGlow = Instance.new("Frame"); topGlow.Size = UDim2.new(1,0,0,4)
-    topGlow.BackgroundColor3 = accent; topGlow.BorderSizePixel = 0; topGlow.Parent = shell
+    local topGlow = Instance.new("Frame"); topGlow.Size = UDim2.new(1,-20,0,3)
+    topGlow.Position = UDim2.new(0,10,0,0); topGlow.BackgroundColor3 = accent; topGlow.BorderSizePixel = 0; topGlow.Parent = shell
+    corner(2,topGlow)
     local topGrad = Instance.new("UIGradient"); topGrad.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0,Color3.fromRGB(65,190,190)),
         ColorSequenceKeypoint.new(.5,Color3.fromRGB(120,104,255)),
@@ -378,8 +379,8 @@ function JL:OpenSubscriptions()
     local currentBar = Instance.new("Frame"); currentBar.Size = UDim2.new(1,-28,0,46)
     currentBar.Position = UDim2.new(0,14,0,64); currentBar.BackgroundColor3 = C.pHdr
     currentBar.BorderSizePixel = 0; currentBar.Parent = shell; corner(12,currentBar)
-    local currentAccent = Instance.new("Frame"); currentAccent.Size = UDim2.new(0,3,1,-12)
-    currentAccent.Position = UDim2.new(0,0,0,6); currentAccent.BackgroundColor3 = Color3.fromRGB(105,203,164)
+    local currentAccent = Instance.new("Frame"); currentAccent.Size = UDim2.new(0,2,1,-16)
+    currentAccent.Position = UDim2.new(0,6,0,8); currentAccent.BackgroundColor3 = Color3.fromRGB(105,203,164)
     currentAccent.BorderSizePixel = 0; currentAccent.Parent = currentBar; corner(2,currentAccent)
     newTxt({Parent=currentBar,Text="YOUR CURRENT ACCESS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-100,0,10),Pos=UDim2.new(0,12,0,6)})
     local currentName = newTxt({Parent=currentBar,Text="Free",Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-110,0,18),Pos=UDim2.new(0,12,0,21)})
@@ -404,9 +405,10 @@ function JL:OpenSubscriptions()
     detail.AutomaticCanvasSize = Enum.AutomaticSize.Y
     detail.CanvasSize = UDim2.new(0,0,0,0); detail.ClipsDescendants = true
     corner(12,detail)
-    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(1,0,0,3)
-    detailGlow.Position = UDim2.new(0,0,0,0); detailGlow.BackgroundColor3 = accent
+    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(1,-20,0,3)
+    detailGlow.Position = UDim2.new(0,10,0,0); detailGlow.BackgroundColor3 = accent
     detailGlow.BorderSizePixel = 0; detailGlow.Parent = detail
+    corner(2,detailGlow)
     local detailGlowGradient = Instance.new("UIGradient")
     detailGlowGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,accent),ColorSequenceKeypoint.new(1,accent:Lerp(C.pHdr,.45))})
     detailGlowGradient.Parent = detailGlow
