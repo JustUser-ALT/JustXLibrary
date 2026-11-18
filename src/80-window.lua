@@ -687,9 +687,10 @@ function JL:Window(opts)
         local info = JL:GetSubscriptionInfo()
         local label = info.Name or "Free"
         local tierColor = info.Tier and info.Tier.Color or C.dim
-        local maxWidth = math.clamp(CWW - 248 - 52 - 8,38,72)
-        local textWidth = math.ceil(measureTextW(label,9,GB,120)) + 12
-        subscriptionBadge.Size = UDim2.new(0,math.min(maxWidth,math.max(38,textWidth)),0,20)
+        local maxWidth = math.clamp(CWW - 248 - 52 - 8,64,104)
+        local textWidth = math.ceil(measureTextW(label,9,GB,120)) + 22
+        subscriptionBadge.Size = UDim2.new(0,math.min(maxWidth,math.max(64,textWidth)),0,22)
+        subscriptionBadge.Position = UDim2.new(0,52,0,10)
         subscriptionBadge.Text = label
         subscriptionBadge.TextColor3 = tierColor
         subscriptionBadgeStroke.Color = info.Tier and tierColor or C.border
