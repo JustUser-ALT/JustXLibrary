@@ -337,7 +337,8 @@ function JL:OpenSubscriptions()
     if not okp or not sgS.Parent then sgS.Parent = PG end
     SUB._gui = sgS
 
-    local viewport = UIS:GetViewportSize()
+    local camera = game:GetService("Workspace").CurrentCamera
+    local viewport = camera and camera.ViewportSize or Vector2.new(800,600)
     local compact = viewport.X < 560
     local PW = math.max(300, math.min(compact and 430 or 720, viewport.X - 24))
     local PH = math.max(360, math.min(compact and 650 or 540, viewport.Y - 36))
