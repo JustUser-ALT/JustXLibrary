@@ -98,6 +98,7 @@ local function createWorkspaceModule(deps)
         ResolveHubIdentity = resolveHubIdentity,
     }
 end
+
 -- Icons module factory. Dependencies are injected; icon state stays on the library instance.
 local function createIconsModule(deps)
     local JL = deps.JL
@@ -319,6 +320,7 @@ local function createIconsModule(deps)
         Make = mkIcon
     }
 end
+
 -- Background module factory. Dependencies are injected; background state stays on the library instance.
 local function createBackgroundsModule(deps)
     local JL = deps.JL
@@ -435,6 +437,7 @@ local function createBackgroundsModule(deps)
         BG = BG
     }
 end
+
 -- Guide module factory. Dependencies are injected; guide state stays private to the library instance.
 local function createGuideModule(deps)
     local JL = deps.JL
@@ -546,6 +549,7 @@ local function createGuideModule(deps)
         GroupRules = groupRules
     }
 end
+
 -- Theme module factory. Theme palettes and repaint behavior are isolated from core.
 local function createThemesModule(deps)
     local JL = deps.JL
@@ -720,6 +724,7 @@ local function createThemesModule(deps)
     function JL:GetTheme() return JL._currentTheme end
     return themes
 end
+
 -- Lifecycle module factory. Owns tracked resources, async tasks, connections, and tweens.
 local function createLifecycleModule(deps)
     local TS = deps.TweenService
@@ -842,6 +847,7 @@ local function createLifecycleModule(deps)
         Tween = tw
     }
 end
+
 -- UI primitives module factory. Shared low-level UI helpers are injected explicitly.
 local function createUIPrimitivesModule(deps)
     local UIS = deps.UserInputService
@@ -919,6 +925,7 @@ local function createUIPrimitivesModule(deps)
         Draggable = draggable
     }
 end
+
 local function createControlHelpersModule(deps)
     local Color3 = deps.Color3
     local Math = deps.Math
@@ -959,6 +966,7 @@ local function createControlHelpersModule(deps)
         Snap = snap
     }
 end
+
 local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
 JL._registry = {}; JL._noSave = {}
 
@@ -1220,6 +1228,7 @@ local skinKnob = ControlHelpers.SkinKnob
 local decimalsOf = ControlHelpers.DecimalsOf
 local fmtNum = ControlHelpers.FormatNumber
 local snap = ControlHelpers.Snap
+
 -- Config module factory. Dependencies are injected; config state stays private.
 local function createConfigModule(deps)
     local JL = deps.JL
@@ -1498,6 +1507,7 @@ end
         Fork = function() return createConfigModule(deps) end
     }
 end
+
 local Config = createConfigModule({
     JL = JL,
     Workspace = _workspace,
@@ -1526,6 +1536,7 @@ local function cfgSave() return Config.Save() end
 local function cfgHas(flag) return Config.Has(flag) end
 local function cfgSet(flag, val, store) return Config.Set(flag, val, store) end
 local function cfgGet(flag, default) return Config.Get(flag, default) end
+
 -- ===== Preview UI bridge (PreviewUI.lua берёт отсюда темы, конфиг и хуки Unload) =====
 JL._extraRoots = {}; JL._themeHooks = {}; JL._unloadHooks = {}
 JL._streamerMode = false
@@ -2029,6 +2040,7 @@ local function joinLowestServer(placeId, onFail)
         end
     end)
 end
+
 -- ===== Sub-Places v2: список карточек с картинками + окно места (Teleport / Copy Teleport Script) =====
 -- Иконки рисуются фреймами: символы вроде ◈ ➤ ❐ ✓ в шрифте Gotham отсутствуют и превращаются в квадраты
 local function spIcon(kind, parent, size, color, z)
@@ -2426,6 +2438,7 @@ local function openSubPlaces(universeId)
         end
     end)
 end
+
 local function fetchDiscordInfo(inviteUrl, callback)
     local code = tostring(inviteUrl):match("discord%.gg/([%w-]+)") or tostring(inviteUrl):match("discord%.com/invite/([%w-]+)")
     if not code then return end
@@ -2757,112 +2770,244 @@ function JL:OpenSubscriptions()
             {Name = "Founder", Tagline = "A part of the beginning", Description = "A special concept for founding supporters.", Perks = {"Founder recognition", "Legacy supporter identity"}, Color = Color3.fromRGB(230, 175, 82)},
         }
     end
+
     local CoreGui = game:GetService("CoreGui")
-    local sgS = registerHubGui(Instance.new("ScreenGui"), "Subscriptions"); sgS.ResetOnSpawn = false; sgS.IgnoreGuiInset = true; sgS.DisplayOrder = 1000
-    local okp = pcall(function() sgS.Parent = CoreGui end); if not okp or not sgS.Parent then sgS.Parent = PG end
+    local sgS = registerHubGui(Instance.new("ScreenGui"), "Subscriptions")
+    sgS.ResetOnSpawn = false; sgS.IgnoreGuiInset = true; sgS.DisplayOrder = 1000
+    local okp = pcall(function() sgS.Parent = CoreGui end)
+    if not okp or not sgS.Parent then sgS.Parent = PG end
     SUB._gui = sgS
-    local bd = Instance.new("Frame"); bd.Size = UDim2.new(1,0,1,0); bd.BackgroundColor3 = Color3.new(0,0,0); bd.BackgroundTransparency = 1; bd.BorderSizePixel = 0; bd.Active = true; bd.Parent = sgS
-    local PW,PH = 664,424
-    local shell,card,showPopup,hidePopup,heroH = mkPopup(bd,PW,PH,{Color = ACCENTS[1], Icon = "gem", Title = "Subscriptions"})
-    local statusL = newTxt({Parent=card,Text="",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,18,0,heroH + 10)})
-    local closeBtn = Instance.new("TextButton"); closeBtn.Size = UDim2.new(0,26,0,26); closeBtn.Position = UDim2.new(1,-38,0,heroH/2 - 13); closeBtn.BackgroundColor3 = Color3.new(0,0,0); closeBtn.BackgroundTransparency = 0.65; closeBtn.Text = "x"; closeBtn.Font = GB; closeBtn.TextSize = 13; closeBtn.TextColor3 = Color3.new(1,1,1); closeBtn.Parent = card; corner(8,closeBtn)
-    local scroll = Instance.new("ScrollingFrame"); scroll.Size = UDim2.new(1,-24,1,-heroH - 40); scroll.Position = UDim2.new(0,12,0,heroH + 32); scroll.BackgroundTransparency = 1; scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 4; scroll.ScrollBarImageColor3 = C.border; scroll.ScrollingDirection = Enum.ScrollingDirection.X; scroll.CanvasSize = UDim2.new(0,0,0,0); scroll.AutomaticCanvasSize = Enum.AutomaticSize.X; scroll.Parent = card
-    local lay = Instance.new("UIListLayout"); lay.FillDirection = Enum.FillDirection.Horizontal; lay.Padding = UDim.new(0,12); lay.SortOrder = Enum.SortOrder.LayoutOrder; lay.Parent = scroll
-    pad(0,0,0,10,scroll)
-    local wheelConn = keep(UIS.InputChanged:Connect(function(i)
-        if i.UserInputType ~= Enum.UserInputType.MouseWheel then return end
-        local m = UIS:GetMouseLocation(); local ap,as = scroll.AbsolutePosition, scroll.AbsoluteSize
-        if m.X >= ap.X and m.X <= ap.X + as.X and m.Y >= ap.Y and m.Y <= ap.Y + as.Y then
-            scroll.CanvasPosition = Vector2.new(math.max(0, scroll.CanvasPosition.X - i.Position.Z * 80), 0)
-        end
-    end))
-    local build
-    local watcher
-    local function closePopup()
-        pcall(function() wheelConn:Disconnect() end)
-        if watcher then JL:OffTierChanged(watcher) end
-        hidePopup()
-        trackedDelay(.16, function() sgS:Destroy() end)
-    end
-    closeBtn.MouseButton1Click:Connect(closePopup)
-    build = function()
-        for _,c in ipairs(scroll:GetChildren()) do if c:IsA("CanvasGroup") then c:Destroy() end end
+
+    local viewport = UIS:GetViewportSize()
+    local compact = viewport.X < 560
+    local PW = math.max(300, math.min(compact and 430 or 720, viewport.X - 24))
+    local PH = math.max(360, math.min(compact and 650 or 540, viewport.Y - 36))
+    local backdrop = Instance.new("Frame")
+    backdrop.Size = UDim2.fromScale(1,1); backdrop.BackgroundColor3 = Color3.fromRGB(5,8,15)
+    backdrop.BackgroundTransparency = 1; backdrop.BorderSizePixel = 0; backdrop.Active = true; backdrop.Parent = sgS
+
+    local shell = Instance.new("Frame")
+    shell.Name = "SubscriptionStudio"; shell.Size = UDim2.new(0,PW,0,PH)
+    shell.AnchorPoint = Vector2.new(.5,.5); shell.Position = UDim2.new(.5,0,.5,14)
+    shell.BackgroundColor3 = C.panel; shell.BorderSizePixel = 0; shell.ClipsDescendants = true; shell.Parent = backdrop
+    corner(18,shell); stroke(C.border,1,shell); BG.register("Popup",shell,18)
+
+    local accent = Color3.fromRGB(120,104,255)
+    local topGlow = Instance.new("Frame"); topGlow.Size = UDim2.new(1,0,0,4)
+    topGlow.BackgroundColor3 = accent; topGlow.BorderSizePixel = 0; topGlow.Parent = shell
+    local topGrad = Instance.new("UIGradient"); topGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0,Color3.fromRGB(65,190,190)),
+        ColorSequenceKeypoint.new(.5,Color3.fromRGB(120,104,255)),
+        ColorSequenceKeypoint.new(1,Color3.fromRGB(236,151,105))
+    }); topGrad.Parent = topGlow
+
+    local header = Instance.new("Frame"); header.Size = UDim2.new(1,-32,0,64)
+    header.Position = UDim2.new(0,16,0,14); header.BackgroundTransparency = 1; header.Parent = shell
+    local mark = Instance.new("Frame"); mark.Size = UDim2.new(0,38,0,38)
+    mark.Position = UDim2.new(0,0,0,7); mark.BackgroundColor3 = Color3.fromRGB(34,31,59); mark.BorderSizePixel = 0; mark.Parent = header; corner(12,mark)
+    local markStroke = stroke(Color3.fromRGB(91,80,158),1,mark)
+    local gem = mkIcon(mark,"gem",19,3); gem.AnchorPoint = Vector2.new(.5,.5); gem.Position = UDim2.fromScale(.5,.5)
+    if gem:IsA("ImageLabel") then gem.ImageColor3 = Color3.fromRGB(190,180,255) else gem.TextColor3 = Color3.fromRGB(190,180,255) end
+    newTxt({Parent=header,Text="MEMBERSHIP",Font=GB,Size=9,Color=Color3.fromRGB(145,137,180),Sz=UDim2.new(1,-100,0,12),Pos=UDim2.new(0,50,0,5)})
+    newTxt({Parent=header,Text="Choose your level",Font=GB,Size=18,Color=C.txt,Sz=UDim2.new(1,-100,0,25),Pos=UDim2.new(0,50,0,18)})
+    local closeBtn = Instance.new("TextButton"); closeBtn.Size = UDim2.new(0,32,0,32)
+    closeBtn.Position = UDim2.new(1,-32,0,8); closeBtn.BackgroundColor3 = C.btnBg
+    closeBtn.BorderSizePixel = 0; closeBtn.Text = "×"; closeBtn.Font = GB; closeBtn.TextSize = 20
+    closeBtn.TextColor3 = C.dim; closeBtn.Parent = header; corner(10,closeBtn); stroke(C.border,1,closeBtn)
+
+    local currentBar = Instance.new("Frame"); currentBar.Size = UDim2.new(1,-32,0,58)
+    currentBar.Position = UDim2.new(0,16,0,88); currentBar.BackgroundColor3 = C.pHdr
+    currentBar.BorderSizePixel = 0; currentBar.Parent = shell; corner(12,currentBar)
+    local currentAccent = Instance.new("Frame"); currentAccent.Size = UDim2.new(0,3,1,-16)
+    currentAccent.Position = UDim2.new(0,0,0,8); currentAccent.BackgroundColor3 = Color3.fromRGB(105,203,164)
+    currentAccent.BorderSizePixel = 0; currentAccent.Parent = currentBar; corner(2,currentAccent)
+    newTxt({Parent=currentBar,Text="YOUR CURRENT ACCESS",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-110,0,12),Pos=UDim2.new(0,14,0,9)})
+    local currentName = newTxt({Parent=currentBar,Text="Free",Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-120,0,20),Pos=UDim2.new(0,14,0,25)})
+    local currentMeta = newTxt({Parent=currentBar,Text="",Font=GM,Size=10,Color=C.dim,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,105,0,18),Pos=UDim2.new(1,-116,0,20)})
+
+    newTxt({Parent=shell,Text="EXPLORE LEVELS",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-32,0,14),Pos=UDim2.new(0,16,0,160)})
+    local selector = Instance.new("ScrollingFrame"); selector.Name = "TierSelector"
+    selector.Size = UDim2.new(1,-32,0,compact and 54 or 58); selector.Position = UDim2.new(0,16,0,180)
+    selector.BackgroundTransparency = 1; selector.BorderSizePixel = 0; selector.ScrollBarThickness = 2
+    selector.ScrollBarImageColor3 = C.border; selector.ScrollingDirection = Enum.ScrollingDirection.X
+    selector.AutomaticCanvasSize = Enum.AutomaticSize.X; selector.CanvasSize = UDim2.new(0,0,0,0); selector.Parent = shell
+    local selectorLayout = Instance.new("UIListLayout"); selectorLayout.FillDirection = Enum.FillDirection.Horizontal
+    selectorLayout.Padding = UDim.new(0,8); selectorLayout.SortOrder = Enum.SortOrder.LayoutOrder; selectorLayout.Parent = selector
+    pad(0,0,0,4,selector)
+
+    local detail = Instance.new("Frame"); detail.Name = "TierDetails"
+    detail.Position = UDim2.new(0,16,0,compact and 246 or 252)
+    detail.Size = UDim2.new(1,-32,1,-(compact and 262 or 268))
+    detail.BackgroundColor3 = C.pHdr; detail.BorderSizePixel = 0; detail.Parent = shell; corner(14,detail)
+    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(0,110,0,110)
+    detailGlow.Position = UDim2.new(1,-96,0,0); detailGlow.BackgroundColor3 = accent
+    detailGlow.BackgroundTransparency = .91; detailGlow.BorderSizePixel = 0; detailGlow.Parent = detail; corner(55,detailGlow)
+    local detailStroke = stroke(C.border,1,detail)
+    local selectedIndex = 1
+    local selectedTier = displayTiers[1]
+    local actionMode = "idle"
+    local watcher, wheelConn
+    local closed = false
+
+    local function refreshCurrent()
         local info = JL:GetSubscriptionInfo()
-        statusL.Text = "Current plan: " .. info.Name .. (info.TimeText and (" · " .. info.TimeText) or "") .. (previewOnly and " · Demo catalog" or "")
-        for idx,t in ipairs(displayTiers) do
-            local col = t.Color or ACCENTS[((idx - 1) % #ACCENTS) + 1]
-            local tc = Instance.new("CanvasGroup"); tc.Size = UDim2.new(0,208,1,-6); tc.BackgroundColor3 = C.pHdr; tc.BorderSizePixel = 0; tc.LayoutOrder = idx; tc.Parent = scroll; corner(12,tc)
-            local ts = stroke((info.Name == t.Name) and col or C.border, (info.Name == t.Name) and 2 or 1, tc)
-            local art = Instance.new("Frame"); art.Size = UDim2.new(1,0,0,108); art.BackgroundColor3 = col; art.BorderSizePixel = 0; art.Parent = tc
-            art:SetAttribute("JLNoRepaint", true)
-            local g = Instance.new("UIGradient"); g.Color = ColorSequence.new(col, col:Lerp(Color3.new(0,0,0), 0.55)); g.Rotation = 90; g.Parent = art
-            if t.Image then
-                local img = Instance.new("ImageLabel"); img.Size = UDim2.new(1,0,1,0); img.BackgroundTransparency = 1; img.ScaleType = Enum.ScaleType.Crop; img.Parent = art
-                local id = tostring(t.Image); if id:match("^%d+$") then id = "rbxassetid://" .. id end
-                img.Image = id; img:SetAttribute("JLNoRepaint", true)
-            else
-                local big = newTxt({Parent=art,Text=t.Name:sub(1,1):upper(),Font=GB,Size=44,Color=Color3.new(1,1,1),XAlign=Enum.TextXAlignment.Center}); big:SetAttribute("JLNoRepaint", true)
-            end
-            local nm = newTxt({Parent=tc,Text=t.Name,Font=GB,Size=21,Color=col,Sz=UDim2.new(1,-20,0,26),Pos=UDim2.new(0,12,0,116)}); nm:SetAttribute("JLNoRepaint", true)
-            if t.Tagline then newTxt({Parent=tc,Text=t.Tagline,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,12,0,143)}) end
-            local perkText = t.Description
-            if t.Perks then
-                local lines = {}
-                for _,p in ipairs(t.Perks) do lines[#lines + 1] = "• " .. p end
-                perkText = table.concat(lines, "\n")
-            end
-            if perkText then newTxt({Parent=tc,Text=perkText,Font=GM,Size=11,Color=C.txt,Wrap=true,XAlign=Enum.TextXAlignment.Left,Sz=UDim2.new(1,-24,0,74),Pos=UDim2.new(0,12,0,164)}) end
-            local act = Instance.new("Frame"); act.Size = UDim2.new(1,-24,0,64); act.Position = UDim2.new(0,12,1,-74); act.BackgroundTransparency = 1; act.Parent = tc
-            local function clearAct() for _,c in ipairs(act:GetChildren()) do c:Destroy() end end
-            local function mkBtn(text,y,h,bg,tcol,parent2)
-                local b = Instance.new("TextButton"); b.Size = UDim2.new(1,0,0,h); b.Position = UDim2.new(0,0,0,y); b.BackgroundColor3 = bg; b.BorderSizePixel = 0; b.AutoButtonColor = true
-                b.Text = text; b.Font = GB; b.TextSize = 12; b.TextColor3 = tcol; b.Parent = parent2 or act; corner(8,b); return b
-            end
-            local showIdle, showInput
-            showIdle = function()
-                clearAct()
-                if previewOnly then
-                    newTxt({Parent=act,Text=(info.Name == t.Name) and "Current plan" or "Preview only",Font=GB,Size=11,Color=(info.Name == t.Name) and C.fpsGrn or C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
-                elseif info.Name == t.Name then
-                    newTxt({Parent=act,Text="Active" .. (info.TimeText and (" · " .. info.TimeText) or ""),Font=GB,Size=11,Color=C.fpsGrn,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,0,18)})
-                    local d = mkBtn("Deactivate", 26, 32, C.btnBg, C.txt); stroke(C.border,1,d)
-                    d.MouseButton1Click:Connect(function()
-                        if confirmDialog("Deactivate " .. t.Name, "Remove this subscription from this account?", {Danger = true, ConfirmText = "Deactivate", CancelText = "Cancel"}) then
-                            JL:DeactivateSubscription()
-                        end
-                    end)
-                elseif JL:HasTier(t.Name) then
-                    newTxt({Parent=act,Text="Included in " .. info.Name,Font=GM,Size=11,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
-                else
-                    local a = mkBtn(t.ButtonText or "Activate", 14, 36, col, Color3.new(1,1,1)); a:SetAttribute("JLNoRepaint", true)
-                    a.MouseButton1Click:Connect(function() showInput() end)
-                end
-            end
-            showInput = function()
-                clearAct()
-                local boxBg = Instance.new("Frame"); boxBg.Size = UDim2.new(1,0,0,28); boxBg.BackgroundColor3 = C.input; boxBg.BorderSizePixel = 0; boxBg.Parent = act; corner(7,boxBg)
-                local bs = stroke(C.border,1,boxBg)
-                local box = Instance.new("TextBox"); box.Size = UDim2.new(1,-14,1,0); box.Position = UDim2.new(0,7,0,0); box.BackgroundTransparency = 1; box.PlaceholderText = "Paste your key"; box.PlaceholderColor3 = C.dim
-                box.Font = GB; box.TextSize = 11; box.TextColor3 = C.txt; box.ClearTextOnFocus = false; box.Text = ""; box.Parent = boxBg
-                local redeem = mkBtn("Redeem", 34, 28, col, Color3.new(1,1,1)); redeem:SetAttribute("JLNoRepaint", true)
-                redeem.MouseButton1Click:Connect(function()
-                    local ok,reason = JL:RedeemKey(box.Text, t.Name)
-                    if ok then
-                        JL:Notify({Title = t.Name, Desc = "Subscription activated", Type = "Success", Duration = 4})
-                    else
-                        tw(bs,{Color = C.danger},.1); trackedDelay(.5, function() tw(bs,{Color = C.border},.2) end)
-                        JL:Notify({Title = "Subscriptions", Desc = reason or "Invalid key", Type = "Error", Duration = 4})
+        currentName.Text = info.Name
+        currentMeta.Text = info.TimeText or (info.Subscribed and "Active" or "Standard")
+        if previewOnly then currentMeta.Text = "DEMO" end
+    end
+    local function makeButton(parent,textValue,size,pos,bg,fg)
+        local b = Instance.new("TextButton"); b.Size = size; b.Position = pos
+        b.BackgroundColor3 = bg; b.BorderSizePixel = 0; b.AutoButtonColor = false
+        b.Text = textValue; b.Font = GB; b.TextSize = 12; b.TextColor3 = fg; b.Parent = parent
+        corner(9,b); return b
+    end
+    local function clearDetail()
+        for _,child in ipairs(detail:GetChildren()) do
+            if child ~= detailGlow and child ~= detailStroke then child:Destroy() end
+        end
+    end
+    local function renderDetail()
+        if closed or not selectedTier then return end
+        clearDetail()
+        local t = selectedTier
+        local info = JL:GetSubscriptionInfo()
+        local col = t.Color or ACCENTS[((selectedIndex - 1) % #ACCENTS) + 1]
+        detailGlow.BackgroundColor3 = col
+        local tag = Instance.new("Frame"); tag.Size = UDim2.new(0,7,0,7); tag.Position = UDim2.new(0,18,0,20)
+        tag.BackgroundColor3 = col; tag.BorderSizePixel = 0; tag.Parent = detail; corner(4,tag)
+        newTxt({Parent=detail,Text=string.upper(t.Tagline or "JUSTXLIBRARY ACCESS"),Font=GB,Size=9,Color=col,Sz=UDim2.new(1,-48,0,14),Pos=UDim2.new(0,34,0,16)})
+        newTxt({Parent=detail,Text=t.Name,Font=GB,Size=compact and 24 or 29,Color=C.txt,Sz=UDim2.new(1,-36,0,38),Pos=UDim2.new(0,18,0,38)})
+        local desc = t.Description or "A membership level for the JustXLibrary experience."
+        newTxt({Parent=detail,Text=desc,Font=GM,Size=11,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-36,0,36),Pos=UDim2.new(0,18,0,82)})
+        local dividerY = compact and 126 or 130
+        local div = Instance.new("Frame"); div.Size = UDim2.new(1,-36,0,1); div.Position = UDim2.new(0,18,0,dividerY)
+        div.BackgroundColor3 = C.border; div.BorderSizePixel = 0; div.Parent = detail
+        newTxt({Parent=detail,Text="WHAT'S INCLUDED",Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-36,0,13),Pos=UDim2.new(0,18,0,dividerY + 12)})
+        local perks = t.Perks or {}
+        local perkY = dividerY + 32
+        local maxPerks = math.min(#perks, compact and 3 or 4)
+        for i=1,maxPerks do
+            local p = Instance.new("Frame"); p.Size = UDim2.new(1,-36,0,22); p.Position = UDim2.new(0,18,0,perkY)
+            p.BackgroundTransparency = 1; p.Parent = detail
+            local check = Instance.new("Frame"); check.Size = UDim2.new(0,15,0,15); check.Position = UDim2.new(0,0,0,3)
+            check.BackgroundColor3 = col:Lerp(C.pHdr,.72); check.BorderSizePixel = 0; check.Parent = p; corner(6,check)
+            local tick = newTxt({Parent=check,Text="✓",Font=GB,Size=10,Color=col,XAlign=Enum.TextXAlignment.Center})
+            newTxt({Parent=p,Text=tostring(perks[i]),Font=GM,Size=11,Color=C.txt,Sz=UDim2.new(1,-24,1,0),Pos=UDim2.new(0,24,0,0)})
+            perkY = perkY + 24
+        end
+        if #perks == 0 then
+            newTxt({Parent=detail,Text="Details will be announced soon.",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-36,0,20),Pos=UDim2.new(0,18,0,perkY)})
+        end
+
+        local action = Instance.new("Frame"); action.Name = "TierAction"
+        action.Size = UDim2.new(1,-36,0,compact and 42 or 44); action.Position = UDim2.new(0,18,1,-(compact and 56 or 60))
+        action.BackgroundTransparency = 1; action.Parent = detail
+        local function idle()
+            for _,ch in ipairs(action:GetChildren()) do ch:Destroy() end
+            if previewOnly then
+                local label = (info.Name == t.Name) and "CURRENT LEVEL" or "CONCEPT PREVIEW"
+                newTxt({Parent=action,Text=label,Font=GB,Size=10,Color=(info.Name == t.Name) and Color3.fromRGB(105,203,164) or C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
+            elseif info.Name == t.Name then
+                local active = newTxt({Parent=action,Text="ACTIVE  ·  " .. (info.TimeText or "Lifetime"),Font=GB,Size=11,Color=Color3.fromRGB(105,203,164),XAlign=Enum.TextXAlignment.Left,Sz=UDim2.new(.48,0,1,0)})
+                local deactivate = makeButton(action,"Deactivate",UDim2.new(.48,0,0,36),UDim2.new(.52,0,.5,-18),C.btnBg,C.txt)
+                stroke(C.border,1,deactivate)
+                deactivate.Activated:Connect(function()
+                    if confirmDialog("Deactivate " .. t.Name,"Remove this subscription from this account?",{Danger=true,ConfirmText="Deactivate",CancelText="Cancel"}) then
+                        JL:DeactivateSubscription()
                     end
                 end)
+            elseif JL:HasTier(t.Name) then
+                newTxt({Parent=action,Text="INCLUDED WITH " .. string.upper(info.Name),Font=GB,Size=10,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
+            else
+                local activate = makeButton(action,"Enter activation key   →",UDim2.new(1,0,0,40),UDim2.new(0,0,.5,-20),col,Color3.new(1,1,1))
+                activate:SetAttribute("JLNoRepaint",true)
+                activate.Activated:Connect(function() actionMode = "input"; renderDetail() end)
             end
-            showIdle()
+        end
+        if actionMode == "input" and not previewOnly then
+            local input = Instance.new("TextBox"); input.Size = UDim2.new(1,-102,0,38); input.Position = UDim2.new(0,0,.5,-19)
+            input.BackgroundColor3 = C.input; input.BorderSizePixel = 0; input.PlaceholderText = "Paste your key"
+            input.PlaceholderColor3 = C.dim; input.TextColor3 = C.txt; input.Font = GB; input.TextSize = 11
+            input.ClearTextOnFocus = false; input.Text = ""; input.Parent = action; corner(8,input); local inputStroke = stroke(C.border,1,input)
+            local redeem = makeButton(action,"Redeem",UDim2.new(0,92,0,38),UDim2.new(1,-92,.5,-19),col,Color3.new(1,1,1))
+            redeem:SetAttribute("JLNoRepaint",true)
+            redeem.Activated:Connect(function()
+                local ok,reason = JL:RedeemKey(input.Text,t.Name)
+                if ok then
+                    actionMode = "idle"
+                    JL:Notify({Title=t.Name,Desc="Subscription activated",Type="Success",Duration=4})
+                    renderDetail()
+                else
+                    tw(inputStroke,{Color=C.danger},.1)
+                    trackedDelay(.5,function() if inputStroke.Parent then tw(inputStroke,{Color=C.border},.2) end end)
+                    JL:Notify({Title="Subscriptions",Desc=reason or "Invalid key",Type="Error",Duration=4})
+                end
+            end)
+            local back = makeButton(action,"×",UDim2.new(0,30,0,30),UDim2.new(1,-30,0,-34),C.btnBg,C.dim)
+            back.Activated:Connect(function() actionMode="idle"; renderDetail() end)
+        else
+            idle()
         end
     end
-    watcher = JL:OnTierChanged(function() if sgS.Parent then build() end end)
-    build()
-    showPopup()
+
+    local selectorButtons = {}
+    local function selectTier(index)
+        selectedIndex = index; selectedTier = displayTiers[index]; actionMode = "idle"
+        for i,b in ipairs(selectorButtons) do
+            local t = displayTiers[i]
+            local selected = i == index
+            tw(b,{BackgroundColor3 = selected and (t.Color or accent):Lerp(C.pHdr,.72) or C.pHdr},.12)
+            local st = b:FindFirstChildOfClass("UIStroke")
+            if st then st.Color = selected and (t.Color or accent) or C.border; st.Transparency = selected and 0 or .35 end
+            local tx = b:FindFirstChild("TierName")
+            if tx then tx.TextColor3 = selected and C.txt or C.dim end
+        end
+        renderDetail()
+    end
+    for i,t in ipairs(displayTiers) do
+        local col = t.Color or ACCENTS[((i - 1) % #ACCENTS) + 1]
+        local b = Instance.new("TextButton"); b.Name = "Tier_" .. tostring(i)
+        b.Size = UDim2.new(0,compact and 124 or 142,0,compact and 46 or 50)
+        b.BackgroundColor3 = C.pHdr; b.BorderSizePixel = 0; b.Text = ""; b.AutoButtonColor = false; b.LayoutOrder = i; b.Parent = selector
+        corner(10,b); local st = stroke(C.border,1,b); st.Transparency = .35
+        local dot = Instance.new("Frame"); dot.Size = UDim2.new(0,6,0,6); dot.Position = UDim2.new(0,10,.5,-3)
+        dot.BackgroundColor3 = col; dot.BorderSizePixel = 0; dot.Parent = b; corner(3,dot)
+        local label = newTxt({Parent=b,Text=t.Name,Font=GB,Size=11,Color=C.dim,Sz=UDim2.new(1,-26,1,0),Pos=UDim2.new(0,22,0,0)})
+        label.Name = "TierName"
+        selectorButtons[i] = b
+        b.Activated:Connect(function() selectTier(i) end)
+    end
+
+    local function closePopup()
+        if closed then return end
+        closed = true
+        if watcher then JL:OffTierChanged(watcher) end
+        if wheelConn then pcall(function() wheelConn:Disconnect() end) end
+        tw(backdrop,{BackgroundTransparency=1},.14)
+        tw(shell,{Position=UDim2.new(.5,0,.5,12)},.14)
+        trackedDelay(.16,function()
+            if SUB._gui == sgS then SUB._gui = nil end
+            sgS:Destroy()
+        end)
+    end
+    closeBtn.Activated:Connect(closePopup)
+    backdrop.InputBegan:Connect(function(input)
+        if not isPtr(input) then return end
+        local p,s = shell.AbsolutePosition,shell.AbsoluteSize
+        local x,y = input.Position.X,input.Position.Y
+        if x < p.X or x > p.X+s.X or y < p.Y or y > p.Y+s.Y then closePopup() end
+    end)
+    watcher = JL:OnTierChanged(function()
+        if closed then return end
+        refreshCurrent()
+        renderDetail()
+    end)
+    refreshCurrent()
+    selectTier(1)
+    tw(backdrop,{BackgroundTransparency=.34},.2)
+    tw(shell,{Position=UDim2.new(.5,0,.5,0)},.24,Enum.EasingStyle.Back,Enum.EasingDirection.Out)
 end
+
 local function mkSwitch(parent,pos,state,ac)
     local track = Instance.new("Frame"); track.Size = UDim2.new(0,34,0,18); track.Position = pos
     track.BackgroundColor3 = state and ac or C.togOff; track.BorderSizePixel = 0; track.Parent = parent; corner(9,track)
@@ -3327,6 +3472,7 @@ local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet
     end
     return {}
 end
+
 local function isDividerOpt(o) return type(o) == "table" and o.Divider ~= nil end
 local function dividerHeight(o) return (type(o.Divider) == "string") and 22 or 12 end
 local function mkOptDivider(container,order,o,h)
@@ -4758,6 +4904,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     MS.ToggleLocked = msLock.ToggleLocked; MS.ToggleHidden = msLock.ToggleHidden
     return MS
 end
+
 -- ===== Preview UI loader =====
 JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/PreviewUI.lua"
 -- Если файл не нашёлся или сломан, показываем, ЧТО именно пришло (строка с ошибкой, размер, начало файла)
@@ -5111,6 +5258,7 @@ refreshWorkspaceTabs = function()
         end)
     end
 end
+
 function JL:Window(opts)
     opts = opts or {}
     local hubConfig = Config.Fork()
