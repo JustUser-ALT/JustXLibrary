@@ -54,7 +54,7 @@ task.wait(0.6)
 local previewFound = false
 for _,root in ipairs(guiRoots) do
     for _,obj in ipairs(root:GetDescendants()) do
-        if obj:IsA("TextLabel") and obj.Text:find("Demo catalog", 1, true) then
+        if obj:IsA("TextLabel") and obj.Text == "Choose your level" then
             previewFound = true
             break
         end
@@ -62,8 +62,23 @@ for _,root in ipairs(guiRoots) do
     if previewFound then break end
 end
 
-if previewFound then
-    print("[Subscription Preview Test] PASS: demo subscription catalog opened without configuration.")
+local selectorCount = 0
+local detailFound = false
+for _,root in ipairs(guiRoots) do
+    for _,obj in ipairs(root:GetDescendants()) do
+        if obj.Name:match("^Tier_%d+$") and obj:IsA("TextButton") then selectorCount = selectorCount + 1 end
+        if obj.Name == "TierDetails" and obj:IsA("Frame") then detailFound = true end
+    end
+end
+
+if selectorCount == 6 and detailFound then
+    print("[Subscription Preview Test] PASS: all six tier selectors and the detail panel are present.")
 else
-    warn("[Subscription Preview Test] FAIL: demo catalog label was not found.")
+    warn("[Subscription Preview Test] FAIL: selector count =", selectorCount, "detail panel =", detailFound)
+end
+
+if previewFound then
+    print("[Subscription Preview Test] PASS: redesigned subscription screen opened without configuration.")
+else
+    warn("[Subscription Preview Test] FAIL: redesigned subscription screen title was not found.")
 end
