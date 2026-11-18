@@ -108,11 +108,6 @@ local function createIconsModule(deps)
     local UDim2 = deps.UDim2
     local Vector2 = deps.Vector2
     local typeof = deps.Typeof
-    local function isOfType(value, expected)
-        if type(typeof) ~= "function" then return false end
-        local ok, result = pcall(typeof, value)
-        return ok and result == expected
-    end
     local game = deps.Game
     local loadstring = deps.LoadString
 
@@ -131,7 +126,7 @@ local function createIconsModule(deps)
             local ok,value = pcall(pack.GetIcon, name)
             if ok then asset = value end
         end
-        if isOfType(asset, "Instance") then
+        if typeof(asset) == "Instance" then
             if asset:IsA("ImageLabel") or asset:IsA("ImageButton") then
                 asset = {Url = asset.Image, ImageRectOffset = asset.ImageRectOffset, ImageRectSize = asset.ImageRectSize}
             elseif asset:IsA("TextLabel") or asset:IsA("TextButton") then
@@ -152,8 +147,8 @@ local function createIconsModule(deps)
         if url ~= nil and tostring(url) ~= "" then
             return {
                 Url = tostring(url),
-                ImageRectOffset = isOfType(asset.ImageRectOffset, "Vector2") and asset.ImageRectOffset or Vector2.zero,
-                ImageRectSize = isOfType(asset.ImageRectSize, "Vector2") and asset.ImageRectSize or Vector2.zero,
+                ImageRectOffset = typeof(asset.ImageRectOffset) == "Vector2" and asset.ImageRectOffset or Vector2.zero,
+                ImageRectSize = typeof(asset.ImageRectSize) == "Vector2" and asset.ImageRectSize or Vector2.zero,
                 FontFace = asset.FontFace,
                 Text = text,
             }
@@ -271,12 +266,7 @@ local function createIconsModule(deps)
             if type(override) == "table" then return override end
             return tostring(override)
         end
-        local ok, asset = pcall(iconAsset, s)
-        if not ok then
-            JL._lastIconResolveError = tostring(asset)
-            return s
-        end
-        JL._lastIconResolveError = nil
+        local asset = iconAsset(s)
         if asset then return asset end
         if JL._iconPack and JL._iconPack[s] then return JL._iconPack[s] end
         return s
@@ -326,8 +316,7 @@ local function createIconsModule(deps)
     end
 
     return {
-        Make = mkIcon,
-        Resolve = resolveIcon
+        Make = mkIcon
     }
 end
 -- Background module factory. Dependencies are injected; background state stays on the library instance.
@@ -1173,7 +1162,6 @@ local Icons = createIconsModule({
     LoadString = loadstring
 })
 local mkIcon = Icons.Make
-local resolveIcon = Icons.Resolve
 local Backgrounds = createBackgroundsModule({
     JL = JL,
     Enum = Enum,
@@ -1654,11 +1642,6 @@ JL._remoteAttach = function() end -- заменяется, когда созда
 JL._bridge = {
     C = C, ACCENTS = ACCENTS, cfgGet = cfgGet, cfgSet = cfgSet, cfgHas = cfgHas,
     keep = keep, tw = tw, icon = resolveIcon,
-    hasIconPack = function() return JL._iconPack ~= nil end,
-    loadIconPack = function(url)
-        if JL._iconPack then return true end
-        return JL:LoadIconPack(url)
-    end,
     track = function(resource, cleanup) return JL:Track(resource, cleanup) end,
     connect = function(signal, callback) return JL:Connect(signal, callback) end,
     spawn = trackedSpawn, delay = trackedDelay, defer = trackedDefer,
@@ -6085,8 +6068,9 @@ function JL:Window(opts)
     end
     function Win:Tab(topts)
         topts = topts or {}; local typ = topts.Type or "Grid"; _tabCount = _tabCount + 1; local id = _tabCount
+        local isSettingsTab = topts._SettingsTab == true
         local btn = Instance.new("TextButton"); btn.Size = labelsOn and UDim2.new(0,SBW - 12,0,46) or UDim2.new(0,30,0,30); btn.BackgroundColor3 = Color3.fromRGB(34,34,40); btn.Text = ""; btn.AutoButtonColor = false
-        btn.BorderSizePixel = 0; btn.LayoutOrder = id; btn.Parent = sbCols[1].scroll; corner(8,btn)
+        btn.BorderSizePixel = 0; btn.LayoutOrder = isSettingsTab and 1000000 or id; btn.Parent = sbCols[1].scroll; corner(8,btn)
         sbBtns[id] = btn; btn:GetPropertyChangedSignal("Visible"):Connect(queueSidebar); queueSidebar()
         local ic = mkIcon(btn, topts.Icon or "◼", 16, 14); ic.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8); ic.Size = UDim2.new(0,16,0,16)
         local tabLabel
@@ -6100,7 +6084,7 @@ function JL:Window(opts)
         tabFrame.BackgroundTransparency = 1; tabFrame.Visible = false; tabFrame.Parent = content
         tabFrames[id] = tabFrame
         btn.MouseButton1Click:Connect(function() switchToTab(id) end)
-        if not activeTabId and not topts.Hidden then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
+        if not activeTabId and not topts.Hidden and not isSettingsTab then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
         local Tab = {Frame = tabFrame, Id = id}
         function Tab:SetLocked(v) tabLock.SetLocked(nil, v) end
         function Tab:SetHidden(v)
@@ -7195,7 +7179,7 @@ function JL:Window(opts)
     end)
     function Win:Settings()
         if opts.Settings == false then return nil end
-        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings"})
+        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings", _SettingsTab = true})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
         local navW = 146
@@ -7624,6 +7608,11 @@ function JL:Window(opts)
         showPage("Interface")
         AM.boot()
         RM.refresh()
+        trackedDefer(function()
+            if not _dead and not activeTabId and tabFrames[sTab.Id] then
+                sTab:Select()
+            end
+        end)
         return sTab
     end
     trackedDefer(function()
