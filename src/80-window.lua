@@ -968,8 +968,9 @@ function JL:Window(opts)
     end
     function Win:Tab(topts)
         topts = topts or {}; local typ = topts.Type or "Grid"; _tabCount = _tabCount + 1; local id = _tabCount
+        local isSettingsTab = topts._SettingsTab == true
         local btn = Instance.new("TextButton"); btn.Size = labelsOn and UDim2.new(0,SBW - 12,0,46) or UDim2.new(0,30,0,30); btn.BackgroundColor3 = Color3.fromRGB(34,34,40); btn.Text = ""; btn.AutoButtonColor = false
-        btn.BorderSizePixel = 0; btn.LayoutOrder = id; btn.Parent = sbCols[1].scroll; corner(8,btn)
+        btn.BorderSizePixel = 0; btn.LayoutOrder = isSettingsTab and 1000000 or id; btn.Parent = sbCols[1].scroll; corner(8,btn)
         sbBtns[id] = btn; btn:GetPropertyChangedSignal("Visible"):Connect(queueSidebar); queueSidebar()
         local ic = mkIcon(btn, topts.Icon or "◼", 16, 14); ic.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8); ic.Size = UDim2.new(0,16,0,16)
         local tabLabel
@@ -983,7 +984,7 @@ function JL:Window(opts)
         tabFrame.BackgroundTransparency = 1; tabFrame.Visible = false; tabFrame.Parent = content
         tabFrames[id] = tabFrame
         btn.MouseButton1Click:Connect(function() switchToTab(id) end)
-        if not activeTabId and not topts.Hidden then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
+        if not activeTabId and not topts.Hidden and not isSettingsTab then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
         local Tab = {Frame = tabFrame, Id = id}
         function Tab:SetLocked(v) tabLock.SetLocked(nil, v) end
         function Tab:SetHidden(v)
@@ -2078,7 +2079,7 @@ function JL:Window(opts)
     end)
     function Win:Settings()
         if opts.Settings == false then return nil end
-        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings"})
+        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings", _SettingsTab = true})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
         local navW = 146
@@ -2507,6 +2508,11 @@ function JL:Window(opts)
         showPage("Interface")
         AM.boot()
         RM.refresh()
+        trackedDefer(function()
+            if not _dead and not activeTabId and tabFrames[sTab.Id] then
+                sTab:Select()
+            end
+        end)
         return sTab
     end
     trackedDefer(function()
