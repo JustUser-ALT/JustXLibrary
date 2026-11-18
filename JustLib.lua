@@ -2845,9 +2845,12 @@ function JL:OpenSubscriptions()
     detail.AutomaticCanvasSize = Enum.AutomaticSize.Y
     detail.CanvasSize = UDim2.new(0,0,0,0); detail.ClipsDescendants = true
     corner(12,detail)
-    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(0,72,0,72)
-    detailGlow.Position = UDim2.new(1,-62,0,0); detailGlow.BackgroundColor3 = accent
-    detailGlow.BackgroundTransparency = .91; detailGlow.BorderSizePixel = 0; detailGlow.Parent = detail; corner(55,detailGlow)
+    local detailGlow = Instance.new("Frame"); detailGlow.Size = UDim2.new(1,0,0,3)
+    detailGlow.Position = UDim2.new(0,0,0,0); detailGlow.BackgroundColor3 = accent
+    detailGlow.BorderSizePixel = 0; detailGlow.Parent = detail
+    local detailGlowGradient = Instance.new("UIGradient")
+    detailGlowGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,accent),ColorSequenceKeypoint.new(1,accent:Lerp(C.pHdr,.45))})
+    detailGlowGradient.Parent = detailGlow
     local detailStroke = stroke(C.border,1,detail)
     local selectedIndex = 1
     local selectedTier = displayTiers[1]
@@ -2879,14 +2882,24 @@ function JL:OpenSubscriptions()
         local info = JL:GetSubscriptionInfo()
         local col = t.Color or ACCENTS[((selectedIndex - 1) % #ACCENTS) + 1]
         detailGlow.BackgroundColor3 = col
+        detailGlowGradient.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,col),ColorSequenceKeypoint.new(1,col:Lerp(C.pHdr,.45))})
         detail.CanvasPosition = Vector2.new(0,0)
-        local tag = Instance.new("Frame"); tag.Size = UDim2.new(0,6,0,6); tag.Position = UDim2.new(0,14,0,15)
-        tag.BackgroundColor3 = col; tag.BorderSizePixel = 0; tag.Parent = detail; corner(4,tag)
-        newTxt({Parent=detail,Text=string.upper(t.Tagline or "JUSTXLIBRARY ACCESS"),Font=GB,Size=8,Color=col,Sz=UDim2.new(1,-40,0,12),Pos=UDim2.new(0,28,0,12)})
-        newTxt({Parent=detail,Text=t.Name,Font=GB,Size=compact and 20 or 23,Color=C.txt,Sz=UDim2.new(1,-28,0,30),Pos=UDim2.new(0,14,0,29)})
+        local iconNames = {"sprout","zap","crown","messages-square","code-2","flag"}
+        local iconName = t.Icon or iconNames[selectedIndex] or "gem"
+        local iconBadge = Instance.new("Frame"); iconBadge.Name = "TierEmblem"
+        iconBadge.Size = UDim2.new(0,48,0,48); iconBadge.Position = UDim2.new(1,-62,0,16)
+        iconBadge.BackgroundColor3 = col:Lerp(C.pHdr,.82); iconBadge.BorderSizePixel = 0
+        iconBadge.Parent = detail; corner(13,iconBadge); stroke(col:Lerp(C.pHdr,.35),1,iconBadge)
+        local heroIcon = mkIcon(iconBadge,iconName,25,15)
+        heroIcon.AnchorPoint = Vector2.new(.5,.5); heroIcon.Position = UDim2.fromScale(.5,.5)
+        heroIcon.TextColor3 = col
+        local heroImage = heroIcon:FindFirstChild("JLIconAsset")
+        if heroImage then heroImage.ImageColor3 = col end
+        newTxt({Parent=detail,Text=string.upper(t.Tagline or "JUSTXLIBRARY ACCESS"),Font=GB,Size=8,Color=col,Sz=UDim2.new(1,-82,0,12),Pos=UDim2.new(0,14,0,16)})
+        newTxt({Parent=detail,Text=t.Name,Font=GB,Size=compact and 20 or 23,Color=C.txt,Sz=UDim2.new(1,-82,0,30),Pos=UDim2.new(0,14,0,34)})
         local desc = t.Description or "A membership level for the JustXLibrary experience."
-        newTxt({Parent=detail,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,30),Pos=UDim2.new(0,14,0,62)})
-        local dividerY = 98
+        newTxt({Parent=detail,Text=desc,Font=GM,Size=10,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-28,0,30),Pos=UDim2.new(0,14,0,72)})
+        local dividerY = 112
         local div = Instance.new("Frame"); div.Size = UDim2.new(1,-28,0,1); div.Position = UDim2.new(0,14,0,dividerY)
         div.BackgroundColor3 = C.border; div.BorderSizePixel = 0; div.Parent = detail
         newTxt({Parent=detail,Text="WHAT'S INCLUDED",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-28,0,11),Pos=UDim2.new(0,14,0,dividerY + 7)})
@@ -2974,12 +2987,21 @@ function JL:OpenSubscriptions()
     for i,t in ipairs(displayTiers) do
         local col = t.Color or ACCENTS[((i - 1) % #ACCENTS) + 1]
         local b = Instance.new("TextButton"); b.Name = "Tier_" .. tostring(i)
-        b.Size = UDim2.new(0,compact and 100 or 112,0,compact and 38 or 40)
+        b.Size = UDim2.new(0,compact and 126 or 142,0,compact and 42 or 44)
         b.BackgroundColor3 = C.pHdr; b.BorderSizePixel = 0; b.Text = ""; b.AutoButtonColor = false; b.LayoutOrder = i; b.Parent = selector
         corner(10,b); local st = stroke(C.border,1,b); st.Transparency = .35
-        local dot = Instance.new("Frame"); dot.Size = UDim2.new(0,5,0,5); dot.Position = UDim2.new(0,8,.5,-2.5)
-        dot.BackgroundColor3 = col; dot.BorderSizePixel = 0; dot.Parent = b; corner(3,dot)
-        local label = newTxt({Parent=b,Text=t.Name,Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-20,1,0),Pos=UDim2.new(0,18,0,0)})
+        local iconNames = {"sprout","zap","crown","messages-square","code-2","flag"}
+        local iconName = t.Icon or iconNames[i] or "gem"
+        local iconBadge = Instance.new("Frame"); iconBadge.Name = "TierIconBadge"
+        iconBadge.Size = UDim2.new(0,28,0,28); iconBadge.Position = UDim2.new(0,7,.5,-14)
+        iconBadge.BackgroundColor3 = col:Lerp(C.pHdr,.78); iconBadge.BorderSizePixel = 0; iconBadge.Parent = b
+        corner(8,iconBadge)
+        local tierIcon = mkIcon(iconBadge,iconName,16,14)
+        tierIcon.AnchorPoint = Vector2.new(.5,.5); tierIcon.Position = UDim2.fromScale(.5,.5)
+        tierIcon.TextColor3 = col
+        local tierImage = tierIcon:FindFirstChild("JLIconAsset")
+        if tierImage then tierImage.ImageColor3 = col end
+        local label = newTxt({Parent=b,Text=t.Name,Font=GB,Size=9,Color=C.dim,Sz=UDim2.new(1,-42,1,0),Pos=UDim2.new(0,42,0,0)})
         label.Name = "TierName"
         selectorButtons[i] = b
         b.Activated:Connect(function() selectTier(i) end)
