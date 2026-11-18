@@ -2744,8 +2744,19 @@ function JL:Subscriptions(o)
     notifyTier()
 end
 function JL:OpenSubscriptions()
-    if #SUB.order == 0 then JL:Notify({Title = "Subscriptions", Desc = "No subscriptions are configured", Type = "Warn", Duration = 3}); return end
     if SUB._gui and SUB._gui.Parent then return end
+    local previewOnly = #SUB.order == 0
+    local displayTiers = SUB.order
+    if previewOnly then
+        displayTiers = {
+            {Name = "Free", Tagline = "A place to start", Description = "The essential JustXLibrary experience.", Perks = {"Core library access", "Standard interface customization"}, Color = Color3.fromRGB(112, 125, 148)},
+            {Name = "Premium", Tagline = "More room to create", Description = "An expanded experience for regular creators.", Perks = {"Extended customization concepts", "Premium profile identity"}, Color = Color3.fromRGB(80, 145, 255)},
+            {Name = "Elite", Tagline = "Built for power users", Description = "A higher-tier concept for advanced users.", Perks = {"Advanced feature concepts", "Exclusive interface themes"}, Color = Color3.fromRGB(166, 105, 255)},
+            {Name = "Discord Booster", Tagline = "Support the community", Description = "A recognition tier for community supporters.", Perks = {"Booster recognition", "Community supporter identity"}, Color = Color3.fromRGB(190, 112, 255)},
+            {Name = "Contributor", Tagline = "Help build JustX", Description = "For people who contribute to the project.", Perks = {"Contributor recognition", "Early preview concepts"}, Color = Color3.fromRGB(65, 190, 155)},
+            {Name = "Founder", Tagline = "A part of the beginning", Description = "A special concept for founding supporters.", Perks = {"Founder recognition", "Legacy supporter identity"}, Color = Color3.fromRGB(230, 175, 82)},
+        }
+    end
     local CoreGui = game:GetService("CoreGui")
     local sgS = registerHubGui(Instance.new("ScreenGui"), "Subscriptions"); sgS.ResetOnSpawn = false; sgS.IgnoreGuiInset = true; sgS.DisplayOrder = 1000
     local okp = pcall(function() sgS.Parent = CoreGui end); if not okp or not sgS.Parent then sgS.Parent = PG end
@@ -2778,8 +2789,8 @@ function JL:OpenSubscriptions()
     build = function()
         for _,c in ipairs(scroll:GetChildren()) do if c:IsA("CanvasGroup") then c:Destroy() end end
         local info = JL:GetSubscriptionInfo()
-        statusL.Text = "Current plan: " .. info.Name .. (info.TimeText and (" · " .. info.TimeText) or "")
-        for idx,t in ipairs(SUB.order) do
+        statusL.Text = "Current plan: " .. info.Name .. (info.TimeText and (" · " .. info.TimeText) or "") .. (previewOnly and " · Demo catalog" or "")
+        for idx,t in ipairs(displayTiers) do
             local col = t.Color or ACCENTS[((idx - 1) % #ACCENTS) + 1]
             local tc = Instance.new("CanvasGroup"); tc.Size = UDim2.new(0,208,1,-6); tc.BackgroundColor3 = C.pHdr; tc.BorderSizePixel = 0; tc.LayoutOrder = idx; tc.Parent = scroll; corner(12,tc)
             local ts = stroke((info.Name == t.Name) and col or C.border, (info.Name == t.Name) and 2 or 1, tc)
@@ -2811,7 +2822,9 @@ function JL:OpenSubscriptions()
             local showIdle, showInput
             showIdle = function()
                 clearAct()
-                if info.Name == t.Name then
+                if previewOnly then
+                    newTxt({Parent=act,Text=(info.Name == t.Name) and "Current plan" or "Preview only",Font=GB,Size=11,Color=(info.Name == t.Name) and C.fpsGrn or C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
+                elseif info.Name == t.Name then
                     newTxt({Parent=act,Text="Active" .. (info.TimeText and (" · " .. info.TimeText) or ""),Font=GB,Size=11,Color=C.fpsGrn,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,0,18)})
                     local d = mkBtn("Deactivate", 26, 32, C.btnBg, C.txt); stroke(C.border,1,d)
                     d.MouseButton1Click:Connect(function()
@@ -5787,9 +5800,10 @@ function JL:Window(opts)
         local info = JL:GetSubscriptionInfo()
         local label = info.Name or "Free"
         local tierColor = info.Tier and info.Tier.Color or C.dim
-        local maxWidth = math.clamp(CWW - 248 - 52 - 8,38,72)
-        local textWidth = math.ceil(measureTextW(label,9,GB,120)) + 12
-        subscriptionBadge.Size = UDim2.new(0,math.min(maxWidth,math.max(38,textWidth)),0,20)
+        local maxWidth = math.clamp(CWW - 248 - 52 - 8,64,104)
+        local textWidth = math.ceil(measureTextW(label,9,GB,120)) + 22
+        subscriptionBadge.Size = UDim2.new(0,math.min(maxWidth,math.max(64,textWidth)),0,22)
+        subscriptionBadge.Position = UDim2.new(0,52,0,10)
         subscriptionBadge.Text = label
         subscriptionBadge.TextColor3 = tierColor
         subscriptionBadgeStroke.Color = info.Tier and tierColor or C.border
