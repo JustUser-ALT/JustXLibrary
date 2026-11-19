@@ -6421,7 +6421,7 @@ function JL:Window(opts)
             icon.Position = UDim2.new(0,12,0,10)
             icon.Size = UDim2.new(0,15,0,15)
             if icon:IsA("TextLabel") then icon.TextColor3 = style.Color else icon.ImageColor3 = style.Color end
-            newTxt({Parent=panel,Text=kind:upper(),Font=GB,Size=9,Color=style.Color,Sz=UDim2.new(1,-48,0,12),Pos=UDim2.new(0,36,0,8),Z=3})
+            local heading = newTxt({Parent=panel,Text=kind:upper(),Font=GB,Size=9,Color=style.Color,Sz=UDim2.new(1,-48,0,12),Pos=UDim2.new(0,36,0,8),Z=3})
             local body = newTxt({Parent=panel,Text=message,Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-48,0,bodyHeight),Pos=UDim2.new(0,36,0,22),Z=3})
             body.TextYAlignment = Enum.TextYAlignment.Top
             panel:SetAttribute("JLInfoType",kind)
