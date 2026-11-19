@@ -1214,7 +1214,7 @@ function JL:Window(opts)
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return markSection(makeMultiSection(listCon, sopts, sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig))
+                return markSection(makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip, hubConfig))
             end
         end
         return Tab
