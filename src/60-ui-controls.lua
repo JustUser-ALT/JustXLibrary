@@ -1294,7 +1294,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10, so.Background)
     local hdr = Instance.new("Frame"); hdr.Size = UDim2.new(1,0,0,HH); hdr.BackgroundColor3 = C.pHdr; hdr.BorderSizePixel = 0; hdr.Parent = panel; corner(10,hdr)
-    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,0,0.5,0); hfix.Position = UDim2.new(0,0,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
+    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,-20,0.5,0); hfix.Position = UDim2.new(0,10,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
     local pill = Instance.new("Frame"); pill.Size = UDim2.new(0,3,0,14); pill.Position = UDim2.new(0,10,0.5,-7); pill.BackgroundColor3 = ac; pill.BorderSizePixel = 0; pill.ZIndex = 3; pill.Parent = hdr; corner(2,pill)
     if so.Icon then local ic = mkIcon(hdr, so.Icon, 15, 3); ic.Position = UDim2.new(0,22,0.5,-7); ic.Size = UDim2.new(0,15,0,15); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
     newTxt({Parent=hdr,Text=title,Font=GB,Size=13,Wrap=true,Sz=UDim2.new(1,-54 - iconW,1,0),Pos=UDim2.new(0,22 + iconW,0,0),Z=3})
@@ -1370,7 +1370,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10)
     local hdr = Instance.new("Frame"); hdr.Size = UDim2.new(1,0,0,HH); hdr.BackgroundColor3 = C.pHdr; hdr.BorderSizePixel = 0; hdr.Parent = panel; corner(10,hdr)
-    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,0,0.5,0); hfix.Position = UDim2.new(0,0,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
+    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,-20,0.5,0); hfix.Position = UDim2.new(0,10,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
     if sopts.Title then newTxt({Parent=hdr,Text=sopts.Title,Font=GB,Size=12,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-16,0,16),Pos=UDim2.new(0,8,0,3),Z=3}) end
     if sopts.Icon then local ic = mkIcon(hdr, sopts.Icon, 16, 3); ic.Position = UDim2.new(0,8,0,titleH + 12); ic.Size = UDim2.new(0,16,0,16); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
     if attachTip and sopts.Tooltip then attachTip(hdr, sopts.Tooltip) end
