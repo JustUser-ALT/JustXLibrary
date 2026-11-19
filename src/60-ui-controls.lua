@@ -1311,12 +1311,15 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
         local ch = list.AbsoluteContentSize.Y
         storedH = (ch > 0) and (unscale(ch) + 16) or 0
         content.Size = UDim2.new(1,0,0,storedH)
+        hfix.Size = (storedH > 0) and UDim2.new(1,0,0.5,0) or UDim2.new(1,-20,0.5,0)
+        hfix.Position = (storedH > 0) and UDim2.new(0,0,0.5,0) or UDim2.new(0,10,0.5,0)
+        hline.Visible = not collapsed and storedH > 0
         if not collapsed and not animating then panel.Size = UDim2.new(1,0,0,fullH()) end
     end
     list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updatePanel)
     local function setCollapsed(c)
         collapsed = c; animating = true
-        hfix.Visible = not c; hline.Visible = not c
+        hfix.Visible = not c; hline.Visible = not c and storedH > 0
         tw(arrow,{Rotation = c and 180 or 0},.2)
         if c then
             tw(panel,{Size = UDim2.new(1,0,0,HH)},.18)
