@@ -98,7 +98,6 @@ local function createWorkspaceModule(deps)
         ResolveHubIdentity = resolveHubIdentity,
     }
 end
-
 -- Icons module factory. Dependencies are injected; icon state stays on the library instance.
 local function createIconsModule(deps)
     local JL = deps.JL
@@ -320,7 +319,6 @@ local function createIconsModule(deps)
         Make = mkIcon
     }
 end
-
 -- Background module factory. Dependencies are injected; background state stays on the library instance.
 local function createBackgroundsModule(deps)
     local JL = deps.JL
@@ -437,7 +435,6 @@ local function createBackgroundsModule(deps)
         BG = BG
     }
 end
-
 -- Guide module factory. Dependencies are injected; guide state stays private to the library instance.
 local function createGuideModule(deps)
     local JL = deps.JL
@@ -549,7 +546,6 @@ local function createGuideModule(deps)
         GroupRules = groupRules
     }
 end
-
 -- Theme module factory. Theme palettes and repaint behavior are isolated from core.
 local function createThemesModule(deps)
     local JL = deps.JL
@@ -724,7 +720,6 @@ local function createThemesModule(deps)
     function JL:GetTheme() return JL._currentTheme end
     return themes
 end
-
 -- Lifecycle module factory. Owns tracked resources, async tasks, connections, and tweens.
 local function createLifecycleModule(deps)
     local TS = deps.TweenService
@@ -847,7 +842,6 @@ local function createLifecycleModule(deps)
         Tween = tw
     }
 end
-
 -- UI primitives module factory. Shared low-level UI helpers are injected explicitly.
 local function createUIPrimitivesModule(deps)
     local UIS = deps.UserInputService
@@ -925,7 +919,6 @@ local function createUIPrimitivesModule(deps)
         Draggable = draggable
     }
 end
-
 local function createControlHelpersModule(deps)
     local Color3 = deps.Color3
     local Math = deps.Math
@@ -966,7 +959,6 @@ local function createControlHelpersModule(deps)
         Snap = snap
     }
 end
-
 local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
 JL._registry = {}; JL._noSave = {}
 
@@ -1228,7 +1220,6 @@ local skinKnob = ControlHelpers.SkinKnob
 local decimalsOf = ControlHelpers.DecimalsOf
 local fmtNum = ControlHelpers.FormatNumber
 local snap = ControlHelpers.Snap
-
 -- Config module factory. Dependencies are injected; config state stays private.
 local function createConfigModule(deps)
     local JL = deps.JL
@@ -1507,7 +1498,6 @@ end
         Fork = function() return createConfigModule(deps) end
     }
 end
-
 local Config = createConfigModule({
     JL = JL,
     Workspace = _workspace,
@@ -1536,7 +1526,6 @@ local function cfgSave() return Config.Save() end
 local function cfgHas(flag) return Config.Has(flag) end
 local function cfgSet(flag, val, store) return Config.Set(flag, val, store) end
 local function cfgGet(flag, default) return Config.Get(flag, default) end
-
 -- ===== Preview UI bridge (PreviewUI.lua берёт отсюда темы, конфиг и хуки Unload) =====
 JL._extraRoots = {}; JL._themeHooks = {}; JL._unloadHooks = {}
 JL._streamerMode = false
@@ -2040,7 +2029,6 @@ local function joinLowestServer(placeId, onFail)
         end
     end)
 end
-
 -- ===== Sub-Places v2: список карточек с картинками + окно места (Teleport / Copy Teleport Script) =====
 -- Иконки рисуются фреймами: символы вроде ◈ ➤ ❐ ✓ в шрифте Gotham отсутствуют и превращаются в квадраты
 local function spIcon(kind, parent, size, color, z)
@@ -2438,7 +2426,6 @@ local function openSubPlaces(universeId)
         end
     end)
 end
-
 local function fetchDiscordInfo(inviteUrl, callback)
     local code = tostring(inviteUrl):match("discord%.gg/([%w-]+)") or tostring(inviteUrl):match("discord%.com/invite/([%w-]+)")
     if not code then return end
@@ -3072,7 +3059,6 @@ function JL:OpenSubscriptions()
     tw(backdrop,{BackgroundTransparency=.34},.2)
     tw(shell,{Position=UDim2.new(.5,0,.5,0)},.24,Enum.EasingStyle.Back,Enum.EasingDirection.Out)
 end
-
 local function mkSwitch(parent,pos,state,ac)
     local track = Instance.new("Frame"); track.Size = UDim2.new(0,34,0,18); track.Position = pos
     track.BackgroundColor3 = state and ac or C.togOff; track.BorderSizePixel = 0; track.Parent = parent; corner(9,track)
@@ -3537,7 +3523,6 @@ local function mkCompactControl(parent,x,w,cfg,ac,regFlag,parentSg,cfgGet,cfgSet
     end
     return {}
 end
-
 local function isDividerOpt(o) return type(o) == "table" and o.Divider ~= nil end
 local function dividerHeight(o) return (type(o.Divider) == "string") and 22 or 12 end
 local function mkOptDivider(container,order,o,h)
@@ -4815,7 +4800,7 @@ local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScal
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10, so.Background)
     local hdr = Instance.new("Frame"); hdr.Size = UDim2.new(1,0,0,HH); hdr.BackgroundColor3 = C.pHdr; hdr.BorderSizePixel = 0; hdr.Parent = panel; corner(10,hdr)
-    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,0,0.5,0); hfix.Position = UDim2.new(0,0,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
+    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,-20,0.5,0); hfix.Position = UDim2.new(0,10,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
     local pill = Instance.new("Frame"); pill.Size = UDim2.new(0,3,0,14); pill.Position = UDim2.new(0,10,0.5,-7); pill.BackgroundColor3 = ac; pill.BorderSizePixel = 0; pill.ZIndex = 3; pill.Parent = hdr; corner(2,pill)
     if so.Icon then local ic = mkIcon(hdr, so.Icon, 15, 3); ic.Position = UDim2.new(0,22,0.5,-7); ic.Size = UDim2.new(0,15,0,15); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
     newTxt({Parent=hdr,Text=title,Font=GB,Size=13,Wrap=true,Sz=UDim2.new(1,-54 - iconW,1,0),Pos=UDim2.new(0,22 + iconW,0,0),Z=3})
@@ -4891,7 +4876,7 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     corner(10,panel); stroke(C.border,1,panel)
     BG.register("Section", panel, 10)
     local hdr = Instance.new("Frame"); hdr.Size = UDim2.new(1,0,0,HH); hdr.BackgroundColor3 = C.pHdr; hdr.BorderSizePixel = 0; hdr.Parent = panel; corner(10,hdr)
-    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,0,0.5,0); hfix.Position = UDim2.new(0,0,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
+    local hfix = Instance.new("Frame"); hfix.Size = UDim2.new(1,-20,0.5,0); hfix.Position = UDim2.new(0,10,0.5,0); hfix.BackgroundColor3 = C.pHdr; hfix.BorderSizePixel = 0; hfix.Parent = hdr
     if sopts.Title then newTxt({Parent=hdr,Text=sopts.Title,Font=GB,Size=12,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-16,0,16),Pos=UDim2.new(0,8,0,3),Z=3}) end
     if sopts.Icon then local ic = mkIcon(hdr, sopts.Icon, 16, 3); ic.Position = UDim2.new(0,8,0,titleH + 12); ic.Size = UDim2.new(0,16,0,16); if ic:IsA("TextLabel") then ic.TextColor3 = ac else ic.ImageColor3 = ac end end
     if attachTip and sopts.Tooltip then attachTip(hdr, sopts.Tooltip) end
@@ -4969,7 +4954,6 @@ local function makeMultiSection(parentFrame,sopts,parentSg,layoutOrder,colW,uiSc
     MS.ToggleLocked = msLock.ToggleLocked; MS.ToggleHidden = msLock.ToggleHidden
     return MS
 end
-
 -- ===== Preview UI loader =====
 JL.PreviewSource = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/PreviewUI.lua"
 -- Если файл не нашёлся или сломан, показываем, ЧТО именно пришло (строка с ошибкой, размер, начало файла)
@@ -5323,7 +5307,6 @@ refreshWorkspaceTabs = function()
         end)
     end
 end
-
 function JL:Window(opts)
     opts = opts or {}
     local hubConfig = Config.Fork()
