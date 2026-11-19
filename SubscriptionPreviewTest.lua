@@ -23,7 +23,6 @@ if not Window then
     return
 end
 
-local demoSecret = "JL_SUBSCRIPTION_PREVIEW_ONLY_2026"
 local tiers = {
     {Name="Free", Prefix="FREE", Tagline="A place to start", Description="The essential JustXLibrary experience.", Perks={"Core library access", "Standard interface customization"}, Color=Color3.fromRGB(112,125,148), Icon="sprout"},
     {Name="Premium", Prefix="PREM", Tagline="More room to create", Description="An expanded experience for regular creators.", Perks={"Extended customization concepts", "Premium profile identity"}, Color=Color3.fromRGB(80,145,255), Icon="zap"},
@@ -33,24 +32,12 @@ local tiers = {
     {Name="Founder", Prefix="FOUNDER", Tagline="A part of the beginning", Description="A special concept for founding supporters.", Perks={"Founder recognition", "Legacy supporter identity"}, Color=Color3.fromRGB(230,175,82), Icon="flag"},
 }
 
--- Isolated demo configuration: these keys are valid only for this local test secret.
+-- Preview-only link. Replace this with your own key page when testing a real project.
 Library:Subscriptions({
-    Secret = demoSecret,
-    Bind = "None",
+    GetKeyURL = "https://example.com/getkey",
     File = "JustLib_SubscriptionPreviewTest",
     Tiers = tiers,
 })
-
-print("[Subscription Preview Test] Demo activation keys (local test only):")
-for _,tier in ipairs(tiers) do
-    local key = Library:GenerateKey({
-        Secret = demoSecret,
-        Tier = tier.Name,
-        Prefix = tier.Prefix,
-        Bind = "None",
-    })
-    print("[Subscription Preview Test] "..tier.Name..": "..key)
-end
 
 local guiRoots = {
     game:GetService("CoreGui"),
