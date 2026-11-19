@@ -474,7 +474,7 @@ function JL:OpenSubscriptions()
         end
 
         local action = Instance.new("Frame"); action.Name = "TierAction"
-        action.Size = UDim2.new(1,-28,0,actionMode == "input" and SUB.opts.GetKeyURL and 74 or 38); action.Position = UDim2.new(0,14,0,perkY + 8)
+        action.Size = UDim2.new(1,-28,0,actionMode == "input" and 112 or 38); action.Position = UDim2.new(0,14,0,perkY + 8)
         action.BackgroundTransparency = 1; action.Parent = detail
         local function idle()
             for _,ch in ipairs(action:GetChildren()) do ch:Destroy() end
@@ -517,11 +517,14 @@ function JL:OpenSubscriptions()
             end
         end
         if actionMode == "input" and not previewOnly then
-            local input = Instance.new("TextBox"); input.Size = UDim2.new(1,-102,0,34); input.Position = UDim2.new(0,0,.5,-17)
-            input.BackgroundColor3 = C.input; input.BorderSizePixel = 0; input.PlaceholderText = "Paste your key"
-            input.PlaceholderColor3 = C.dim; input.TextColor3 = C.txt; input.Font = GB; input.TextSize = 11
-            input.ClearTextOnFocus = false; input.Text = ""; input.Parent = action; corner(8,input); local inputStroke = stroke(C.border,1,input)
-            local redeem = makeButton(action,"Redeem",UDim2.new(0,92,0,34),UDim2.new(1,-92,.5,-17),col,Color3.new(1,1,1))
+            local input = Instance.new("TextBox"); input.Size = UDim2.new(1,0,0,38); input.Position = UDim2.new(0,0,0,0)
+            input.BackgroundColor3 = C.input; input.BorderSizePixel = 0; input.PlaceholderText = "Paste your activation key"
+            input.PlaceholderColor3 = C.dim; input.TextColor3 = C.txt; input.Font = GB; input.TextSize = 12
+            input.ClearTextOnFocus = false; input.Text = ""; input.Parent = action; corner(9,input); local inputStroke = stroke(C.border,1,input)
+            local getKeyURL = SUB.opts.GetKeyURL
+            local hasGetKeyURL = type(getKeyURL) == "string" and getKeyURL ~= ""
+            local redeemWidth = hasGetKeyURL and .48 or 1
+            local redeem = makeButton(action,"Redeem",UDim2.new(redeemWidth,hasGetKeyURL and -4 or 0,0,34),UDim2.new(hasGetKeyURL and .52 or 0,hasGetKeyURL and 4 or 0,0,46),col,Color3.new(1,1,1))
             redeem:SetAttribute("JLNoRepaint",true)
             redeem.Activated:Connect(function()
                 local ok,reason = JL:RedeemKey(input.Text,t.Name)
@@ -535,20 +538,21 @@ function JL:OpenSubscriptions()
                     JL:Notify({Title="Subscriptions",Desc=reason or "Invalid key",Type="Error",Duration=4})
                 end
             end)
-            if type(SUB.opts.GetKeyURL) == "string" and SUB.opts.GetKeyURL ~= "" then
-                local getKey = makeButton(action,"Get a key",UDim2.new(1,0,0,28),UDim2.new(0,0,0,40),C.btnBg,C.txt)
+            if hasGetKeyURL then
+                local getKey = makeButton(action,"Get a key",UDim2.new(.48,-4,0,34),UDim2.new(0,0,0,46),C.btnBg,C.txt)
                 stroke(C.border,1,getKey)
                 getKey.Activated:Connect(function()
                     local copied = false
-                    if setclipboard then copied = pcall(setclipboard,SUB.opts.GetKeyURL) end
+                    if setclipboard then copied = pcall(setclipboard,getKeyURL) end
                     if copied then
                         JL:Notify({Title="Get a Key",Desc="Link copied — open it in your browser",Type="Info",Duration=4})
                     else
-                        JL:Notify({Title="Get a Key",Desc=SUB.opts.GetKeyURL,Type="Info",Duration=6})
+                        JL:Notify({Title="Get a Key",Desc=getKeyURL,Type="Info",Duration=6})
                     end
                 end)
             end
-            local back = makeButton(action,"×",UDim2.new(0,30,0,30),UDim2.new(1,-30,0,-34),C.btnBg,C.dim)
+            local back = makeButton(action,"←  Back",UDim2.new(0,76,0,24),UDim2.new(0,0,0,86),C.btnBg,C.dim)
+            stroke(C.border,1,back)
             back.Activated:Connect(function() actionMode="idle"; renderDetail() end)
         else
             idle()
