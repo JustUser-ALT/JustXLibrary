@@ -1027,10 +1027,84 @@ function JL:Window(opts)
             end
             if topts.OnClose then pcall(topts.OnClose, Tab) end
         end
+        local tabScroll, infoPanelHeight = nil, 0
+        local sectionOrdinal = 0
+        local function markSection(sec)
+            sectionOrdinal = sectionOrdinal + 1
+            if sec and sec.Panel then sec.Panel:SetAttribute("JLSectionIndex", sectionOrdinal) end
+            return sec
+        end
         local function mkScroll(dir)
             local sc = Instance.new("ScrollingFrame"); sc.Size = UDim2.new(1,0,1,0); sc.BackgroundTransparency = 1; sc.BorderSizePixel = 0
             sc.ScrollBarThickness = 4; sc.ScrollBarImageColor3 = ACCENTS[1]; sc.CanvasSize = UDim2.new(0,0,0,0); sc.ScrollingDirection = dir; sc.Parent = tabFrame
+            tabScroll = sc
             return sc
+        end
+        function Tab:InfoPanel(iopts)
+            iopts = iopts or {}
+            if typ == "Custom" or not tabScroll then return nil end
+            local kind = tostring(iopts.Type or "Info")
+            local styles = {
+                Info = {Color = Color3.fromRGB(235,238,245), Icon = "info"},
+                Warning = {Color = Color3.fromRGB(255,190,80), Icon = "alert-triangle"},
+                Danger = {Color = Color3.fromRGB(255,82,82), Icon = "alert-octagon"},
+            }
+            local style = styles[kind]
+            local message = tostring(iopts.Text or "")
+            if not style or message == "" then return nil end
+            local selected = {}
+            local function addSection(value)
+                local n = tonumber(value)
+                if n and n >= 1 and n == math.floor(n) then
+                    for _,existing in ipairs(selected) do if existing == n then return end end
+                    selected[#selected + 1] = n
+                end
+            end
+            if type(iopts.Sections) == "number" then
+                addSection(iopts.Sections)
+            elseif type(iopts.Sections) == "string" then
+                for value in iopts.Sections:gmatch("[^,]+") do addSection(value) end
+            elseif type(iopts.Sections) == "table" then
+                for _,value in ipairs(iopts.Sections) do addSection(value) end
+            end
+            if #selected == 0 then return nil end
+            table.sort(selected)
+            local bodyWidth = math.max(120, CWW - 78)
+            local bodyHeight = fitH(message, 11, GM, bodyWidth, 0, 0)
+            local panelHeight = math.max(52, bodyHeight + 27)
+            local previous = tabFrame:FindFirstChild("JLInfoPanel")
+            if previous then previous:Destroy() end
+            local panel = Instance.new("Frame")
+            panel.Name = "JLInfoPanel"
+            panel.Size = UDim2.new(1,-6,0,panelHeight)
+            panel.Position = UDim2.new(0,3,0,3)
+            panel.BackgroundColor3 = C.pHdr
+            panel.BorderSizePixel = 0
+            panel.ClipsDescendants = true
+            panel.Parent = tabFrame
+            corner(9,panel)
+            stroke(C.border,1,panel)
+            local accent = Instance.new("Frame")
+            accent.Size = UDim2.new(0,3,1,-16)
+            accent.Position = UDim2.new(0,0,0,8)
+            accent.BackgroundColor3 = style.Color
+            accent.BorderSizePixel = 0
+            accent.Parent = panel
+            corner(2,accent)
+            local icon = mkIcon(panel,style.Icon,15,3)
+            icon.Position = UDim2.new(0,12,0,10)
+            icon.Size = UDim2.new(0,15,0,15)
+            if icon:IsA("TextLabel") then icon.TextColor3 = style.Color else icon.ImageColor3 = style.Color end
+            local heading = newTxt({Parent=panel,Text=kind:upper(),Font=GB,Size=9,Color=style.Color,Sz=UDim2.new(1,-48,0,12),Pos=UDim2.new(0,36,0,8),Z=3})
+            local body = newTxt({Parent=panel,Text=message,Font=GM,Size=11,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-48,0,bodyHeight),Pos=UDim2.new(0,36,0,22),Z=3})
+            body.TextYAlignment = Enum.TextYAlignment.Top
+            panel:SetAttribute("JLInfoType",kind)
+            panel:SetAttribute("JLInfoSections",table.concat(selected,","))
+            infoPanelHeight = panelHeight
+            local pagerOffset = (typ == "Grid" and tabScroll:GetAttribute("JLPagerVisible") == true) and 28 or 0
+            tabScroll.Position = UDim2.new(0,0,0,panelHeight + 8)
+            tabScroll.Size = UDim2.new(1,0,1,-(panelHeight + 8 + pagerOffset))
+            return panel
         end
         if typ == "Grid" then
             local scroll = mkScroll(Enum.ScrollingDirection.XY)
@@ -1069,7 +1143,10 @@ function JL:Window(opts)
                 local np = numPages()
                 local need = ncols > VIS
                 pager.Visible = need
-                scroll.Size = need and UDim2.new(1,0,1,-28) or UDim2.new(1,0,1,0)
+                scroll:SetAttribute("JLPagerVisible",need)
+                local topOffset = infoPanelHeight > 0 and (infoPanelHeight + 8) or 0
+                scroll.Position = UDim2.new(0,0,0,topOffset)
+                scroll.Size = UDim2.new(1,0,1,-(topOffset + (need and 28 or 0)))
                 if not need then return end
                 mkChip("‹", 0, function() goPage(curPage() - 1) end)
                 for i = 1,np do chips[i] = mkChip(tostring(i), i, function() goPage(i) end) end
@@ -1112,13 +1189,13 @@ function JL:Window(opts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip, hubConfig)
+                return markSection(makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip, hubConfig))
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}
                 local ci = resolveCol(sopts.Column)
                 secCount[ci] = (secCount[ci] or 0) + 1
-                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig)
+                return markSection(makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig))
             end
             for i = 1,VIS do getCol(i) end
         elseif typ == "Custom" then
@@ -1133,11 +1210,11 @@ function JL:Window(opts)
             local _sOrd = 0
             function Tab:Section(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig)
+                return markSection(makeSection(listCon, sopts.Title or "Section", sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig))
             end
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
-                return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip, hubConfig)
+                return markSection(makeMultiSection(listCon, sopts, sg, _sOrd, listW, sopts, uiScale, attachTip, hubConfig))
             end
         end
         return Tab
