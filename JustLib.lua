@@ -2633,22 +2633,6 @@ local function bindValue(mode)
 end
 local function todayDay() return math.floor(DateTime.now().UnixTimestamp / 86400) end
 local function subFile() return (SUB.opts.File or "JustLib") .. "_Sub.json" end
-function JL:GenerateKey(g)
-    g = g or {}
-    assert(g.Secret and g.Tier, "GenerateKey needs Secret and Tier")
-    local prefix = g.Prefix or (g.Tier:gsub("%s",""))
-    local mode = g.Bind or "UserId"
-    local bind = "0"
-    if mode == "UserId" and g.UserId then bind = tostring(g.UserId)
-    elseif mode == "Name" and g.Name then bind = tostring(g.Name):lower() end
-    local expDay = 0
-    if g.Days and g.Days > 0 then expDay = todayDay() + math.floor(g.Days) end
-    local rnd = Random.new()
-    local nonce = ""
-    for _ = 1,6 do local d = rnd:NextInteger(1,36); nonce = nonce .. B36:sub(d,d) end
-    local expS = toB36(expDay)
-    return prefix .. "-" .. nonce .. "-" .. expS .. "-" .. keySig(g.Secret, g.Tier, bind, nonce, expS)
-end
 function JL:ValidateKey(key)
     key = tostring(key or ""):gsub("%s","")
     if key == "" then return nil, "Enter a key first" end
@@ -2931,7 +2915,7 @@ function JL:OpenSubscriptions()
         end
 
         local action = Instance.new("Frame"); action.Name = "TierAction"
-        action.Size = UDim2.new(1,-28,0,38); action.Position = UDim2.new(0,14,0,perkY + 8)
+        action.Size = UDim2.new(1,-28,0,actionMode == "input" and SUB.opts.GetKeyURL and 74 or 38); action.Position = UDim2.new(0,14,0,perkY + 8)
         action.BackgroundTransparency = 1; action.Parent = detail
         local function idle()
             for _,ch in ipairs(action:GetChildren()) do ch:Destroy() end
@@ -2950,9 +2934,27 @@ function JL:OpenSubscriptions()
             elseif JL:HasTier(t.Name) then
                 newTxt({Parent=action,Text="INCLUDED WITH " .. string.upper(info.Name),Font=GB,Size=10,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,0,1,0)})
             else
-                local activate = makeButton(action,"Enter activation key   →",UDim2.new(1,0,0,34),UDim2.new(0,0,.5,-17),col,Color3.new(1,1,1))
-                activate:SetAttribute("JLNoRepaint",true)
-                activate.Activated:Connect(function() actionMode = "input"; renderDetail() end)
+                local getKeyURL = SUB.opts.GetKeyURL
+                if type(getKeyURL) == "string" and getKeyURL ~= "" then
+                    local getKey = makeButton(action,"Get a key",UDim2.new(.48,0,0,34),UDim2.new(0,0,.5,-17),C.btnBg,C.txt)
+                    stroke(C.border,1,getKey)
+                    getKey.Activated:Connect(function()
+                        local copied = false
+                        if setclipboard then copied = pcall(setclipboard,getKeyURL) end
+                        if copied then
+                            JL:Notify({Title="Get a Key",Desc="Link copied — open it in your browser",Type="Info",Duration=4})
+                        else
+                            JL:Notify({Title="Get a Key",Desc=getKeyURL,Type="Info",Duration=6})
+                        end
+                    end)
+                    local activate = makeButton(action,"Enter key  →",UDim2.new(.48,0,0,34),UDim2.new(.52,0,.5,-17),col,Color3.new(1,1,1))
+                    activate:SetAttribute("JLNoRepaint",true)
+                    activate.Activated:Connect(function() actionMode = "input"; renderDetail() end)
+                else
+                    local activate = makeButton(action,"Enter activation key   →",UDim2.new(1,0,0,34),UDim2.new(0,0,.5,-17),col,Color3.new(1,1,1))
+                    activate:SetAttribute("JLNoRepaint",true)
+                    activate.Activated:Connect(function() actionMode = "input"; renderDetail() end)
+                end
             end
         end
         if actionMode == "input" and not previewOnly then
@@ -2974,6 +2976,19 @@ function JL:OpenSubscriptions()
                     JL:Notify({Title="Subscriptions",Desc=reason or "Invalid key",Type="Error",Duration=4})
                 end
             end)
+            if type(SUB.opts.GetKeyURL) == "string" and SUB.opts.GetKeyURL ~= "" then
+                local getKey = makeButton(action,"Get a key",UDim2.new(1,0,0,28),UDim2.new(0,0,0,40),C.btnBg,C.txt)
+                stroke(C.border,1,getKey)
+                getKey.Activated:Connect(function()
+                    local copied = false
+                    if setclipboard then copied = pcall(setclipboard,SUB.opts.GetKeyURL) end
+                    if copied then
+                        JL:Notify({Title="Get a Key",Desc="Link copied — open it in your browser",Type="Info",Duration=4})
+                    else
+                        JL:Notify({Title="Get a Key",Desc=SUB.opts.GetKeyURL,Type="Info",Duration=6})
+                    end
+                end)
+            end
             local back = makeButton(action,"×",UDim2.new(0,30,0,30),UDim2.new(1,-30,0,-34),C.btnBg,C.dim)
             back.Activated:Connect(function() actionMode="idle"; renderDetail() end)
         else
