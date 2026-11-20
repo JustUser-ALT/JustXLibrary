@@ -10,6 +10,25 @@
 	Preview:Close()         удаляет вкладку (то же делает крестик)
 	Preview:CloseDrawer()   Preview:Toggle(target)  Preview:IsOpen()  Preview:SetTitle(text)  Preview:Destroy()
 	Preview:OnClosed(fn)    Preview:GetTab(name)  Preview:GetTabs()  Preview:GetAsset(name)
+	-- динамические источники: GetItems() + Added/Changed/Removed signals
+	local Source = Preview:Source({
+		Name = "Players", Tab = Models,
+		GetItems = function() return game:GetService("Players"):GetPlayers() end,
+		Added = Players.PlayerAdded, Changed = characterChanged, Removed = Players.PlayerRemoving,
+		Key = function(player) return player.UserId end,
+		Map = function(player) return { Name = player.Name, Type = "Player", Model = player.Character } end,
+		Discover = { Enabled = true, Interval = 2, RemoveMissing = true }, -- периодическая сверка коллекции (0.5–30 сек)
+		ObserveModels = true, -- автоматически отслеживать структуру и визуальные свойства моделей
+		LiveMotion = true, -- опционально синхронизировать движение и позу выбранной модели (10–60 FPS, default 30)
+		-- или LiveMotion = { Rate = 30 }
+	})
+	Source:Add(key, data)  Source:Update(key, patch)  Source:Refresh(key)  Source:Get(key)
+	Source:Sync() -- принудительно сверить GetItems с текущими карточками
+	Source:SetDiscovery(true/false)  Source:IsDiscoveryEnabled()
+	Source:SetAutoObserve(key, true/false)
+	Source:SetLiveMotion(key, true/false) -- синхронизировать движение/позу выбранной модели в большом Preview
+	Preview:SetGrouping("Type" | "Creator" | "Category" | "None")  Preview:GetGrouping() -- группировка карточек
+	Source:Remove(key)  Source:Clear()  Source:Destroy()
 
 	-- левый список внутри вкладки
 	local Models = Preview:Tab({ Name = "Models", Icon = "⬡" })
@@ -42,7 +61,7 @@
 	X:Dropdown({ Name, Options, MultiSelect, MaxSelect, Default, Flag, Callback(v) })
 	X:ColorPicker({ Name, Default, Flag, Callback(color) })
 	X:Slider({ Name, Min, Max, Step, Default, Suffix, Flag, Callback(v) })
-	X:Input({ Name, Placeholder, Default, Flag, Callback(text) })
+	X:Textbox({ Name, Placeholder, Default, Flag, Callback(text) })  -- Input остаётся алиасом
 	X:Label({ Text })     X:Divider({ Label })
 	Каждый контрол возвращает объект: :Get() :Set(v) :Remove()   Flag пишется в конфиг JustLib.
 ]]
@@ -65,7 +84,7 @@ local B, C, ACCENTS -- заполняются в M.new (берутся у JustLi
 
 local M = {}
 M.__index = M
-M.Version = "4.0"
+M.Version = "3.0"
 
 --------------------------------------------------------------------
 -- helpers
@@ -182,12 +201,32 @@ local function dragLocked(inst, onMove, onEnd)
 	end)
 end
 
+local function cleanDropdownLabel(value)
+	local textValue = tostring(value or "")
+	textValue = textValue:gsub("%[%]", ""):gsub("%s%s+", " ")
+	return textValue:match("^%s*(.-)%s*$") or textValue
+end
+
+
+
 local function mkIcon(parent, icon, size, color)
 	local raw = icon
 	local resolved = type(raw) == "table" and raw or nil
+	local fallbackGlyphs = {
+		pin = "⌖", layers = "▱", filter = "▽", ["list-filter"] = "☷",
+		["sliders-horizontal"] = "☷", ["chevron-down"] = "⌄",
+		network = "⌘", box = "▣", info = "ⓘ", play = "▶", pause = "Ⅱ",
+		["maximize-2"] = "□", ["minimize-2"] = "▱", crosshair = "⊕",
+		image = "▧", shapes = "⬡", palette = "◉", clapperboard = "▤",
+		["volume-2"] = "♫", sparkles = "✦", ["user-round"] = "◉",
+		search = "⌕", ["sort-asc"] = "↥", ["sort-desc"] = "↧",
+		["chevron-right"] = "›", ["chevron-left"] = "‹", x = "×",
+		check = "✓", plus = "+", settings = "⚙", ["more-horizontal"] = "•••",
+		["external-link"] = "↗", copy = "▢", refresh = "↻", trash = "⌫",
+	}
 	if type(raw) == "string" and B and B.icon then
 		local ok, value = pcall(B.icon, raw)
-		if ok then
+		if ok and value ~= nil then
 			resolved = value
 		end
 	end
@@ -200,16 +239,18 @@ local function mkIcon(parent, icon, size, color)
 		rectOffset = resolved.ImageRectOffset
 		rectSize = resolved.ImageRectSize
 	elseif type(resolved) == "string" or type(resolved) == "number" then
-		url = resolved
-	end
-	if url == nil then
-		url = raw
+		local resolvedValue = tostring(resolved)
+		if resolvedValue:match("^%d+$") or resolvedValue:match("^rbxassetid://") or resolvedValue:match("^rbxasset://") or resolvedValue:match("^https?://") then
+			url = resolvedValue
+		elseif resolvedValue ~= tostring(raw or "") then
+			glyph = resolvedValue
+		end
 	end
 	local value = tostring(url or "")
 	if value:match("^%d+$") then
 		value = "rbxassetid://" .. value
 	end
-	if value:match("^rbxassetid://") or value:match("^https?://") then
+	if value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://") then
 		local image = new("ImageLabel", {
 			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
 			Image = value, ImageColor3 = color, ScaleType = Enum.ScaleType.Fit,
@@ -218,7 +259,10 @@ local function mkIcon(parent, icon, size, color)
 		}, parent)
 		return image
 	end
-	local textValue = glyph or (type(raw) == "string" and raw or "")
+	local textValue = glyph
+	if type(textValue) ~= "string" or textValue == "" or textValue == "[]" or textValue == "□" then
+		textValue = fallbackGlyphs[type(raw) == "string" and raw or ""] or (type(raw) == "string" and raw or "")
+	end
 	local label = new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size), Text = tostring(textValue),
 		TextScaled = true, Font = font or GB, TextColor3 = color,
@@ -441,8 +485,22 @@ M.Builders = Builders
 -- Модель вписывается с запасом, поэтому края не обрезаются.
 local function makeViewport(parent, src)
 	local model
+	local motionSource = src.Model
 	if src.Model then
-		local ok, c = pcall(function() return src.Model:Clone() end)
+		local source = src.Model
+		local archivable = {}
+		local function allowClone(instance)
+			archivable[#archivable + 1] = { instance, instance.Archivable }
+			instance.Archivable = true
+		end
+		allowClone(source)
+		for _, descendant in ipairs(source:GetDescendants()) do
+			allowClone(descendant)
+		end
+		local ok, c = pcall(function() return source:Clone() end)
+		for _, state in ipairs(archivable) do
+			pcall(function() state[1].Archivable = state[2] end)
+		end
 		if not ok or not c then
 			return nil
 		end
@@ -456,6 +514,16 @@ local function makeViewport(parent, src)
 				d:Destroy()
 			elseif d:IsA("BasePart") then
 				d.Anchored = true
+			elseif d:IsA("Motor6D") then
+				pcall(function() d.Transform = CFrame.identity end)
+			elseif d:IsA("Bone") then
+				pcall(function() d.Transform = CFrame.identity end)
+			elseif d:IsA("Animator") then
+				pcall(function()
+					for _, track in ipairs(d:GetPlayingAnimationTracks()) do
+						track:Stop(0)
+					end
+				end)
 			end
 		end
 		model = c
@@ -467,6 +535,28 @@ local function makeViewport(parent, src)
 		end
 	else
 		return nil
+	end
+
+	local motionParts = {}
+	if motionSource then
+		local sourceParts = {}
+		local cloneParts = {}
+		if motionSource:IsA("BasePart") then
+			sourceParts[1] = motionSource
+		else
+			for _, d in ipairs(motionSource:GetDescendants()) do
+				if d:IsA("BasePart") then sourceParts[#sourceParts + 1] = d end
+			end
+		end
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") then cloneParts[#cloneParts + 1] = d end
+		end
+		for i, sourcePart in ipairs(sourceParts) do
+			local clonePart = cloneParts[i]
+			if clonePart then
+				motionParts[#motionParts + 1] = { source = sourcePart, clone = clonePart }
+			end
+		end
 	end
 
 	local okb, cf, size = pcall(function() return model:GetBoundingBox() end)
@@ -481,20 +571,77 @@ local function makeViewport(parent, src)
 	end
 
 	local vp = new("ViewportFrame", {
-		BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-		Ambient = rgb(170, 170, 188), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.4, -1, 0.8),
+		-- Bright neutral studio lighting; preserve original asset colors without a dark overlay.
+		BackgroundColor3 = rgb(68, 73, 88), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1),
+		Ambient = rgb(255, 255, 255), LightColor = rgb(255, 255, 255), LightDirection = V3(-0.2, -1, 0.35),
 	}, parent)
-	model.Parent = vp
+	-- Round the actual rendered surface too; rounding only its outer holder leaves square viewport corners.
+	corner(vp, 12)
+	-- No gradient overlay: it can tint the rendered 3D content and make the whole stage look dim.
+	local world = new("WorldModel", {}, vp)
+	model.Parent = world
 
 	local fov = 35
 	local radius = math.max(size.Magnitude * 0.5, 0.5)
 	local base = radius / math.sin(math.rad(fov / 2)) * 1.3
+	-- Небольшая 3D-подиум-платформа и пол под моделью вместо пустого чёрного фона.
+	local floorSize = math.max(radius * 4, 8)
+	local floor = new("Part", {
+		Name = "PreviewStageFloor", Anchored = true, CanCollide = false, CastShadow = true,
+		Material = Enum.Material.SmoothPlastic, Color = rgb(112, 117, 132),
+		Size = V3(floorSize, 0.12, floorSize),
+		CFrame = CF(center.X, center.Y - size.Y * 0.5 - 0.06, center.Z),
+	}, world)
 	local cam = new("Camera", { FieldOfView = fov }, vp)
 	vp.CurrentCamera = cam
 	local dir = V3(0.45, 0.4, -1).Unit
+	local facingPart = model:FindFirstChild("HumanoidRootPart", true) or model.PrimaryPart
+	if facingPart and facingPart:IsA("BasePart") then
+		local look = facingPart.CFrame.LookVector
+		local horizontal = V3(look.X, 0, look.Z)
+		if horizontal.Magnitude > 0.001 then
+			dir = (horizontal.Unit + V3(0, 0.4, 0)).Unit
+		end
+	end
 	local light = V3(-0.4, -1, 0.8)
 	local startYaw = -(src.Yaw or 0)
-	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0 }
+	local h = { yaw = startYaw, tYaw = startYaw, zoom = 1, tZoom = 1, vel = 0, asset = src, model = model, animationActive = false }
+	if motionSource and #motionParts > 0 then
+		local ok, sourcePivot = pcall(function() return motionSource:GetPivot() end)
+		if ok then
+			local clonePivot = model:GetPivot()
+			h.motionSource = motionSource
+			h.motionModel = model
+			h.motionParts = motionParts
+			h.motionSourcePivot = sourcePivot
+			h.motionClonePivot = clonePivot
+			h.motionEnabled = src._liveMotionEnabled == true
+			h.motionRate = math.clamp(tonumber(src._liveMotionRate) or 30, 10, 60)
+			h.motionElapsed = 0
+			function h.syncMotion()
+				local source = h.motionSource
+				if not source or not source.Parent or not h.motionModel or not h.motionModel.Parent then
+					return false
+				end
+				local okPivot, currentPivot = pcall(function() return source:GetPivot() end)
+				if not okPivot then return false end
+				local targetPivot = currentPivot * h.motionSourcePivot:ToObjectSpace(h.motionClonePivot)
+				local okMove = pcall(function() h.motionModel:PivotTo(targetPivot) end)
+				if not okMove then return false end
+				for _, pair in ipairs(h.motionParts) do
+					if pair.source.Parent and pair.clone.Parent then
+						local okPart, relative = pcall(function()
+							return currentPivot:ToObjectSpace(pair.source.CFrame)
+						end)
+						if okPart then
+							pcall(function() pair.clone.CFrame = targetPivot * relative end)
+						end
+					end
+				end
+				return true
+			end
+		end
+	end
 
 	local function place()
 		local rot = ANG(0, h.yaw, 0)
@@ -552,6 +699,7 @@ local function makeThumb(parent, asset)
 			BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
 			Image = normImage(asset.Image), ScaleType = Enum.ScaleType.Fit,
 		}, parent)
+		corner(img, 12)
 		img:SetAttribute("JLNoRepaint", true)
 		return nil
 	end
@@ -995,6 +1143,32 @@ local function makeControl(container, kind, o)
 	o = o or {}
 	local pv = container._pv
 	local def = { kind = kind, o = o, _pv = pv, _container = container, name = o.Name or kind }
+	if container._isAsset then
+		def.pinned = o.Pinned ~= false
+		def.variantIndex = nil
+		def.variantsPinned = nil
+		if type(o.VariantsPinned) == "table" and #o.VariantsPinned > 0 then
+			def.variantsPinned = {}
+			for _, target in ipairs(o.VariantsPinned) do
+				for i, variant in ipairs(container._variants or {}) do
+					if target == i or target == variant.Name then
+						def.variantsPinned[i] = true
+					end
+				end
+			end
+		elseif not def.pinned then
+			if o.Variant ~= nil then
+				for i, variant in ipairs(container._variants or {}) do
+					if variant.Name == o.Variant then
+						def.variantIndex = i
+						break
+					end
+				end
+			else
+				def.variantIndex = container._variantIndex or 1
+			end
+		end
+	end
 	local had = false
 
 	if kind == "Toggle" then
@@ -1208,12 +1382,20 @@ local function attachControls(obj)
 			return makeControl(selfObj, kind, o)
 		end
 	end
+	obj.Textbox = function(selfObj, o)
+		return makeControl(selfObj, "Input", o)
+	end
 end
 
 for _, kind in ipairs(KINDS) do
 	M[kind] = function(selfObj, o)
 		return makeControl(selfObj, kind, o)
 	end
+end
+
+-- Textbox is the public name; Input remains as a backward-compatible alias.
+M.Textbox = function(selfObj, o)
+	return makeControl(selfObj, "Input", o)
 end
 
 --------------------------------------------------------------------
@@ -1227,7 +1409,8 @@ local function pageScroll(parent, pv)
 	local sf = new("ScrollingFrame", {
 		BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
 		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1], ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 2, ScrollBarImageColor3 = ACCENTS[1], ScrollBarImageTransparency = 0.35,
+		ScrollingDirection = Enum.ScrollingDirection.Y, ClipsDescendants = true,
 	}, parent)
 	table.insert(pv._scrollers, sf)
 	local content = new("Frame", {
@@ -1250,12 +1433,105 @@ local function infoRow(parent, order, icon, label, value)
 	}, row)
 end
 
+local function buildVariantSelector(parent, a)
+	local variants = a._variants or {}
+	local variantBar
+	if #variants > 1 then
+		local header = new("Frame", {
+			BackgroundTransparency = 1, Size = U2(1, 0, 0, 24), LayoutOrder = 0,
+		}, parent)
+		local pinIcon = mkIcon(header, "pin", 15, C.dim)
+		pinIcon.Position = UDim2.fromOffset(2, 4)
+		txt("TextLabel", {
+			Text = "Variants", Font = GB, TextSize = 12, TextColor3 = C.dim,
+			Position = UDim2.fromOffset(25, 0), Size = U2(1, -25, 1, 0),
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, header)
+		variantBar = new("Frame", {
+			Name = "VariantDropdown", BackgroundTransparency = 1, BorderSizePixel = 0,
+			Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 0, 36), ZIndex = 30, LayoutOrder = 1,
+		}, parent)
+			local selectedIndex = a._variantIndex or 1
+			local selectedVariant = variants[selectedIndex]
+			local trigger = txt("TextButton", {
+				Name = "VariantDropdownButton", Text = "", TextXAlignment = Enum.TextXAlignment.Left,
+				BackgroundColor3 = C.btnBg, BackgroundTransparency = 0.05,
+				Size = UDim2.fromScale(1, 1), ZIndex = 31,
+			}, variantBar)
+			corner(trigger, 7)
+			stroke(trigger, C.border, 1)
+			local variantIcon = mkIcon(trigger, "layers", 15, C.dim)
+			variantIcon.Position = UDim2.fromOffset(9, 10)
+			variantIcon.ZIndex = 32
+			local title = txt("TextLabel", {
+				Text = "Version", Font = GM, TextSize = 9, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(31, 2), Size = U2(1, -54, 0, 11), ZIndex = 32,
+			}, trigger)
+			local current = txt("TextLabel", {
+				Text = cleanDropdownLabel(selectedVariant and selectedVariant.Name or "Variant " .. selectedIndex),
+				Font = GB, TextSize = 11, TextColor3 = C.txt,
+				Position = UDim2.fromOffset(31, 13), Size = U2(1, -56, 0, 16),
+				TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 32,
+			}, trigger)
+			local arrow = mkIcon(trigger, "chevron-down", 13, C.dim)
+			arrow.ZIndex = 32
+			arrow.AnchorPoint = V2(0.5, 0.5)
+			arrow.Position = U2(1, -17, 0.5, 0)
+			local menu = new("Frame", {
+				Name = "VariantOptions", BackgroundColor3 = C.input, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(0, 40), Size = U2(1, 0, 0, math.min(#variants * 30 + 8, 128)),
+				Visible = false, ZIndex = 35,
+			}, variantBar)
+			corner(menu, 7)
+			stroke(menu, C.border, 1)
+			pad(menu, 4, 4, 4, 4)
+			new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, menu)
+			local optionButtons = {}
+			local function closeMenu()
+				menu.Visible = false
+				arrow.Rotation = 0
+			end
+			for i, variant in ipairs(variants) do
+				local option = txt("TextButton", {
+					Text = "", BackgroundColor3 = ACCENTS[1],
+					BackgroundTransparency = i == selectedIndex and 0.84 or 1,
+					Size = U2(1, 0, 0, 28), LayoutOrder = i, ZIndex = 36,
+				}, menu)
+				corner(option, 5)
+				local optionName = cleanDropdownLabel(variant.Name or ("Variant " .. i))
+				txt("TextLabel", {
+					Text = optionName, Font = i == selectedIndex and GB or GM, TextSize = 11,
+					TextColor3 = i == selectedIndex and ACCENTS[1] or C.txt,
+					Position = UDim2.fromOffset(8, 0), Size = U2(1, -30, 1, 0),
+					TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 37,
+				}, option)
+				if i == selectedIndex then
+					txt("TextLabel", {
+						Text = "✓", Font = GB, TextSize = 11, TextColor3 = ACCENTS[1],
+						TextXAlignment = Enum.TextXAlignment.Center, Position = U2(1, -24, 0, 0),
+						Size = UDim2.fromOffset(18, 28), ZIndex = 37,
+					}, option)
+				end
+				option.Activated:Connect(function()
+					closeMenu()
+					a:SetVariant(i)
+				end)
+				optionButtons[#optionButtons + 1] = option
+			end
+			trigger.Activated:Connect(function()
+				menu.Visible = not menu.Visible
+				arrow.Rotation = menu.Visible and 180 or 0
+			end)
+		end
+end
+
 -- Actions: все контролы ассета, его вкладки и самого Preview
-PAGES.actions = {
-	id = "actions", name = "Controllers", icon = "☰",
+PAGES.controllers = {
+	id = "controllers", name = "Controllers", icon = "sliders-horizontal",
 	build = function(parent, asset, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, content)
+		buildVariantSelector(content, asset)
 		local list = pv:_controlsFor(asset)
 		for i, def in ipairs(list) do
 			local b = CtrlBuilders[def.kind]
@@ -1278,7 +1554,7 @@ PAGES.actions = {
 
 -- Info: название, автор, аватарка, даты и любые свои строки
 PAGES.info = {
-	id = "info", name = "Info", icon = "ℹ",
+	id = "info", name = "Info", icon = "info",
 	build = function(parent, a, pv)
 		local _, content = pageScroll(parent, pv)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, content)
@@ -1312,7 +1588,6 @@ PAGES.info = {
 			TextTruncate = Enum.TextTruncate.AtEnd,
 		}, top)
 
-		new("Frame", { BackgroundColor3 = C.divLine, BorderSizePixel = 0, Size = U2(1, 0, 0, 1), LayoutOrder = 2 }, content)
 
 		local order = 3
 		local function add(icon, label, value)
@@ -1321,18 +1596,16 @@ PAGES.info = {
 				order = order + 1
 			end
 		end
-		add("☺", "Creator", a.Creator)
-		add("▤", "Created", a.Created)
-		add("⛶", "Size", a.Size)
-		add("◈", "Version", a.Version)
-		add("▦", "Category", a.Cat)
+		add("user-round", "Creator", a.Creator)
+		add("calendar-days", "Created", a.Created)
+		add("box", "Size", a.Size)
+		add("git-branch", "Version", a.Version)
+		add("tag", "Category", a.Cat)
 		for _, r in ipairs(a.Info or {}) do
 			add(r.Icon or "•", r.Label or "", r.Value or "")
 		end
 
 		if a.Description and a.Description ~= "" then
-			new("Frame", { BackgroundColor3 = C.divLine, BorderSizePixel = 0, Size = U2(1, 0, 0, 1), LayoutOrder = order }, content)
-			order = order + 1
 			txt("TextLabel", {
 				Text = tostring(a.Description), TextSize = 12, TextColor3 = C.txt, TextWrapped = true, LineHeight = 1.3,
 				TextYAlignment = Enum.TextYAlignment.Top, Size = U2(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order,
@@ -1361,128 +1634,157 @@ PAGES.info = {
 	end,
 }
 
+-- Structure: иерархия объектов текущей модели и свойства выбранного Instance.
 -- Preview: плавное 3D (камера крутится вокруг модели, инерция при перетаскивании, зум колесом/щипком)
 PAGES.preview = {
-	id = "preview", name = "Preview", icon = "⬡",
+	id = "preview", name = "Preview", icon = "box",
 	build = function(parent, a, pv)
 		local cleanups = {}
-		local variants = a._variants or {}
-		local variantBar
-		if #variants > 1 then
-			variantBar = new("ScrollingFrame", {
-				BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 6),
-				Size = U2(1, -20, 0, 32), CanvasSize = U2(0, 0, 0, 0),
-				AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
-				ScrollingDirection = Enum.ScrollingDirection.X,
-			}, parent)
-			local layout = new("UIListLayout", {
-				FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6),
-				SortOrder = Enum.SortOrder.LayoutOrder,
-			}, variantBar)
-			for i, variant in ipairs(variants) do
-				local selected = i == (a._variantIndex or 1)
-				local button = txt("TextButton", {
-					Text = tostring(variant.Name or ("Variant " .. i)), Font = GM, TextSize = 11,
-					TextColor3 = selected and ACCENTS[1] or C.dim,
-					BackgroundColor3 = selected and C.badge or C.btnBg, BackgroundTransparency = selected and 0 or 0.15,
-					Size = UDim2.fromOffset(math.clamp(58 + #tostring(variant.Name or ("Variant " .. i)) * 5, 82, 126), 28),
-					LayoutOrder = i,
-				}, variantBar)
-				corner(button, 7)
-				local border = stroke(button, selected and ACCENTS[1] or C.border, selected and 1.5 or 1)
-				if variant.Icon then
-					local ic = mkIcon(button, variant.Icon, 13, selected and ACCENTS[1] or C.dim)
-					ic.Position = UDim2.fromOffset(7, 7)
-					button.TextXAlignment = Enum.TextXAlignment.Left
-					button.Text = "  " .. button.Text
-				end
-				button.Activated:Connect(function()
-					a:SetVariant(i)
-				end)
-			end
-		end
-		local topOffset = variantBar and 44 or 8
+		-- Use one full-width rounded preview surface instead of nested inset frames.
+		local topOffset = 0
 		local box = new("Frame", {
-			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(10, topOffset),
-			Size = U2(1, -20, 1, variantBar and -92 or -56),
+			BackgroundColor3 = C.badge, BorderSizePixel = 0, Position = UDim2.fromOffset(0, topOffset),
+			Size = U2(1, 0, 1, -topOffset),
+			ClipsDescendants = true,
 		}, parent)
-		corner(box, 9)
+		corner(box, 12)
 		stroke(box, C.border, 1)
-		local inner = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, box)
-		pad(inner, 10, 10, 10, 10)
+		-- Expand the preview over the complete detail drawer; the same control exits fullscreen.
+		local fullButton = txt("TextButton", {
+			Name = "PreviewFullscreen", Text = "", BackgroundColor3 = C.btnBg,
+			BackgroundTransparency = 0.22, AnchorPoint = V2(1, 0),
+			Position = U2(1, -8, 0, 8), Size = UDim2.fromOffset(34, 34), ZIndex = 20,
+		}, box)
+		corner(fullButton, 8)
+		stroke(fullButton, C.border, 1)
+		local expandIcon = mkIcon(fullButton, "maximize-2", 11, C.txt)
+		expandIcon.AnchorPoint = V2(0.5, 0.5)
+		expandIcon.Position = U2(0.5, 0, 0.5, 0)
+		expandIcon.ZIndex = 21
+		local collapseIcon = mkIcon(fullButton, "minimize-2", 11, C.txt)
+		collapseIcon.AnchorPoint = V2(0.5, 0.5)
+		collapseIcon.Position = U2(0.5, 0, 0.5, 0)
+		collapseIcon.ZIndex = 21
+		local function syncFullscreenIcon()
+			local active = pv._previewFullscreen == true
+			expandIcon.Visible = not active
+			collapseIcon.Visible = active
+		end
+		syncFullscreenIcon()
+		fullButton.Activated:Connect(function()
+			pv:_setPreviewFullscreen(not pv._previewFullscreen)
+			syncFullscreenIcon()
+		end)
+
+		-- Keep a slim visible border around the preview instead of letting the 3D surface touch the frame edge.
+		local inset = 6
+		local inner = new("Frame", {
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(inset, inset),
+			Size = U2(1, -inset * 2, 1, -inset * 2), ClipsDescendants = true,
+		}, box)
+		corner(inner, 9)
+
+		local variants = a._variants or {}
+		if #variants > 1 then
+			local pager = new("Frame", {
+				Name = "VariantPager", BackgroundColor3 = C.panel, BackgroundTransparency = 0.08,
+				AnchorPoint = V2(1, 1), Position = U2(1, -8, 1, -8),
+				Size = UDim2.fromOffset(132, 34), ZIndex = 25,
+			}, box)
+			corner(pager, 9)
+			stroke(pager, C.border, 1)
+			local function makePageButton(name, symbol, x, direction)
+				local canMove = (a._variantIndex or 1) + direction >= 1 and (a._variantIndex or 1) + direction <= #variants
+				local button = txt("TextButton", {
+					Name = name, Text = symbol, Font = GB, TextSize = 18,
+					TextColor3 = canMove and C.txt or C.dim,
+					BackgroundColor3 = C.btnBg, BackgroundTransparency = canMove and 0.25 or 0.62,
+					Position = UDim2.fromOffset(x, 3), Size = UDim2.fromOffset(28, 28), ZIndex = 26,
+				}, pager)
+				corner(button, 7)
+				button.Activated:Connect(function()
+					local nextIndex = (a._variantIndex or 1) + direction
+					if nextIndex >= 1 and nextIndex <= #variants then
+						a:SetVariant(nextIndex)
+					end
+				end)
+				return button
+			end
+			makePageButton("PreviousVariant", "‹", 3, -1)
+			local counter = txt("TextLabel", {
+				Name = "VariantCounter", Text = tostring(a._variantIndex or 1) .. "/" .. tostring(#variants),
+				Font = GM, TextSize = 12, TextColor3 = C.txt,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				Position = UDim2.fromOffset(34, 0), Size = UDim2.fromOffset(64, 34), ZIndex = 26,
+			}, pager)
+			makePageButton("NextVariant", "›", 101, 1)
+		end
+
 		local h = makeThumb(inner, a)
-
-		local autoBtn
-		local function refreshAuto()
-			if autoBtn and autoBtn.Parent then
-				autoBtn.Text = "Auto Rotate: " .. (S("autorotate", true) and "On" or "Off")
-			end
-		end
-		pv._previewRefresh = refreshAuto
-
-		local bar = new("Frame", { BackgroundTransparency = 1, Position = U2(0, 10, 1, -40), Size = U2(1, -20, 0, 26) }, parent)
-		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, bar)
-		local function chip(text, w, order, cb)
-			local b = txt("TextButton", {
-				Text = text, Font = GB, TextSize = 11, TextXAlignment = Enum.TextXAlignment.Center,
-				BackgroundTransparency = 0, BackgroundColor3 = C.btnBg, Size = UDim2.fromOffset(w, 26), LayoutOrder = order,
-			}, bar)
-			corner(b, 6)
-			stroke(b, C.border, 1)
-			b.MouseEnter:Connect(function()
-				if not touchLast() then
-					tw(b, { BackgroundColor3 = C.btnHov }, 0.12)
+		if h then h.manualOnly = true end
+		local extensionBottom = 0
+		for _, extension in ipairs(pv._previewExtensions or {}) do
+			if type(extension.Build) == "function" then
+				local context = {
+					Viewer = h,
+					Model = h and h.model,
+					Box = box,
+					UI = {
+						Create = new, Text = txt, Icon = mkIcon, Corner = corner,
+						Stroke = stroke, Pad = pad, Colors = C, Accent = ACCENTS[1],
+						Fonts = { Bold = GB, Medium = GM, Regular = G },
+						U2 = U2, V2 = V2, RunService = RunService,
+						IsPointer = isPtr, DragLocked = dragLocked,
+					},
+					SetBottomInset = function(value)
+						extensionBottom = math.max(extensionBottom, math.max(0, tonumber(value) or 0))
+						box.Size = U2(1, 0, 1, -extensionBottom)
+					end,
+				}
+				local ok, cleanup = pcall(extension.Build, parent, a, pv, context)
+				if ok and type(cleanup) == "function" then
+					cleanups[#cleanups + 1] = cleanup
+				elseif not ok then
+					warn("[PreviewUI] preview extension '" .. tostring(extension.Id) .. "' failed: " .. tostring(cleanup))
 				end
-			end)
-			b.MouseLeave:Connect(function()
-				tw(b, { BackgroundColor3 = C.btnBg }, 0.12)
-			end)
-			b.Activated:Connect(cb)
-			return b
-		end
-		autoBtn = chip("", 118, 1, function()
-			B.cfgSet("_pv_autorotate", not S("autorotate", true))
-			pv:ApplySettings()
-		end)
-		refreshAuto()
-		chip("Reset", 54, 2, function()
-			if h then
-				h.reset()
 			end
-		end)
-		txt("TextLabel", {
-			Text = "Drag to rotate  ·  scroll / pinch to zoom", TextSize = 10, TextColor3 = C.dim,
-			TextXAlignment = Enum.TextXAlignment.Center, Position = U2(0, 10, 1, -12), Size = U2(1, -20, 0, 12),
-		}, parent)
-
+		end
 		if h then
-			local st = { dragging = false, resumeAt = 0 }
+			local st = { dragging = false, resumeAt = 0, pinching = false }
 			pv._viewers[h] = st
 			cleanups[#cleanups + 1] = function()
 				pv._viewers[h] = nil
 			end
 			local hit = txt("TextButton", { Size = UDim2.fromScale(1, 1), ZIndex = 5 }, box)
+			local function insideHit(pos)
+				-- Use the preview container bounds, not the TextButton's input hit-test.
+				-- Some Android clients do not route touch starts to overlay TextButtons.
+				local p, s = box.AbsolutePosition, box.AbsoluteSize
+				local inPreview = pos.X >= p.X and pos.X <= p.X + s.X and pos.Y >= p.Y and pos.Y <= p.Y + s.Y
+				if not inPreview then return false end
+				local bp, bs = fullButton.AbsolutePosition, fullButton.AbsoluteSize
+				local onFullscreenButton = pos.X >= bp.X and pos.X <= bp.X + bs.X and pos.Y >= bp.Y and pos.Y <= bp.Y + bs.Y
+				return not onFullscreenButton
+			end
+
+			-- Mouse: drag to rotate / zoom vertically, wheel to zoom.
 			hit.InputBegan:Connect(function(i)
-				if not isPtr(i) then
-					return
-				end
+				if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 				st.dragging = true
 				h.vel = 0
-				local lastX, lastT = i.Position.X, os.clock()
+				local lastX, lastY, lastT = i.Position.X, i.Position.Y, os.clock()
 				beginDrag(function(m)
 					local now = os.clock()
-					local dx = m.Position.X - lastX
+					local dx, dy = m.Position.X - lastX, m.Position.Y - lastY
 					local dt = math.max(now - lastT, 1 / 240)
 					local rad = dx * 0.011
 					h.drag(rad)
 					h.vel = math.clamp(h.vel * 0.5 + (rad / dt) * 0.5, -14, 14)
-					lastX, lastT = m.Position.X, now
+					lastX, lastY, lastT = m.Position.X, m.Position.Y, now
 				end, function()
 					st.dragging = false
 					st.resumeAt = os.clock() + 1.2
-					if os.clock() - lastT > 0.08 then
-						h.vel = 0
-					end
+					if os.clock() - lastT > 0.08 then h.vel = 0 end
 				end)
 			end)
 			hit.InputChanged:Connect(function(i)
@@ -1490,16 +1792,109 @@ PAGES.preview = {
 					h.zoomBy(1 - i.Position.Z * 0.1)
 				end
 			end)
-			local pinchBase = 1
-			local pc = UIS.TouchPinch:Connect(function(_, scale, _, state)
-				if state == Enum.UserInputState.Begin then
-					pinchBase = h.tZoom
-				elseif state == Enum.UserInputState.Change then
-					h.tZoom = math.clamp(pinchBase / math.max(scale, 0.05), 0.45, 2.4)
+
+			-- Touch: track each finger explicitly. TouchPinch can be swallowed by GUI
+			-- input routing on some mobile clients, so calculate pinch distance ourselves.
+			local touches = {}
+			local touchAnchor, pinchDistance, pinchZoom
+			-- InputObject instances can differ between TouchStarted, TouchMoved and
+			-- TouchEnded on some Android clients. TouchId is the stable finger key.
+			local function touchKey(input)
+				local ok, id = pcall(function() return input.TouchId end)
+				if ok and id ~= nil then
+					return id
+				end
+				return input
+			end
+			local function touchList()
+				local list = {}
+				for id, pos in pairs(touches) do
+					list[#list + 1] = { id = id, pos = pos }
+				end
+				return list
+			end
+			local function distance(a, b)
+				return (a - b).Magnitude
+			end
+			local function resetTouchAnchor()
+				local list = touchList()
+				if #list >= 2 then
+					st.pinching = true
+					st.dragging = false
+					pinchDistance = math.max(distance(list[1].pos, list[2].pos), 1)
+					pinchZoom = h.tZoom
+					h.vel = 0
+				elseif #list == 1 then
+					st.pinching = false
+					st.dragging = true
+					touchAnchor = list[1].pos
+					h.vel = 0
+				else
+					st.pinching = false
+					st.dragging = false
+					touchAnchor = nil
+					pinchDistance = nil
+				end
+			end
+			local function overScrollingFrame(pos)
+				-- Only the animation dropdown should capture this touch.
+				-- Other Preview scrolling containers must not disable model rotation.
+				-- Resolve the GUI from the preview itself. The page builder's
+				-- self is not guaranteed to be the main Preview controller.
+				local root = box:FindFirstAncestorWhichIsA("ScreenGui") or box.Parent
+				if not root then return false end
+				for _, object in ipairs(root:GetDescendants()) do
+					if object:IsA("ScrollingFrame") and object.Name == "AnimationList"
+						and object.Visible and object.Active and object.ScrollingEnabled then
+						local p, s = object.AbsolutePosition, object.AbsoluteSize
+						if pos.X >= p.X and pos.X <= p.X + s.X
+							and pos.Y >= p.Y and pos.Y <= p.Y + s.Y then
+							return true
+						end
+					end
+				end
+				return false
+			end
+			-- Register touch starts globally: Android may not route the initial
+			-- touch to the preview TextButton even when it is visually on top.
+			-- Ignore touches that begin inside the visible animation list.
+			local began = UIS.TouchStarted:Connect(function(i, gameProcessed)
+				if not insideHit(i.Position) then return end
+				if overScrollingFrame(i.Position) then return end
+				touches[touchKey(i)] = i.Position
+				resetTouchAnchor()
+			end)
+			local moved = UIS.TouchMoved:Connect(function(i)
+				local key = touchKey(i)
+				local previous = touches[key]
+				if not previous then return end
+				touches[key] = i.Position
+				local list = touchList()
+				if #list >= 2 then
+					local currentDistance = math.max(distance(list[1].pos, list[2].pos), 1)
+					if pinchDistance then
+						h.tZoom = math.clamp(pinchZoom * pinchDistance / currentDistance, 0.45, 2.4)
+					end
+					st.pinching = true
+					st.dragging = false
+					h.vel = 0
+				elseif #list == 1 then
+					local dx = i.Position.X - previous.X
+					h.drag(dx * 0.011)
+				end
+			end)
+			local ended = UIS.TouchEnded:Connect(function(i)
+				local key = touchKey(i)
+				if touches[key] then
+					touches[key] = nil
+					resetTouchAnchor()
+					st.resumeAt = os.clock() + 0.25
 				end
 			end)
 			cleanups[#cleanups + 1] = function()
-				pc:Disconnect()
+				began:Disconnect()
+				moved:Disconnect()
+				ended:Disconnect()
 			end
 		end
 		return function()
@@ -1515,19 +1910,59 @@ PAGES.preview = {
 -- конструктор и данные
 --------------------------------------------------------------------
 local function matchQuery(a, q)
+	q = string.lower(tostring(q or "")):gsub("%s+", " "):match("^%s*(.-)%s*$") or ""
 	if q == "" then
 		return true
 	end
-	local hay = string.lower(tostring(a.Name or "") .. " " .. tostring(a.Type or "") .. " " .. tostring(a.Creator or ""))
-	if type(a.Tags) == "table" then
-		hay = hay .. " " .. string.lower(table.concat(a.Tags, " "))
+	local values = {}
+	local function add(value)
+		if value == nil then return end
+		local kind = type(value)
+		if kind == "string" or kind == "number" then
+			values[#values + 1] = tostring(value)
+		end
 	end
-	return string.find(hay, q, 1, true) ~= nil
+	for _, key in ipairs({
+		"Name", "Type", "Creator", "Author", "Description", "Version",
+		"Size", "Created", "Category", "SubType", "DisplayName",
+		"Source", "Id", "AssetId",
+	}) do
+		add(a[key])
+	end
+	for _, key in ipairs({ "Tags", "Keywords" }) do
+		local list = a[key]
+		if type(list) == "table" then
+			for _, value in pairs(list) do add(value) end
+		else
+			add(list)
+		end
+	end
+	if type(a.Info) == "table" then
+		for _, row in pairs(a.Info) do
+			if type(row) == "table" then
+				add(row.Label)
+				add(row.Value)
+			else
+				add(row)
+			end
+		end
+	end
+	local hay = string.lower(table.concat(values, " "))
+	for term in string.gmatch(q, "%S+") do
+		if not string.find(hay, term, 1, true) then
+			return false
+		end
+	end
+	return true
 end
 
 function M.new(bridge, opts)
 	B, C, ACCENTS = bridge, bridge.C, bridge.ACCENTS
 	opts = opts or {}
+	-- Preview uses the same shared icon provider as the rest of JustXLibrary.
+	if B.loadIconPack and (not B.hasIconPack or not B.hasIconPack()) then
+		pcall(B.loadIconPack)
+	end
 	local self = setmetatable({}, M)
 	self._pv = self
 	self.alive = true
@@ -1535,25 +1970,30 @@ function M.new(bridge, opts)
 	self.Icon = opts.Icon or "⬡"
 	self._opts = opts
 	self._tabs, self._side, self._assets, self._pages = {}, {}, {}, {}
+	self._sources = {}
 	self._cards = {}
 	self._cons = {}
 	self._closedCbs = {}
 	self._scrollers, self._phs = {}, {}
 	self._viewers = {}
+	self._previewExtensions = {}
 	self._order = 0
 	self._type, self._query = "All", ""
-	self._pluginCons = {}
+	self._sort = { Key = "Default", Descending = false }
+	self._grouping = "None"
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	self._groupListLayout = nil
 	attachControls(self)
 
+	-- Plugin Core is kept outside PreviewUI; plugins own their implementation files.
+	self._plugins = nil
+	self._pluginLoadError = nil
 	local function loadPluginCore(path)
-		local base = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/"
+		local base = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/preview/asset-browser-transfer/"
 		local okBody, body = pcall(function() return game:HttpGet(base .. path) end)
 		if not okBody or type(body) ~= "string" or body == "" then
 			return nil, "download failed: " .. tostring(body)
-		end
-		local head = body:sub(1, 180):lower()
-		if body:sub(1, 1) == "<" or head:find("404", 1, true) or head:find("not found", 1, true) then
-			return nil, "source not found: " .. path
 		end
 		local fn, compileError = loadstring(body)
 		if type(fn) ~= "function" then return nil, tostring(compileError) end
@@ -1567,14 +2007,16 @@ function M.new(bridge, opts)
 		local okManager, manager = pcall(managerModule.new, self, B, registry)
 		if okManager and manager then
 			self._plugins = manager
-			local okLoad, loadError = pcall(function() manager:LoadInstalled() end)
-			if not okLoad then self._pluginLoadError = tostring(loadError) end
+			pcall(function() manager:LoadInstalled() end)
 		else
 			self._pluginLoadError = tostring(manager)
 		end
 	else
 		self._pluginLoadError = tostring(registryError or managerError or "Plugin Core unavailable")
 		warn("[PreviewUI] Plugin Core unavailable: " .. self._pluginLoadError)
+	end
+	if self._plugins then
+		self:_setupPluginsTab()
 	end
 
 	table.insert(B.unloadHooks, function()
@@ -1594,6 +2036,286 @@ function M.new(bridge, opts)
 		end))
 	end
 	return self
+end
+
+-- Plugin API: plugin implementations stay in Plugins/<Id>/init.lua.
+function M:GetPlugins()
+	if not self._plugins then return {} end
+	return self._plugins:GetAvailable()
+end
+
+function M:GetPlugin(id)
+	if not self._plugins then return nil end
+	return self._plugins:Get(id)
+end
+
+function M:InstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Install(id)
+end
+
+function M:EnablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Enable(id)
+end
+
+function M:DisablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Disable(id)
+end
+
+function M:UninstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Uninstall(id)
+end
+
+-- Dedicated Plugins library UI; it is intentionally separate from asset cards.
+function M:_setPluginsView(active)
+	local chrome = self._pluginChrome
+	if not chrome then return end
+	for _, object in pairs(chrome) do
+		if object and object.Parent then object.Visible = not active end
+	end
+	if self._pluginSurface then
+		self._pluginSurface.Visible = active
+	end
+end
+
+function M:_renderPluginsSurface(selectedId)
+	local surface = self._pluginSurface
+	if not surface then return end
+	for _, child in ipairs(surface:GetChildren()) do
+		if not child:IsA("UIPadding") then child:Destroy() end
+	end
+
+	local definitions = self:GetPlugins()
+	local purple, green = rgb(157, 112, 255), rgb(75, 204, 143)
+	local function stateFor(id)
+		local current = self._plugins and self._plugins:Get(id)
+		if not current or not current.Installed then return "Not installed", false, false end
+		return current.Enabled and "Enabled" or "Disabled", true, current.Enabled == true
+	end
+	local function notifyAction(label, ok, result)
+		if B.notify then
+			B.notify({
+				Title = ok and "Plugins" or "Plugin error",
+				Desc = ok and (label .. " completed.") or tostring(result),
+				Type = ok and "Success" or "Warn", Duration = 4,
+			})
+		end
+	end
+	local function actionButton(parent, label, color, callback, position, size)
+		local button = txt("TextButton", {
+			Text = label, Font = GB, TextSize = 11, TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+			BackgroundColor3 = color, BackgroundTransparency = 0, BorderSizePixel = 0,
+			Position = position, Size = size, AutoButtonColor = false,
+		}, parent)
+		corner(button, 8)
+		button.MouseEnter:Connect(function()
+			if not touchLast() then tw(button, { BackgroundTransparency = 0.12 }, 0.12) end
+		end)
+		button.MouseLeave:Connect(function() tw(button, { BackgroundTransparency = 0 }, 0.12) end)
+		button.Activated:Connect(callback)
+		return button
+	end
+
+	if selectedId then
+		local definition = self:GetPlugin(selectedId)
+		if not definition then
+			selectedId = nil
+		else
+			local accent = selectedId == "animation" and purple or green
+			local statusText, installed, enabled = stateFor(selectedId)
+			local back = txt("TextButton", {
+				Text = "‹  Back to Plugins", Font = GM, TextSize = 12, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(16, 14), Size = UDim2.fromOffset(150, 28),
+			}, surface)
+			back.Activated:Connect(function() self:_renderPluginsSurface() end)
+
+			local panel = new("Frame", {
+				BackgroundColor3 = C.badge, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(14, 54), Size = U2(1, -28, 0, 230),
+			}, surface)
+			corner(panel, 12)
+			stroke(panel, C.border, 1)
+			local iconTile = new("Frame", {
+				BackgroundColor3 = accent, BackgroundTransparency = 0.82,
+				Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(54, 54),
+			}, panel)
+			corner(iconTile, 13)
+			local icon = mkIcon(iconTile, definition.Icon or (selectedId == "animation" and "clapperboard" or "network"), 27, accent)
+			icon.AnchorPoint = V2(0.5, 0.5)
+			icon.Position = U2(0.5, 0, 0.5, 0)
+			txt("TextLabel", {
+				Text = definition.Name or selectedId, Font = GB, TextSize = 17,
+				Position = UDim2.fromOffset(82, 18), Size = U2(1, -98, 0, 24),
+			}, panel)
+			txt("TextLabel", {
+				Text = tostring(definition.Category or "Plugin") .. "  ·  v" .. tostring(definition.Version or "1.0"),
+				Font = GM, TextSize = 10, TextColor3 = C.dim,
+				Position = UDim2.fromOffset(82, 43), Size = U2(1, -98, 0, 16),
+			}, panel)
+			local status = txt("TextLabel", {
+				Text = statusText, Font = GB, TextSize = 10, TextColor3 = accent,
+				BackgroundColor3 = accent, BackgroundTransparency = 0.86,
+				Position = UDim2.fromOffset(16, 84), Size = UDim2.fromOffset(94, 23),
+				TextXAlignment = Enum.TextXAlignment.Center,
+			}, panel)
+			corner(status, 7)
+			txt("TextLabel", {
+				Text = definition.Description or "", Font = G, TextSize = 12, TextColor3 = C.dim,
+				TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+				Position = UDim2.fromOffset(16, 120), Size = U2(1, -32, 0, 48),
+			}, panel)
+			local function run(label, fn)
+				local ok, result = false, "Plugin Core unavailable"
+				if self._plugins then ok, result = fn(self._plugins) end
+				notifyAction(label, ok, result)
+				self:_renderPluginsSurface(selectedId)
+			end
+			if not installed then
+				actionButton(panel, "Install Plugin", accent, function()
+					run("Install", function(manager) return manager:Install(selectedId) end)
+				end, U2(0, 16, 1, -48), U2(1, -32, 0, 34))
+			else
+				local leftLabel = enabled and "Disable Plugin" or "Enable Plugin"
+				actionButton(panel, leftLabel, accent, function()
+					if enabled then
+						run("Disable", function(manager) return manager:Disable(selectedId) end)
+					else
+						run("Enable", function(manager) return manager:Enable(selectedId) end)
+					end
+				end, U2(0, 16, 1, -48), U2(0.5, -20, 0, 34))
+				actionButton(panel, "Uninstall", C.btnBg, function()
+					run("Uninstall", function(manager) return manager:Uninstall(selectedId) end)
+				end, U2(0.5, 4, 1, -48), U2(0.5, -20, 0, 34))
+			end
+			return
+		end
+	end
+
+	local header = new("Frame", { BackgroundTransparency = 1, Size = U2(1, -28, 0, 62), Position = UDim2.fromOffset(14, 12) }, surface)
+	txt("TextLabel", {
+		Text = "Plugin Library", Font = GB, TextSize = 18, TextColor3 = C.txt,
+		Position = UDim2.fromOffset(2, 0), Size = U2(1, -4, 0, 25),
+	}, header)
+	txt("TextLabel", {
+		Text = "Extend Preview with powerful tools", Font = GM, TextSize = 11, TextColor3 = C.dim,
+		Position = UDim2.fromOffset(2, 29), Size = U2(1, -4, 0, 18),
+	}, header)
+
+	local list = new("ScrollingFrame", {
+		Name = "PluginCards", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(14, 82), Size = U2(1, -28, 1, -94),
+		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1],
+	}, surface)
+	local layout = new("UIGridLayout", {
+		CellSize = UDim2.new(0.5, -5, 0, 174), CellPadding = UDim2.fromOffset(10, 10),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, list)
+	pad(list, 2, 4, 2, 12)
+	local function updateColumns()
+		if not list.Parent then return end
+		local camera = workspace.CurrentCamera
+		local viewportWidth = camera and camera.ViewportSize.X or 0
+		layout.CellSize = viewportWidth < 700
+			and UDim2.new(1, -4, 0, 166)
+			or UDim2.new(0.5, -5, 0, 174)
+	end
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateColumns)
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		camera = workspace.CurrentCamera
+		if camera then
+			camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateColumns)
+		end
+		updateColumns()
+	end)
+	updateColumns()
+
+	for index, definition in ipairs(definitions) do
+		local id = definition.Id
+		local accent = id == "animation" and purple or green
+		local statusText, installed, enabled = stateFor(id)
+		local card = new("Frame", {
+			Name = "Plugin_" .. tostring(id), BackgroundColor3 = C.badge,
+			BorderSizePixel = 0, LayoutOrder = index,
+		}, list)
+		corner(card, 12)
+		stroke(card, C.border, 1)
+		local tile = new("Frame", {
+			BackgroundColor3 = accent, BackgroundTransparency = 0.84,
+			Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(42, 42),
+		}, card)
+		corner(tile, 11)
+		local glyph = mkIcon(tile, definition.Icon or (id == "animation" and "clapperboard" or "network"), 23, accent)
+		glyph.AnchorPoint = V2(0.5, 0.5)
+		glyph.Position = U2(0.5, 0, 0.5, 0)
+		txt("TextLabel", {
+			Text = definition.Name or id, Font = GB, TextSize = 14,
+			Position = UDim2.fromOffset(64, 13), Size = U2(1, -76, 0, 20),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, card)
+		local pill = txt("TextLabel", {
+			Text = statusText, Font = GB, TextSize = 9, TextColor3 = accent,
+			BackgroundColor3 = accent, BackgroundTransparency = 0.86,
+			Position = UDim2.fromOffset(64, 36), Size = UDim2.fromOffset(math.max(76, #statusText * 6 + 16), 18),
+			TextXAlignment = Enum.TextXAlignment.Center,
+		}, card)
+		corner(pill, 6)
+		txt("TextLabel", {
+			Text = definition.Description or "", Font = G, TextSize = 10,
+			TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+			Position = UDim2.fromOffset(12, 66), Size = U2(1, -24, 0, 43),
+		}, card)
+		txt("TextLabel", {
+			Text = "VERSION  " .. tostring(definition.Version or "1.0"),
+			Font = GB, TextSize = 8, TextColor3 = C.dim,
+			Position = UDim2.fromOffset(12, 114), Size = U2(1, -24, 0, 13),
+		}, card)
+		local label = installed and "Manage Plugin" or "Install Plugin"
+		local button = txt("TextButton", {
+			Text = label, Font = GB, TextSize = 10,
+			TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			BackgroundColor3 = accent, BackgroundTransparency = 0,
+			Position = U2(0, 12, 1, -38), Size = U2(1, -24, 0, 27),
+			BorderSizePixel = 0, AutoButtonColor = false,
+		}, card)
+		corner(button, 7)
+		button.MouseEnter:Connect(function()
+			if not touchLast() then tw(button, { BackgroundTransparency = 0.12 }, 0.12) end
+		end)
+		button.MouseLeave:Connect(function() tw(button, { BackgroundTransparency = 0 }, 0.12) end)
+		button.Activated:Connect(function()
+			if installed then
+				self:_renderPluginsSurface(id)
+			else
+				local ok, result = self:InstallPlugin(id)
+				notifyAction("Install", ok, result)
+				self:_renderPluginsSurface()
+			end
+		end)
+	end
+end
+
+function M:_buildPluginsSurface(parent)
+	if self._pluginSurface and self._pluginSurface.Parent then return end
+	local surface = new("Frame", {
+		Name = "PvPluginLibrary", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false,
+	}, parent)
+	self._pluginSurface = surface
+	self:_renderPluginsSurface()
+end
+
+function M:_setupPluginsTab()
+	if self._pluginsTab or not self._plugins then return end
+	self._pluginsTab = self:Tab({ Name = "Plugins", Icon = "blocks" })
 end
 
 function M:Tab(o)
@@ -1637,6 +2359,346 @@ function M:Tab(o)
 	return T
 end
 
+-- Источники данных: стабильные ключи, обновление без пересоздания Preview.
+function M:Source(o)
+	o = o or {}
+	local tab = type(o.Tab) == "string" and self:GetTab(o.Tab) or o.Tab
+	if not tab then
+		tab = self:Tab({ Name = o.TabName or o.Name or "Source", Icon = o.Icon or "◼" })
+	end
+	assert(tab._isTab and tab._pv == self, "Preview:Source Tab must belong to this Preview")
+	local discoveryOptions = type(o.Discover) == "table" and o.Discover or {}
+	local source = {
+		_pv = self, _tab = tab, _items = {}, _order = {},
+		Name = o.Name or tab.Name, _alive = true, _connections = {},
+		_map = o.Map, _key = o.Key, _getItems = o.GetItems,
+		_discoveryOptions = discoveryOptions,
+		_discoveryEnabled = o.Discover == true or (type(o.Discover) == "table" and discoveryOptions.Enabled ~= false),
+		_discoveryInterval = math.clamp(tonumber(discoveryOptions.Interval) or 2, 0.5, 30),
+		_discoveryRemoveMissing = discoveryOptions.RemoveMissing ~= false,
+		_discoveryToken = 0,
+		_liveMotionOptions = type(o.LiveMotion) == "table" and o.LiveMotion or {},
+		_liveMotionDefault = o.LiveMotion == true or type(o.LiveMotion) == "table",
+		_observeOptions = type(o.ObserveModels) == "table" and o.ObserveModels or {},
+		_observeDefault = o.ObserveModels == true or type(o.ObserveModels) == "table",
+	}
+	local function resolveKey(item)
+		if type(source._key) == "function" then
+			local ok, key = pcall(source._key, item, source)
+			if ok and key ~= nil then return key end
+			return nil
+		end
+		return item
+	end
+
+	local defaultObserveProperties = {
+		BasePart = { "Color", "Size", "Material", "Transparency", "Reflectance", "Shape" },
+		Decal = { "Texture", "Color3", "Transparency" },
+		Texture = { "Texture", "Color3", "Transparency", "StudsPerTileU", "StudsPerTileV" },
+		SpecialMesh = { "MeshId", "TextureId", "MeshType", "Scale", "Offset", "VertexColor" },
+		SurfaceAppearance = { "ColorMap", "MetalnessMap", "NormalMap", "RoughnessMap" },
+	}
+	local function disconnectObserver(entry)
+		if not entry then return end
+		entry._observeToken = (entry._observeToken or 0) + 1
+		entry._observePending = false
+		for _, connection in ipairs(entry._observeConnections or {}) do
+			pcall(function() connection:Disconnect() end)
+		end
+		entry._observeConnections = {}
+	end
+	local function observeEntry(key)
+		local entry = source._items[key]
+		if not entry then return end
+		disconnectObserver(entry)
+		if not entry._observeEnabled or not entry.asset or not entry.asset._alive then return end
+		local token = entry._observeToken
+		local connections, watched = entry._observeConnections, {}
+		local delayTime = tonumber(source._observeOptions.Debounce) or 0.18
+		delayTime = math.clamp(delayTime, 0.05, 2)
+		local function scheduleRefresh()
+			if entry._observePending then return end
+			entry._observePending = true
+			task.delay(delayTime, function()
+					if entry._observeToken ~= token then return end
+					entry._observePending = false
+					if not source._alive or source._items[key] ~= entry
+						or not entry.asset or not entry.asset._alive then
+						return
+					end
+					source:Refresh(key)
+				end)
+		end
+		local function addConnection(signal, callback)
+			local ok, connection = pcall(function() return signal:Connect(callback) end)
+			if ok and connection then connections[#connections + 1] = connection end
+		end
+		local properties = source._observeOptions.Properties
+		local function watchInstance(instance)
+			if not instance or watched[instance] then return end
+			watched[instance] = true
+			local classProperties
+			if type(properties) == "table" then
+				classProperties = properties
+			else
+				for className, list in pairs(defaultObserveProperties) do
+					if instance:IsA(className) then
+						classProperties = list
+						break
+					end
+				end
+			end
+			for _, property in ipairs(classProperties or {}) do
+				pcall(function()
+					addConnection(instance:GetPropertyChangedSignal(property), scheduleRefresh)
+				end)
+			end
+			if instance:IsA("Model") then
+				for _, property in ipairs({ "WorldPivot", "PrimaryPart" }) do
+					pcall(function()
+						addConnection(instance:GetPropertyChangedSignal(property), scheduleRefresh)
+					end)
+				end
+			end
+		end
+		local roots, seenRoots = {}, {}
+		local function addRoot(value)
+			if typeof(value) ~= "Instance" then return end
+			if not (value:IsA("Model") or value:IsA("BasePart")) or seenRoots[value] then return end
+			seenRoots[value] = true
+			roots[#roots + 1] = value
+		end
+		addRoot(entry.asset.Model)
+		if entry.asset._baseVariantData then
+			addRoot(entry.asset._baseVariantData.Model)
+		end
+		for _, variant in ipairs(entry.asset._variants or {}) do
+			addRoot(variant.Model)
+		end
+		for _, root in ipairs(roots) do
+			watchInstance(root)
+			if root:IsA("Model") then
+				for _, descendant in ipairs(root:GetDescendants()) do
+					watchInstance(descendant)
+				end
+				addConnection(root.DescendantAdded, function(descendant)
+					watchInstance(descendant)
+					scheduleRefresh()
+				end)
+				addConnection(root.DescendantRemoving, scheduleRefresh)
+			end
+		end
+		entry._observeConnections = connections
+	end
+
+	function source:Get(key)
+		local entry = self._items[key]
+		return entry and entry.asset or nil
+	end
+	function source:SetAutoObserve(key, enabled)
+		local entry = self._items[key]
+		if not entry then return false end
+		entry._observeEnabled = enabled == true
+		observeEntry(key)
+		return true
+	end
+	function source:SetLiveMotion(key, enabled)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return false end
+		entry._liveMotionEnabled = enabled == true
+		entry.asset._liveMotionEnabled = entry._liveMotionEnabled
+		entry.asset._liveMotionRate = entry._liveMotionRate
+		for h in pairs(self._pv._viewers or {}) do
+			if h.asset == entry.asset then
+				h.motionEnabled = entry._liveMotionEnabled
+				h.motionElapsed = 0
+			end
+		end
+		return true
+	end
+	function source:Add(key, data)
+		if not self._alive or key == nil then return nil end
+		local existing = self._items[key]
+		local payload = data
+		if payload == nil then payload = key end
+		if type(self._map) == "function" then
+			local ok, mapped = pcall(self._map, payload, key, self)
+			if not ok then
+				warn("[PreviewUI] source map failed: " .. tostring(mapped))
+				return nil
+			end
+			payload = mapped
+		end
+		if type(payload) ~= "table" then
+			payload = { Name = tostring(payload) }
+		end
+		if existing and existing.asset and existing.asset._alive then
+			existing.item = data == nil and key or data
+			existing.asset._liveMotionEnabled = existing._liveMotionEnabled
+			existing.asset._liveMotionRate = existing._liveMotionRate
+			existing.asset:Update(payload)
+			observeEntry(key)
+			return existing.asset
+		end
+		local item = data == nil and key or data
+		local asset = self._pv:_addAsset(self._tab, payload, true)
+		asset._source, asset._sourceKey = self, key
+		local motionRate = math.clamp(tonumber(self._liveMotionOptions.Rate) or 30, 10, 60)
+		asset._liveMotionEnabled = self._liveMotionDefault
+		asset._liveMotionRate = motionRate
+		self._items[key] = {
+			asset = asset, item = item,
+			_observeEnabled = self._observeDefault,
+			_liveMotionEnabled = self._liveMotionDefault,
+			_liveMotionRate = motionRate,
+			_observeConnections = {}, _observeToken = 0,
+		}
+		self._order[#self._order + 1] = key
+		observeEntry(key)
+		self._pv:_assetsChanged()
+		return asset
+	end
+	function source:Update(key, patch)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return nil end
+		entry.asset:Update(patch or {})
+		observeEntry(key)
+		return entry.asset
+	end
+	function source:Refresh(key)
+		local entry = self._items[key]
+		if not entry or not entry.asset or not entry.asset._alive then return nil end
+		local payload = entry.item
+		if type(self._map) == "function" then
+			local ok, mapped = pcall(self._map, payload, key, self)
+			if not ok then
+				warn("[PreviewUI] source map failed: " .. tostring(mapped))
+				return nil
+			end
+			payload = mapped
+		end
+		if type(payload) ~= "table" then
+			payload = { Name = tostring(payload) }
+		end
+		entry.asset:Update(payload)
+		observeEntry(key)
+		return entry.asset
+	end
+	function source:Sync()
+		if not self._alive or type(self._getItems) ~= "function" then
+			return false
+		end
+		local ok, items = pcall(self._getItems, self)
+		if not ok then
+			warn("[PreviewUI] source GetItems failed: " .. tostring(items))
+			return false
+		end
+		if type(items) ~= "table" then
+			warn("[PreviewUI] source GetItems must return a table")
+			return false
+		end
+		local present, count = {}, 0
+		for _, item in pairs(items) do
+			local key = resolveKey(item)
+			if key ~= nil then
+				present[key] = true
+				count = count + 1
+				source:Add(key, item)
+			end
+		end
+		if self._discoveryRemoveMissing then
+			for i = #self._order, 1, -1 do
+				local key = self._order[i]
+				if not present[key] then
+					source:Remove(key)
+				end
+			end
+		end
+		return true, count
+	end
+	function source:SetDiscovery(enabled)
+		if not self._alive then return false end
+		if enabled == true then
+			if type(self._getItems) ~= "function" then return false end
+			if self._discoveryEnabled then return true end
+			self._discoveryEnabled = true
+			self._discoveryToken = self._discoveryToken + 1
+			local token = self._discoveryToken
+			task.spawn(function()
+				while self._alive and self._discoveryEnabled and self._discoveryToken == token do
+					task.wait(self._discoveryInterval)
+					if self._alive and self._discoveryEnabled and self._discoveryToken == token then
+						self:Sync()
+					end
+				end
+			end)
+			return true
+		end
+		self._discoveryEnabled = false
+		self._discoveryToken = self._discoveryToken + 1
+		return true
+	end
+	function source:IsDiscoveryEnabled()
+		return self._alive and self._discoveryEnabled
+	end
+	function source:Remove(key)
+		local entry = self._items[key]
+		if not entry then return false end
+		disconnectObserver(entry)
+		self._items[key] = nil
+		for i, value in ipairs(self._order) do
+			if value == key then table.remove(self._order, i) break end
+		end
+		if entry.asset and entry.asset._alive then entry.asset:Remove(true) end
+		self._pv:_assetsChanged()
+		return true
+	end
+	function source:Clear()
+		for i = #self._order, 1, -1 do self:Remove(self._order[i]) end
+		return self
+	end
+	function source:Destroy()
+		if not self._alive then return end
+		self:SetDiscovery(false)
+		self:Clear()
+		self._alive = false
+		for _, connection in ipairs(self._connections) do
+			pcall(function() connection:Disconnect() end)
+		end
+		self._connections = {}
+		for i, value in ipairs(self._pv._sources) do
+			if value == self then table.remove(self._pv._sources, i) break end
+		end
+	end
+	local function connect(signal, callback)
+		if signal and type(signal.Connect) == "function" then
+			local ok, connection = pcall(function() return signal:Connect(callback) end)
+			if ok and connection then source._connections[#source._connections + 1] = connection end
+		end
+	end
+	connect(o.Added, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Add(key, item) end
+	end)
+	connect(o.Changed, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Add(key, item) end
+	end)
+	connect(o.Removed, function(item)
+		local key = resolveKey(item)
+		if key ~= nil then source:Remove(key) end
+	end)
+	self._sources[#self._sources + 1] = source
+	if type(o.GetItems) == "function" then
+		source:Sync()
+	end
+	if source._discoveryEnabled then
+		source._discoveryEnabled = false
+		source:SetDiscovery(true)
+	end
+	return source
+end
+
 function M:Header(text)
 	self._side[#self._side + 1] = { kind = "header", text = tostring(text or "") }
 	if self._root then
@@ -1646,6 +2708,54 @@ function M:Header(text)
 end
 
 -- своя страница панели: Preview:Page({ Name, Icon, Visible = function(asset), Build = function(parent, asset, pv) return cleanup end })
+function M:CreateIcon(parent, name, size, color)
+	return mkIcon(parent, name, size or 14, color or C.dim)
+end
+
+function M:GetPluginUI()
+	return {
+		Create = new, Text = txt, Icon = mkIcon, Corner = corner, Stroke = stroke, Pad = pad,
+		Colors = C, Accent = ACCENTS[1],
+		Fonts = { Bold = GB, Medium = GM, Regular = G },
+		U2 = U2, V2 = V2, RunService = RunService,
+		IsPointer = isPtr, DragLocked = dragLocked,
+	}
+end
+
+-- Register a plugin-owned block inside the large 3D preview.
+function M:RegisterPreviewExtension(id, build)
+	assert(type(id) == "string" and id ~= "", "Preview extension requires an id")
+	assert(type(build) == "function", "Preview extension requires a Build callback")
+	self._previewExtensions = self._previewExtensions or {}
+	for _, item in ipairs(self._previewExtensions) do
+		if item.Id == id then
+			return nil, "PREVIEW_EXTENSION_EXISTS"
+		end
+	end
+	local item = { Id = id, Build = build }
+	self._previewExtensions[#self._previewExtensions + 1] = item
+	if self._selected and self._drawerOpen and self._dRightPage then
+		self:_buildLargePreview(self._selected, hasPreview(self._selected))
+	end
+	local handle = { Connected = true }
+	function handle:Destroy()
+		if not self.Connected then return end
+		self.Connected = false
+		for i = #self._owner._previewExtensions, 1, -1 do
+			if self._owner._previewExtensions[i] == self._item then
+				table.remove(self._owner._previewExtensions, i)
+			end
+		end
+		local owner = self._owner
+		self._owner, self._item = nil, nil
+		if owner.alive and owner._selected and owner._drawerOpen and owner._dRightPage then
+			owner:_buildLargePreview(owner._selected, hasPreview(owner._selected))
+		end
+	end
+	handle._owner, handle._item = self, item
+	return handle
+end
+
 function M:Page(o)
 	o = o or {}
 	local p = {
@@ -1665,220 +2775,16 @@ function M:RemovePage(page)
 		local current = self._pages[i]
 		if current == target or current.id == page then
 			table.remove(self._pages, i)
-			if self._page == current.id then self._page = nil end
-			if self._root and self._selected then self:_refreshDrawer(false) end
+			if self._page == current.id then
+				self._page = nil
+			end
+			if self._root and self._selected then
+				self:_refreshDrawer(false)
+			end
 			return true
 		end
 	end
 	return false
-end
-
-function M:CreateIcon(parent, name, size, color)
-	return mkIcon(parent, name, size or 14, color or C.dim)
-end
-
-function M:GetPluginUI()
-	return {
-		Create = new, Text = txt, Icon = mkIcon, Corner = corner, Stroke = stroke, Pad = pad,
-		Colors = C, Accent = ACCENTS[1],
-		Fonts = { Bold = GB, Medium = GM, Regular = G },
-		U2 = U2, V2 = V2, RunService = RunService,
-		IsPointer = isPtr, DragLocked = dragLocked,
-	}
-end
-
-function M:GetPlugins()
-	if not self._plugins then return {} end
-	return self._plugins:GetAvailable()
-end
-
-function M:GetPlugin(id)
-	if not self._plugins then return nil end
-	return self._plugins:Get(id)
-end
-
-function M:InstallPlugin(id)
-	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
-	return self._plugins:Install(id)
-end
-
-function M:EnablePlugin(id)
-	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
-	return self._plugins:Enable(id)
-end
-
-function M:DisablePlugin(id)
-	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
-	return self._plugins:Disable(id)
-end
-
-function M:UninstallPlugin(id)
-	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
-	return self._plugins:Uninstall(id)
-end
-
-function M:_setPluginsView(active)
-	active = active == true
-	for _, object in pairs(self._pluginChrome or {}) do
-		if object and object.Parent then object.Visible = not active end
-	end
-	if active and self._d then
-		self._d.ddList.Visible = false
-		self._d.empty.Visible = false
-	end
-	if self._pluginSurface then self._pluginSurface.Visible = active end
-end
-
-function M:_clearPluginConnections()
-	for _, connection in ipairs(self._pluginCons or {}) do
-		pcall(function() connection:Disconnect() end)
-	end
-	self._pluginCons = {}
-end
-
-function M:_renderPluginsSurface()
-	local surface = self._pluginSurface
-	if not surface then return end
-	self:_clearPluginConnections()
-	for _, child in ipairs(surface:GetChildren()) do
-		if not child:IsA("UIPadding") then child:Destroy() end
-	end
-
-	local header = new("Frame", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 10),
-		Size = U2(1, -28, 0, 58),
-	}, surface)
-	txt("TextLabel", {
-		Text = "Plugin Library", Font = GB, TextSize = 18, TextColor3 = C.txt,
-		Position = UDim2.fromOffset(2, 0), Size = U2(1, -4, 0, 24),
-	}, header)
-	txt("TextLabel", {
-		Text = "Optional tools for Preview", Font = GM, TextSize = 11, TextColor3 = C.dim,
-		Position = UDim2.fromOffset(2, 27), Size = U2(1, -4, 0, 17),
-	}, header)
-
-	local list = new("ScrollingFrame", {
-		Name = "PluginCards", BackgroundTransparency = 1, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(14, 74), Size = U2(1, -28, 1, -84),
-		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1],
-	}, surface)
-	local layout = new("UIGridLayout", {
-		CellSize = UDim2.new(1, -4, 0, 158), CellPadding = UDim2.fromOffset(8, 8),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}, list)
-	pad(list, 2, 4, 2, 12)
-	local function updateColumns()
-		if not list.Parent then return end
-		layout.CellSize = list.AbsoluteSize.X >= 500
-			and UDim2.new(0.5, -5, 0, 158)
-			or UDim2.new(1, -4, 0, 158)
-	end
-	self._pluginCons[#self._pluginCons + 1] = list:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateColumns)
-	updateColumns()
-
-	local definitions = self:GetPlugins()
-	if #definitions == 0 then
-		txt("TextLabel", {
-			Text = self._pluginLoadError and ("Plugin system unavailable: " .. self._pluginLoadError) or "No plugins are currently available.",
-			Font = G, TextSize = 12, TextColor3 = C.dim, TextWrapped = true,
-			Position = UDim2.fromOffset(18, 88), Size = U2(1, -36, 0, 54),
-		}, surface)
-		return
-	end
-
-	local function notifyAction(label, ok, result)
-		if B.notify then
-			pcall(B.notify, {
-				Title = ok and "Plugins" or "Plugin error",
-				Desc = ok and (label .. " completed.") or tostring(result),
-				Type = ok and "Success" or "Warn", Duration = 4,
-			})
-		end
-	end
-	local function actionButton(parent, label, color, position, size, callback)
-		local button = txt("TextButton", {
-			Text = label, Font = GB, TextSize = 10, TextColor3 = Color3.new(1, 1, 1),
-			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
-			BackgroundColor3 = color, BackgroundTransparency = 0, BorderSizePixel = 0,
-			Position = position, Size = size, AutoButtonColor = false,
-		}, parent)
-		corner(button, 7)
-		button.Activated:Connect(callback)
-		return button
-	end
-	local function run(label, callback)
-		local callOk, result, detail = pcall(callback)
-		local actionOk = callOk and result == true
-		notifyAction(label, actionOk, callOk and (detail or result) or result)
-		self:_renderPluginsSurface()
-	end
-
-	for index, definition in ipairs(definitions) do
-		local id = definition.Id
-		local installed, enabled = definition.Installed == true, definition.Enabled == true
-		local accent = id == "animation" and rgb(157, 112, 255) or rgb(75, 204, 143)
-		local statusText = not installed and "Not installed" or (enabled and "Enabled" or "Disabled")
-		local card = new("Frame", {
-			Name = "Plugin_" .. tostring(id), BackgroundColor3 = C.badge,
-			BorderSizePixel = 0, LayoutOrder = index,
-		}, list)
-		corner(card, 11)
-		stroke(card, C.border, 1)
-		local tile = new("Frame", {
-			BackgroundColor3 = accent, BackgroundTransparency = 0.84,
-			Position = UDim2.fromOffset(11, 10), Size = UDim2.fromOffset(38, 38),
-		}, card)
-		corner(tile, 10)
-		local glyph = mkIcon(tile, definition.Icon or "blocks", 21, accent)
-		glyph.AnchorPoint = V2(0.5, 0.5)
-		glyph.Position = U2(0.5, 0, 0.5, 0)
-		txt("TextLabel", {
-			Text = definition.Name or id, Font = GB, TextSize = 13,
-			Position = UDim2.fromOffset(58, 10), Size = U2(1, -70, 0, 19),
-			TextTruncate = Enum.TextTruncate.AtEnd,
-		}, card)
-		txt("TextLabel", {
-			Text = statusText .. "  ·  v" .. tostring(definition.Version or "1.0"),
-			Font = GM, TextSize = 9, TextColor3 = accent,
-			Position = UDim2.fromOffset(58, 30), Size = U2(1, -70, 0, 16),
-			TextTruncate = Enum.TextTruncate.AtEnd,
-		}, card)
-		txt("TextLabel", {
-			Text = definition.Description or "", Font = G, TextSize = 10,
-			TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
-			Position = UDim2.fromOffset(11, 55), Size = U2(1, -22, 0, 48),
-		}, card)
-
-		if not installed then
-			actionButton(card, "Install", accent, U2(0, 11, 1, -35), U2(1, -22, 0, 25), function()
-				run("Install " .. tostring(definition.Name), function() return self:InstallPlugin(id) end)
-			end)
-		else
-			local primary = enabled and "Disable" or "Enable"
-			local method = enabled and "DisablePlugin" or "EnablePlugin"
-			actionButton(card, primary, accent, U2(0, 11, 1, -35), U2(0.5, -16, 0, 25), function()
-				run(primary .. " " .. tostring(definition.Name), function() return self[method](self, id) end)
-			end)
-			actionButton(card, "Uninstall", C.btnBg, U2(0.5, 5, 1, -35), U2(0.5, -16, 0, 25), function()
-				run("Uninstall " .. tostring(definition.Name), function() return self:UninstallPlugin(id) end)
-			end)
-		end
-	end
-end
-
-function M:_buildPluginsSurface(parent)
-	if self._pluginSurface and self._pluginSurface.Parent then return end
-	self._pluginSurface = new("Frame", {
-		Name = "PvPluginLibrary", BackgroundTransparency = 1, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false,
-	}, parent)
-	self:_renderPluginsSurface()
-end
-
-function M:_setupPluginsTab()
-	if self._pluginsTab or not self._plugins then return end
-	self._pluginsTab = self:Tab({ Name = "Plugins", Icon = "blocks" })
 end
 
 function M:GetTab(name)
@@ -1908,6 +2814,9 @@ function M:GetAsset(name)
 end
 
 function M:_removeTab(T)
+	for i = #self._sources, 1, -1 do
+		if self._sources[i]._tab == T then self._sources[i]:Destroy() end
+	end
 	for i = #T.assets, 1, -1 do
 		T.assets[i]:Remove(true)
 	end
@@ -1969,14 +2878,73 @@ function M:_addAsset(tab, a, quiet)
 	function asset:Select()
 		self._pv:_goto(self)
 	end
+	local function applyVariant(self, index)
+		local variant = self._variants[index]
+		if not variant then
+			for _, key in ipairs(VARIANT_FIELDS) do
+				self[key] = self._baseVariantData[key]
+			end
+			self._variantIndex = 1
+			self._variantName = nil
+			return false
+		end
+		for _, key in ipairs(VARIANT_FIELDS) do
+			local value = variant[key]
+			if value == nil then
+				value = self._baseVariantData[key]
+			end
+			self[key] = value
+		end
+		self._variantIndex = index
+		self._variantName = variant.Name or ("Variant " .. tostring(index))
+		return true
+	end
 	function asset:Update(t)
+		local variants
+		local hasVariants = false
 		for k, v in pairs(t or {}) do
-			self[k] = v
-			if self._baseVariantData[k] ~= nil or table.find(VARIANT_FIELDS, k) then
-				self._baseVariantData[k] = v
+			if k == "Variants" then
+				variants = v
+				hasVariants = true
+			else
+				self[k] = v
+				if self._baseVariantData[k] ~= nil or table.find(VARIANT_FIELDS, k) then
+					self._baseVariantData[k] = v
+				end
 			end
 		end
+		if hasVariants then
+			self:SetVariants(variants, true)
+		end
 		self._pv:_assetUpdated(self)
+	end
+	function asset:SetVariants(list, quiet)
+		if type(list) ~= "table" then
+			return false
+		end
+		local selectedName = self._variantName
+		local nextVariants = {}
+		for _, variant in ipairs(list) do
+			if type(variant) == "table" then
+				nextVariants[#nextVariants + 1] = variant
+			end
+		end
+		self._variants = nextVariants
+		local selectedIndex
+		if selectedName then
+			for i, variant in ipairs(nextVariants) do
+				if variant.Name == selectedName then
+					selectedIndex = i
+					break
+				end
+			end
+		end
+		selectedIndex = selectedIndex or (#nextVariants > 0 and 1 or nil)
+		applyVariant(self, selectedIndex)
+		if not quiet then
+			self._pv:_assetUpdated(self)
+		end
+		return true
 	end
 	function asset:SetVariant(target)
 		local index
@@ -1993,16 +2961,7 @@ function M:_addAsset(tab, a, quiet)
 		if not index or not self._variants[index] then
 			return false
 		end
-		local variant = self._variants[index]
-		for _, key in ipairs(VARIANT_FIELDS) do
-			local value = variant[key]
-			if value == nil then
-				value = self._baseVariantData[key]
-			end
-			self[key] = value
-		end
-		self._variantIndex = index
-		self._variantName = variant.Name or ("Variant " .. tostring(index))
+		applyVariant(self, index)
 		self._pv:_assetUpdated(self)
 		return true
 	end
@@ -2044,6 +3003,12 @@ function M:_addAsset(tab, a, quiet)
 		end
 		if self._pv._selected == self then
 			self._pv._selected = nil
+		end
+		if self._source and self._source._items[self._sourceKey] then
+			self._source._items[self._sourceKey] = nil
+			for i, key in ipairs(self._source._order) do
+				if key == self._sourceKey then table.remove(self._source._order, i) break end
+			end
 		end
 		if not quietRemove then
 			self._pv:_assetsChanged()
@@ -2091,6 +3056,30 @@ function M:_ctrlChanged()
 	if self._root and self._selected and self._drawerOpen then
 		self:_refreshDrawer(false)
 	end
+end
+
+-- Сортировка карточек: Default, Name, Type, Creator, Author, Created, Size, Version, Category.
+function M:SetSort(key, descending)
+	local allowed = {
+		Default = true, Name = true, Type = true, Creator = true, Author = true,
+		Created = true, Size = true, Version = true, Category = true, Id = true, AssetId = true,
+	}
+	if type(key) == "table" then
+		descending = key.Descending
+		key = key.Key or key.By
+	end
+	key = key or "Default"
+	if not allowed[key] then
+		return false
+	end
+	self._sort = { Key = key, Descending = descending == true }
+	self:_applyFilter()
+	return true
+end
+
+function M:GetSort()
+	local sort = self._sort or { Key = "Default", Descending = false }
+	return sort.Key, sort.Descending
 end
 
 function M:SetTitle(t)
@@ -2171,7 +3160,7 @@ function M:_teardown(removeTab)
 	self._tab = nil
 	self:_closeMenu()
 	self:_cleanupPage()
-	self:_clearPluginConnections()
+	self:_clearLargePreview()
 	for _, c in ipairs(self._cons) do
 		pcall(function() c:Disconnect() end)
 	end
@@ -2184,10 +3173,11 @@ function M:_teardown(removeTab)
 		pcall(function() t:Remove() end)
 	end
 	self._root, self._nav, self._card, self._drawer, self._titleL = nil, nil, nil, nil, nil
-	self._drawerPanel, self._drawerScale = nil, nil
 	self._navList, self._grid, self._gridLayout, self._d = nil, nil, nil, nil
 	self._dTitle, self._dType, self._dTabs, self._dPages, self._pageRoot, self._indicator = nil, nil, nil, nil, nil, nil
-	self._pluginChrome, self._pluginSurface = nil, nil
+	self._dLeft, self._dRight, self._dRightPage = nil, nil, nil
+	self._dCollapse, self._dHeaderLine = nil, nil
+	self._previewFullscreen = false
 	self._cards, self._sideRefs, self._tabRefs, self._curPages = {}, {}, {}, {}
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._activeTab, self._selected, self._drawerOpen, self._page = nil, nil, false, nil
@@ -2221,11 +3211,12 @@ function M:Destroy()
 	if not self.alive then
 		return
 	end
+	self.alive = false
+	for i = #self._sources, 1, -1 do self._sources[i]:Destroy() end
 	if self._plugins then
 		pcall(function() self._plugins:Destroy() end)
 		self._plugins = nil
 	end
-	self.alive = false
 	self:_teardown(true)
 	for _, d in ipairs(self:_allControls()) do
 		if d.o.Flag and B.registry[d.o.Flag] == d then
@@ -2241,6 +3232,32 @@ end
 --------------------------------------------------------------------
 -- раскладка и настройки (страница "Preview UI" в Settings JustLib)
 --------------------------------------------------------------------
+function M:_applyPreviewFullscreen()
+	if not self._dRight or not self._dLeft then
+		return
+	end
+	local active = self._previewFullscreen == true
+	self._dLeft.Visible = not active
+	if self._dTitle then self._dTitle.Visible = not active end
+	if self._dType then self._dType.Visible = not active end
+	if self._dCollapse then self._dCollapse.Visible = not active end
+	if self._dHeaderLine then self._dHeaderLine.Visible = not active end
+	if active then
+		self._dRight.Position = U2(0, 0, 0, 0)
+		self._dRight.Size = U2(1, 0, 1, 0)
+	else
+		local leftW = math.clamp(math.floor(self._W * 0.39), 190, 330)
+		self._dRight.Position = U2(0, leftW + 1, 0, 62)
+		self._dRight.Size = U2(1, -leftW - 1, 1, -62)
+	end
+end
+
+function M:_setPreviewFullscreen(enabled)
+	self._previewFullscreen = enabled == true
+	self:_applyPreviewFullscreen()
+	return self._previewFullscreen
+end
+
 function M:_cacheSettings()
 	self._auto = S("autorotate", true) == true
 	self._speed = math.rad(tonumber(S("rotspeed", 40)) or 40)
@@ -2258,10 +3275,14 @@ function M:_dims()
 	return W, H
 end
 
--- Навигация остаётся слева, сетка занимает всё оставшееся место; детали открываются поверх браузера.
-function M:_states()
+-- Позиции трёх колонок для закрытой / открытой панели.
+-- Когда панель открыта и места мало, список слева уезжает за край: сетка остаётся достаточно широкой.
+function M:_states(open)
 	local W = self._W
-	return { navX = 0, cardX = NAVW + GAP, cardW = math.max(220, W - NAVW - GAP), drawerX = 0 }
+	if open then
+		return { navX = -(NAVW + GAP), cardX = -W, cardW = W, drawerX = 0 }
+	end
+	return { navX = 0, cardX = NAVW + GAP, cardW = W - (NAVW + GAP), drawerX = W }
 end
 
 function M:_relayout()
@@ -2270,21 +3291,25 @@ function M:_relayout()
 	end
 	local W, H = self:_dims()
 	self._W, self._H = W, H
-	local st = self:_states()
+	self._DW = W
+	local st = self:_states(self._drawerOpen == true)
 	self._cardW = st.cardW
 	self._nav.Size = U2(0, NAVW, 1, 0)
 	self._card.Size = U2(0, st.cardW, 1, 0)
-	self._nav.Position = U2(0, st.navX, 0, 0)
-	self._card.Position = U2(0, st.cardX, 0, 0)
-	if self._drawer then
-		self._drawer.Size = U2(1, 0, 1, 0)
+	self._drawer.Size = U2(1, 0, 1, 0)
+	if self._dLeft then
+		local leftW = math.clamp(math.floor(W * 0.39), 190, 330)
+		self._dLeft.Size = U2(0, leftW, 1, -62)
+		self._dRight.Position = U2(0, leftW + 1, 0, 62)
+		self._dRight.Size = U2(1, -leftW - 1, 1, -62)
+		self._dTabs.Size = U2(1, -20, 0, 42)
+		self._dPages.Size = U2(1, 0, 1, -102)
+		self:_applyPreviewFullscreen()
 	end
-	if self._drawerPanel then
-		local mw = math.clamp(math.min(W - 24, 620), 300, 620)
-		local mh = math.clamp(math.min(H - 24, 430), 260, 430)
-		self._drawerPanel.Size = UDim2.fromOffset(mw, mh)
-		self._drawerPanel.Position = U2(0.5, 0, 0.5, 0)
-		self._dPages.Size = U2(1, -20, 1, -112)
+	if not self._sliding then
+		self._nav.Position = U2(0, st.navX, 0, 0)
+		self._card.Position = U2(0, st.cardX, 0, 0)
+		self._drawer.Position = U2(0, st.drawerX, 0, 0)
 	end
 	self:_fitGrid()
 end
@@ -2300,12 +3325,19 @@ function M:_fitGrid()
 	local minCell = self._minCell or 140
 	local cols = math.max(1, math.floor((usable + gap) / (minCell + gap)))
 	local cw = math.floor((usable - gap * (cols - 1)) / cols)
-	local th = math.clamp(math.floor(cw * 0.44), 60, 120)
+	local th = math.clamp(math.floor(cw * 0.62), 60, 150)
 	if self._cw == cw and self._th == th and self._cols == cols then
 		return
 	end
 	self._cw, self._th, self._cols = cw, th, cols
-	self._gridLayout.CellSize = UDim2.fromOffset(cw, th + 44)
+	if self._gridLayout then
+		self._gridLayout.CellSize = UDim2.fromOffset(cw, th + 44)
+	end
+	for _, layout in ipairs(self._groupLayouts or {}) do
+		if layout and layout.Parent then
+			layout.CellSize = UDim2.fromOffset(cw, th + 44)
+		end
+	end
 	for _, c in pairs(self._cards) do
 		self:_applyCardGeo(c)
 	end
@@ -2345,12 +3377,6 @@ function M:_repaintExtras()
 			tb.PlaceholderColor3 = C.dim
 		end
 	end
-	if self._nav then self._nav.BackgroundColor3 = C.panel end
-	if self._card then self._card.BackgroundColor3 = C.panel end
-	if self._drawerPanel then self._drawerPanel.BackgroundColor3 = C.panel end
-	if self._heading then self._heading.TextColor3 = C.txt end
-	if self._dTitle then self._dTitle.TextColor3 = C.txt end
-	if self._dType then self._dType.TextColor3 = C.dim end
 	self:_styleSidebar()
 	self:_styleDrawerTabs(true)
 	self:_markSelected(true)
@@ -2365,9 +3391,14 @@ function M:_build()
 		B.notify({ Title = "Preview UI", Desc = "Create a JustLib window first: JL:Window({...})", Type = "Warn", Duration = 4 })
 		return false
 	end
-	self:_setupPluginsTab()
 	local tab = win:Tab({
 		Name = self._opts.TabName or "Preview", Icon = self.Icon, Type = "Custom", Tooltip = self.Title,
+		OnDeselect = function()
+			if self._root then self._root.Visible = false end
+		end,
+		OnSelect = function()
+			if self._root then self._root.Visible = true end
+		end,
 		OnClose = function()
 			if self._tab then
 				self:_teardown(false)
@@ -2380,15 +3411,16 @@ function M:_build()
 	self._tab = tab
 	local root = tab.Frame
 	self._root = root
+	root.ClipsDescendants = true
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._sideRefs, self._tabRefs, self._cards, self._curPages = {}, {}, {}, {}
 	self._drawerOpen, self._selected, self._page = false, nil, nil
 	self._cw, self._th, self._cols = nil, nil, nil
 	self:_cacheSettings()
 	self._W, self._H = self:_dims()
-	self._cardW = math.max(220, self._W - NAVW - GAP)
+	self._DW = math.clamp(math.floor(self._W * 0.42), 230, 300)
 
-	-- Левая навигация: вкладки, которые создал разработчик через Preview:Tab().
+	-- левая колонка: название + список вкладок Preview (как навигация в Settings) -------------
 	local nav = new("Frame", { Name = "PvNav", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, NAVW, 1, 0) }, root)
 	corner(nav, 10)
 	stroke(nav, C.border, 1)
@@ -2411,28 +3443,27 @@ function M:_build()
 	}, navList)
 	self._navList = navList
 
-	-- Основной Asset Browser: поиск, фильтр и адаптивная сетка карточек.
-	local card = new("Frame", { Name = "PvBrowser", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, self._cardW, 1, 0) }, root)
+	-- центральная карточка: поиск + фильтр + сетка + крестик ---------------------------------
+	local card = new("Frame", { Name = "PvCard", BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = U2(0, 470, 1, 0) }, root)
 	corner(card, 10)
 	stroke(card, C.border, 1)
 	self._card = card
-	local heading = txt("TextLabel", {
-		Text = "Asset Browser", Font = GB, TextSize = 17, Position = UDim2.fromOffset(12, 9), Size = U2(1, -24, 0, 22),
-	}, card)
-	self._heading = heading
 
 	local searchBox = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(8, 40), Size = U2(1, -154, 0, 30),
+		Position = UDim2.fromOffset(8, 8), Size = U2(1, -(8 + 6 + 96 + 6 + 28 + 8), 0, 28),
 	}, card)
 	corner(searchBox, 7)
 	stroke(searchBox, C.border, 1)
-	local lens = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 9), Size = UDim2.fromOffset(11, 11) }, searchBox)
+	local lens = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 8), Size = UDim2.fromOffset(11, 11) }, searchBox)
 	corner(lens, 6)
 	stroke(lens, C.dim, 1.5)
-	new("Frame", { BackgroundColor3 = C.dim, BorderSizePixel = 0, Rotation = 45, Position = UDim2.fromOffset(18, 20), Size = UDim2.fromOffset(6, 2) }, searchBox)
+	new("Frame", {
+		BackgroundColor3 = C.dim, BorderSizePixel = 0, Rotation = 45,
+		Position = UDim2.fromOffset(18, 19), Size = UDim2.fromOffset(6, 2),
+	}, searchBox)
 	local searchInput = txt("TextBox", {
-		PlaceholderText = "Search assets...", PlaceholderColor3 = C.dim, TextSize = 12, ClearTextOnFocus = false,
+		PlaceholderText = "Search...", PlaceholderColor3 = C.dim, TextSize = 12, ClearTextOnFocus = false,
 		Position = UDim2.fromOffset(30, 0), Size = U2(1, -38, 1, 0),
 	}, searchBox)
 	table.insert(self._phs, searchInput)
@@ -2443,18 +3474,22 @@ function M:_build()
 
 	local ddButton = txt("TextButton", {
 		BackgroundTransparency = 0, BackgroundColor3 = C.input,
-		AnchorPoint = V2(1, 0), Position = U2(1, -42, 0, 40), Size = UDim2.fromOffset(94, 30),
+		AnchorPoint = V2(1, 0), Position = U2(1, -(8 + 28 + 6), 0, 8), Size = UDim2.fromOffset(96, 28),
 	}, card)
 	corner(ddButton, 7)
 	stroke(ddButton, C.border, 1)
+	local filterIcon = mkIcon(ddButton, "filter", 14, C.dim)
+	filterIcon.Position = UDim2.fromOffset(8, 7)
 	local ddText = txt("TextLabel", {
-		Text = "All", Font = GM, TextSize = 11, Position = UDim2.fromOffset(9, 0), Size = U2(1, -24, 1, 0),
+		Text = "All", Font = GM, TextSize = 12, Position = UDim2.fromOffset(28, 0), Size = U2(1, -44, 1, 0),
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, ddButton)
-	txt("TextLabel", { Text = "▾", TextSize = 12, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(1, 0), Position = U2(1, -3, 0, 0), Size = UDim2.fromOffset(18, 30) }, ddButton)
+	local filterArrow = mkIcon(ddButton, "chevron-down", 12, C.dim)
+	filterArrow.AnchorPoint = V2(0.5, 0.5)
+	filterArrow.Position = U2(1, -13, 0.5, 0)
 	local ddList = new("Frame", {
 		BackgroundColor3 = C.input, BorderSizePixel = 0, Visible = false, ZIndex = 30,
-		AnchorPoint = V2(1, 0), Position = U2(1, -42, 0, 74), Size = UDim2.fromOffset(94, 40),
+		AnchorPoint = V2(1, 0), Position = U2(1, -(8 + 28 + 6), 0, 40), Size = UDim2.fromOffset(96, 40),
 	}, card)
 	corner(ddList, 7)
 	stroke(ddList, C.border, 1)
@@ -2462,18 +3497,20 @@ function M:_build()
 	pad(ddList, 3, 3, 3, 3)
 	ddButton.Activated:Connect(function()
 		ddList.Visible = not ddList.Visible
+		filterArrow.Rotation = ddList.Visible and 180 or 0
 	end)
 
+	-- крестик: удаляет вкладку Preview целиком (другие вкладки JustLib остаются)
 	local closeBtn = txt("TextButton", {
 		BackgroundTransparency = 0, BackgroundColor3 = C.input, AnchorPoint = V2(1, 0),
-		Position = U2(1, -8, 0, 40), Size = UDim2.fromOffset(28, 30),
+		Position = U2(1, -8, 0, 8), Size = UDim2.fromOffset(28, 28),
 	}, card)
 	corner(closeBtn, 7)
 	stroke(closeBtn, C.border, 1)
 	local xLines = {}
 	for _, rot in ipairs({ 45, -45 }) do
 		local l = new("Frame", {
-			AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0), Size = UDim2.fromOffset(12, 2),
+			AnchorPoint = V2(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(12, 2),
 			Rotation = rot, BackgroundColor3 = C.dim, BorderSizePixel = 0,
 		}, closeBtn)
 		corner(l, 1)
@@ -2481,11 +3518,15 @@ function M:_build()
 	end
 	closeBtn.MouseEnter:Connect(function()
 		if not touchLast() then
-			for _, l in ipairs(xLines) do tw(l, { BackgroundColor3 = C.danger }, 0.12) end
+			for _, l in ipairs(xLines) do
+				tw(l, { BackgroundColor3 = C.danger }, 0.12)
+			end
 		end
 	end)
 	closeBtn.MouseLeave:Connect(function()
-		for _, l in ipairs(xLines) do tw(l, { BackgroundColor3 = C.dim }, 0.12) end
+		for _, l in ipairs(xLines) do
+			tw(l, { BackgroundColor3 = C.dim }, 0.12)
+		end
 	end)
 	closeBtn.Activated:Connect(function()
 		self:Close()
@@ -2493,7 +3534,7 @@ function M:_build()
 
 	local grid = new("ScrollingFrame", {
 		Name = "PvGrid", BackgroundTransparency = 1, BorderSizePixel = 0,
-		Position = UDim2.fromOffset(4, 78), Size = U2(1, -8, 1, -82),
+		Position = UDim2.fromOffset(4, 44), Size = U2(1, -8, 1, -48),
 		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1], ScrollingDirection = Enum.ScrollingDirection.Y,
 	}, card)
@@ -2501,72 +3542,82 @@ function M:_build()
 	self._gridLayout = new("UIGridLayout", {
 		CellSize = UDim2.fromOffset(140, 134), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder,
 	}, grid)
+	-- запас вокруг карточек: рамка и подъём карточки при наведении не обрезаются краями
 	pad(grid, 4, 4, 4, 12)
 	self._grid = grid
-	local emptyL = txt("TextLabel", {
-		Text = "No assets found", TextSize = 13, TextColor3 = C.dim, Visible = false,
-		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 112), Size = UDim2.fromOffset(240, 20),
-	}, card)
-	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
-	self._pluginChrome = {
-		heading = heading, search = searchBox, filter = ddButton,
-		close = closeBtn, grid = grid,
-	}
+
+	self._d = { ddText = ddText, ddList = ddList, ddArrow = filterArrow }
+	self._pluginChrome = { search = searchBox, filter = ddButton, close = closeBtn, grid = grid }
 	if self._pluginsTab then self:_buildPluginsSurface(card) end
 
-	-- Details overlay: встроен в ту же вкладку и не создаёт отдельный ScreenGui.
-	local overlay = txt("TextButton", {
-		Name = "PvDetailsOverlay", Text = "", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1,
-		Size = U2(1, 0, 1, 0), Visible = false, ZIndex = 50,
+	-- Полноэкранный режим ассета: информация слева, большой предпросмотр справа.
+	local drawer = new("Frame", {
+		Name = "PvDrawer", BackgroundColor3 = C.panel, BorderSizePixel = 0, Active = true, ClipsDescendants = true, ZIndex = 2, Visible = false,
+		Size = U2(1, 0, 1, 0), Position = U2(0, self._W, 0, 0),
 	}, root)
-	self._drawer = overlay
-	overlay.Activated:Connect(function()
-		self:CloseDrawer()
-	end)
-	local modal = new("Frame", {
-		Name = "PvDetails", AnchorPoint = V2(0.5, 0.5), Position = U2(0.5, 0, 0.5, 0),
-		Size = UDim2.fromOffset(560, 360), BackgroundColor3 = C.panel, BorderSizePixel = 0,
-		ZIndex = 51, Active = true,
-	}, overlay)
-	corner(modal, 12)
-	stroke(modal, C.border, 1)
-	self._drawerPanel = modal
-	self._drawerScale = new("UIScale", { Scale = 0.94 }, modal)
-
+	corner(drawer, 10)
+	stroke(drawer, C.border, 1)
+	self._drawer = drawer
 	self._dTitle = txt("TextLabel", {
-		Font = GB, TextSize = 16, Position = UDim2.fromOffset(14, 9), Size = U2(1, -54, 0, 20),
-		TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 52,
-	}, modal)
+		Font = GB, TextSize = 15, Position = UDim2.fromOffset(14, 8), Size = U2(1, -50, 0, 20), TextTruncate = Enum.TextTruncate.AtEnd,
+	}, drawer)
 	self._dType = txt("TextLabel", {
-		TextSize = 10, TextColor3 = C.dim, Position = UDim2.fromOffset(14, 30), Size = U2(1, -54, 0, 14),
-		TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 52,
-	}, modal)
-	local modalClose = txt("TextButton", {
-		Text = "×", Font = GB, TextSize = 21, TextColor3 = C.dim, BackgroundColor3 = C.input,
-		AnchorPoint = V2(1, 0), Position = U2(1, -9, 0, 9), Size = UDim2.fromOffset(30, 30), ZIndex = 53,
-	}, modal)
-	corner(modalClose, 7)
-	stroke(modalClose, C.border, 1)
-	modalClose.Activated:Connect(function()
+		TextSize = 11, TextColor3 = C.dim, Position = UDim2.fromOffset(14, 29), Size = U2(1, -50, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd,
+	}, drawer)
+	local collapse = txt("TextButton", {
+		Text = "‹", Font = GB, TextSize = 22, TextColor3 = C.dim, TextXAlignment = Enum.TextXAlignment.Center,
+		AnchorPoint = V2(1, 0.5), Position = U2(1, -6, 0, 26), Size = UDim2.fromOffset(28, 28),
+	}, drawer)
+	self._dCollapse = collapse
+	collapse.MouseEnter:Connect(function()
+		if not touchLast() then
+			tw(collapse, { TextColor3 = C.txt }, 0.12)
+		end
+	end)
+	collapse.MouseLeave:Connect(function()
+		tw(collapse, { TextColor3 = C.dim }, 0.12)
+	end)
+	collapse.Activated:Connect(function()
 		self:CloseDrawer()
 	end)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 48), Size = U2(1, 0, 0, 1), ZIndex = 52 }, modal)
-	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 52), Size = U2(1, -16, 0, 42), ZIndex = 52 }, modal)
-	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 96), Size = U2(1, 0, 0, 1), ZIndex = 52 }, modal)
+	self._dHeaderLine = new("Frame", {
+		BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 0, 1),
+	}, drawer)
+	local leftW = math.clamp(math.floor(self._W * 0.39), 190, 330)
+	local left = new("Frame", { Name = "PvDetailInfo", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 62), Size = U2(0, leftW, 1, -62) }, drawer)
+	self._dLeft = left
+	self._dTabs = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 0), Size = U2(1, -20, 0, 42) }, left)
+	new("Frame", { BackgroundColor3 = C.divLine, BackgroundTransparency = 0.4, BorderSizePixel = 0, Position = U2(0, 0, 0, 48), Size = U2(1, 0, 0, 1) }, left)
 	self._dPages = new("Frame", {
-		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(10, 100), Size = U2(1, -20, 1, -112), ZIndex = 52,
-	}, modal)
+		BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(0, 52), Size = U2(1, 0, 1, -54),
+	}, left)
+	local right = new("Frame", { Name = "PvDetailPreview", BackgroundColor3 = C.badge, BorderSizePixel = 0 }, drawer)
+	self._dRight = right
+	corner(right, 10)
+	stroke(right, C.border, 1)
+	self._dRightPage = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false }, right)
 
-	-- Общий цикл 3D-превью. Работает только пока вкладка видима.
+	-- общий цикл для всех 3D-превью: плавно на любом FPS (на скрытой вкладке не работает)
 	self._cons[#self._cons + 1] = RunService.RenderStepped:Connect(function(dt)
 		if not self._root or not self._root.Visible then
 			return
 		end
 		for h, st in pairs(self._viewers) do
-			h.step(dt, self._auto and not st.dragging and os.clock() > st.resumeAt, self._speed)
+			h.step(dt, self._auto and not h.manualOnly and not st.dragging and os.clock() > st.resumeAt, self._speed)
+			if h.motionEnabled and not h.animationActive and h.syncMotion and h.manualOnly and self._drawerOpen
+				and self._selected == h.asset then
+				h.motionElapsed = h.motionElapsed + dt
+				local interval = 1 / (h.motionRate or 30)
+				if h.motionElapsed >= interval then
+					h.motionElapsed = h.motionElapsed % interval
+					h.syncMotion()
+				end
+			end
 		end
 	end)
 
+	-- первичная отрисовка ------------------------------------------------------------------
 	self:_relayout()
 	self:_renderSidebar()
 	self:_syncCards()
@@ -2575,16 +3626,21 @@ function M:_build()
 		local last = S("last", "")
 		if type(last) == "string" then
 			local tn = last:match("^[^|]*")
-			if tn and self:GetTab(tn) then startTab = self:GetTab(tn) end
+			if tn and self:GetTab(tn) then
+				startTab = self:GetTab(tn)
+			end
 		end
 		local pg = S("page", "")
-		if type(pg) == "string" and pg ~= "" then self._page = pg end
+		if type(pg) == "string" and pg ~= "" then
+			self._page = pg
+		end
 	end
 	self._restoring = true
 	self:_activate(startTab)
 	self._restoring = false
 	return true
 end
+
 --------------------------------------------------------------------
 -- список слева
 --------------------------------------------------------------------
@@ -2676,7 +3732,9 @@ function M:_activate(tab)
 		return
 	end
 	if self._drawerOpen then
-		self:CloseDrawer()
+		self._selected = nil
+		self:_markSelected()
+		self:_setDrawer(false, true)
 	end
 	self._activeTab = tab
 	self._type = "All"
@@ -2851,7 +3909,7 @@ function M:_buildTypeList()
 	for i, t in ipairs(types) do
 		local on = (t == self._type)
 		local ob = txt("TextButton", {
-			Text = t, Font = GM, TextSize = 11, TextColor3 = on and ACCENTS[1] or C.txt, BackgroundColor3 = ACCENTS[1],
+			Text = cleanDropdownLabel(t), Font = GM, TextSize = 11, TextColor3 = on and ACCENTS[1] or C.txt, BackgroundColor3 = ACCENTS[1],
 			BackgroundTransparency = on and 0.85 or 1, Size = UDim2.fromOffset(90, 26), LayoutOrder = i, ZIndex = 31,
 		}, d.ddList)
 		pad(ob, 8, 0, 0, 0)
@@ -2859,11 +3917,172 @@ function M:_buildTypeList()
 		ob.Activated:Connect(function()
 			self._type = t
 			d.ddList.Visible = false
+			if d.ddArrow then d.ddArrow.Rotation = 0 end
 			self:_applyFilter()
 			self:_popGrid()
 		end)
 	end
-	d.ddText.Text = self._type
+	d.ddText.Text = cleanDropdownLabel(self._type)
+end
+
+function M:_useFlatGrid()
+	if not self._grid then
+		return
+	end
+	self._grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	self._grid.CanvasSize = U2(0, 0, 0, 0)
+	for _, c in pairs(self._cards) do
+		if c.frame and c.frame.Parent ~= self._grid then
+			c.frame.Parent = self._grid
+		end
+	end
+	for _, frame in ipairs(self._groupFrames or {}) do
+		if frame and frame.Parent then
+			frame:Destroy()
+		end
+	end
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	if self._groupListLayout then
+		self._groupListLayout:Destroy()
+		self._groupListLayout = nil
+	end
+	if not self._gridLayout or not self._gridLayout.Parent then
+		self._gridLayout = new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(self._cw or 140, (self._th or 90) + 44),
+			CellPadding = UDim2.fromOffset(8, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, self._grid)
+	end
+end
+
+function M:_renderGroupedCards(visible)
+	if not self._grid then
+		return
+	end
+	local oldCanvasPosition = self._grid.CanvasPosition
+	local visibleSet = {}
+	for _, asset in ipairs(visible) do
+		visibleSet[asset] = true
+	end
+	for asset, c in pairs(self._cards) do
+		if c.frame then
+			c.frame.Parent = visibleSet[asset] and self._grid or nil
+		end
+	end
+	for _, frame in ipairs(self._groupFrames or {}) do
+		if frame and frame.Parent then
+			frame:Destroy()
+		end
+	end
+	self._groupFrames = {}
+	self._groupLayouts = {}
+	if self._gridLayout then
+		self._gridLayout:Destroy()
+		self._gridLayout = nil
+	end
+	self._grid.AutomaticCanvasSize = Enum.AutomaticSize.None
+	if not self._groupListLayout or not self._groupListLayout.Parent then
+		self._groupListLayout = new("UIListLayout", {
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 10),
+		}, self._grid)
+	end
+
+	local grouped, names = {}, {}
+	local field = self._grouping
+	for _, asset in ipairs(visible) do
+		local value = asset[field]
+		local name = (value == nil or tostring(value) == "") and "Unknown" or tostring(value)
+		if not grouped[name] then
+			grouped[name] = {}
+			names[#names + 1] = name
+		end
+		grouped[name][#grouped[name] + 1] = asset
+	end
+	table.sort(names, function(a, b)
+		return string.lower(a) < string.lower(b)
+	end)
+
+	local columns = math.max(1, self._cols or 1)
+	local cellHeight = (self._th or 90) + 44
+	local cellWidth = self._cw or 140
+	local totalHeight = 16
+	for groupIndex, name in ipairs(names) do
+		local count = #grouped[name]
+		local rows = math.ceil(count / columns)
+		local cardsHeight = rows * cellHeight + math.max(0, rows - 1) * 8
+		local groupHeight = 25 + cardsHeight + 4
+		local group = new("Frame", {
+			Name = "Group_" .. tostring(groupIndex),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, groupHeight),
+			LayoutOrder = groupIndex,
+		}, self._grid)
+		self._groupFrames[#self._groupFrames + 1] = group
+		txt("TextLabel", {
+			Text = name,
+			Font = GB,
+			TextSize = 11,
+			TextColor3 = C.dim,
+			Position = UDim2.fromOffset(5, 0),
+			Size = UDim2.new(1, -10, 0, 18),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, group)
+		new("Frame", {
+			BackgroundColor3 = C.divLine,
+			BackgroundTransparency = 0.45,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(5, 20),
+			Size = UDim2.new(1, -10, 0, 1),
+		}, group)
+		local cardsGrid = new("Frame", {
+			Name = "GroupCards",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(0, 25),
+			Size = UDim2.new(1, 0, 0, cardsHeight),
+		}, group)
+		local layout = new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(cellWidth, cellHeight),
+			CellPadding = UDim2.fromOffset(8, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, cardsGrid)
+		self._groupLayouts[#self._groupLayouts + 1] = layout
+		for index, asset in ipairs(grouped[name]) do
+			local card = self._cards[asset]
+			if card then
+				card.frame.Parent = cardsGrid
+				card.frame.LayoutOrder = index
+			end
+		end
+		totalHeight = totalHeight + groupHeight
+		if groupIndex < #names then
+			totalHeight = totalHeight + 10
+		end
+	end
+	self._grid.CanvasSize = U2(0, 0, 0, totalHeight)
+	local maxY = math.max(0, totalHeight - self._grid.AbsoluteSize.Y)
+	self._grid.CanvasPosition = V2(oldCanvasPosition.X, math.clamp(oldCanvasPosition.Y, 0, maxY))
+end
+
+function M:SetGrouping(key)
+	local allowed = { None = true, Type = true, Creator = true, Category = true }
+	key = key or "None"
+	if not allowed[key] then
+		return false
+	end
+	if self._grouping == key then
+		return true
+	end
+	self._grouping = key
+	self:_applyFilter()
+	return true
+end
+
+function M:GetGrouping()
+	return self._grouping or "None"
 end
 
 function M:_applyFilter()
@@ -2872,7 +4091,11 @@ function M:_applyFilter()
 	end
 	local tab = self._activeTab
 	local types, seen = { "All" }, { All = true }
+	local hasTabAssets = false
 	for _, a in ipairs(self._assets) do
+		if self:_inScope(tab, a) then
+			hasTabAssets = true
+		end
 		if self:_inScope(tab, a) and a.Type and not seen[a.Type] then
 			seen[a.Type] = true
 			types[#types + 1] = a.Type
@@ -2883,19 +4106,49 @@ function M:_applyFilter()
 	end
 	self._types = types
 	local q = string.lower(self._query or "")
-	local shown = 0
+	local visible = {}
 	for _, a in ipairs(self._assets) do
 		local c = self._cards[a]
 		if c then
 			local ok = tab ~= nil and self:_inScope(tab, a) and (self._type == "All" or a.Type == self._type) and matchQuery(a, q)
 			c.frame.Visible = ok
 			if ok then
-				shown = shown + 1
+				visible[#visible + 1] = a
 				self:_ensureThumb(a, c)
 			end
 		end
 	end
-	self._d.empty.Visible = (shown == 0)
+	local sort = self._sort or { Key = "Default", Descending = false }
+	local key = sort.Key or "Default"
+	table.sort(visible, function(a, b)
+		local av, bv
+		if key == "Default" then
+			av, bv = a._order or 0, b._order or 0
+		else
+			av, bv = a[key], b[key]
+			av = av == nil and "" or tostring(av)
+			bv = bv == nil and "" or tostring(bv)
+			av, bv = string.lower(av), string.lower(bv)
+		end
+		if av == bv then
+			return (a._order or 0) < (b._order or 0)
+		end
+		if sort.Descending then
+			return av > bv
+		end
+		return av < bv
+	end)
+	if self._grouping and self._grouping ~= "None" then
+		self:_renderGroupedCards(visible)
+	else
+		self:_useFlatGrid()
+		for index, asset in ipairs(visible) do
+			local card = self._cards[asset]
+			if card then
+				card.frame.LayoutOrder = index
+			end
+		end
+	end
 	self:_buildTypeList()
 	self:_markSelected(true)
 end
@@ -2996,7 +4249,9 @@ function M:_openMenu(asset, anchor)
 		end
 	end
 	for _, page in ipairs(self:_pagesFor(asset)) do
-		items[#items + 1] = { name = page.name, icon = page.icon, fn = openPage(page.id) }
+		if page.id ~= "preview" then
+			items[#items + 1] = { name = page.name, icon = page.icon, fn = openPage(page.id) }
+		end
 	end
 	for _, action in ipairs(asset._actions) do
 		items[#items + 1] = { name = action.Name, icon = action.Icon, fn = function() safe(action.Callback, asset, action) end }
@@ -3063,9 +4318,87 @@ function M:_openMenu(asset, anchor)
 end
 
 --------------------------------------------------------------------
--- модальное окно с подробностями ассета
+-- панель справа (drawer)
 --------------------------------------------------------------------
-function M:_setDrawer(open)
+function M:_animateAssetIntoDetail()
+	if not S("anim", true) then
+		if self._dRightPage then self._dRightPage.Visible = true end
+		return false
+	end
+	local function reveal(root, delayTime)
+		if not root then return end
+		local objects = { root }
+		for _, child in ipairs(root:GetDescendants()) do
+			objects[#objects + 1] = child
+		end
+		for _, obj in ipairs(objects) do
+			if obj:IsA("UIStroke") then
+				local target = obj.Transparency
+				obj.Transparency = 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), { Transparency = target }):Play()
+					end
+				end)
+			elseif obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+				local textTarget, bgTarget = obj.TextTransparency, obj.BackgroundTransparency
+				obj.TextTransparency, obj.BackgroundTransparency = 1, 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), {
+							TextTransparency = textTarget, BackgroundTransparency = bgTarget,
+						}):Play()
+					end
+				end)
+			elseif obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+				local imageTarget, bgTarget = obj.ImageTransparency, obj.BackgroundTransparency
+				obj.ImageTransparency, obj.BackgroundTransparency = 1, 1
+				B.delay(delayTime or 0, function()
+					if obj.Parent then
+						TS:Create(obj, TweenInfo.new(0.38, QUINT, OUT), {
+							ImageTransparency = imageTarget, BackgroundTransparency = bgTarget,
+						}):Play()
+					end
+				end)
+			elseif obj:IsA("ViewportFrame") or obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
+				local bgTarget = obj.BackgroundTransparency
+				obj.BackgroundTransparency = 1
+				if obj:IsA("ViewportFrame") then
+					local imageTarget = obj.ImageTransparency
+					obj.ImageTransparency = 1
+					B.delay(delayTime or 0, function()
+						if obj.Parent then
+							TS:Create(obj, TweenInfo.new(0.42, QUINT, OUT), {
+								BackgroundTransparency = bgTarget, ImageTransparency = imageTarget,
+							}):Play()
+						end
+					end)
+				else
+					B.delay(delayTime or 0, function()
+						if obj.Parent then
+							TS:Create(obj, TweenInfo.new(0.34, QUINT, OUT), { BackgroundTransparency = bgTarget }):Play()
+						end
+					end)
+				end
+			end
+		end
+	end
+	if self._dRightPage then
+		self._dRightPage.Visible = true
+		local scale = new("UIScale", { Scale = 0.965 }, self._dRightPage)
+		TS:Create(scale, TweenInfo.new(0.48, QUINT, OUT), { Scale = 1 }):Play()
+		reveal(self._dRightPage, 0.02)
+	end
+	if self._dPages then
+		reveal(self._dPages, 0.08)
+	end
+	if self._dTitle then reveal(self._dTitle, 0.06) end
+	if self._dType then reveal(self._dType, 0.1) end
+	if self._dTabs then reveal(self._dTabs, 0.12) end
+	return true
+end
+
+function M:_setDrawer(open, instant)
 	if not self._drawer then
 		return
 	end
@@ -3074,50 +4407,72 @@ function M:_setDrawer(open)
 		return
 	end
 	self._drawerOpen = open
-	self._slideTok = (self._slideTok or 0) + 1
-	local tok = self._slideTok
-	local overlay, panel, scale = self._drawer, self._drawerPanel, self._drawerScale
+	local st = self:_states(open)
+	local nav, card, drawer = self._nav, self._card, self._drawer
+	self._cardW = st.cardW
+	card.Size = U2(0, st.cardW, 1, 0)
+	self:_fitGrid()
 	if open then
-		self:_refreshDrawer(true)
-		overlay.Visible = true
-		if S("anim", true) then
-			overlay.BackgroundTransparency = 1
-			scale.Scale = 0.94
-			tw(overlay, { BackgroundTransparency = 0.42 }, 0.2)
-			tw(scale, { Scale = 1 }, 0.28, QUINT)
-		else
-			overlay.BackgroundTransparency = 0.42
-			scale.Scale = 1
-		end
+		drawer.Visible = true
+		if self._dRightPage then self._dRightPage.Visible = false end
+		local animated = self:_animateAssetIntoDetail()
+		if not animated and self._dRightPage then self._dRightPage.Visible = true end
+	else
+		self:_cleanupPage()
+		self:_clearLargePreview()
+	end
+	self._slideTok = (self._slideTok or 0) + 1
+	if instant then
+		self._sliding = false
+		nav.Position = U2(0, st.navX, 0, 0)
+		card.Position = U2(0, st.cardX, 0, 0)
+		drawer.Position = U2(0, st.drawerX, 0, 0)
+		drawer.Visible = open
 		return
 	end
-	if S("anim", true) then
-		tw(overlay, { BackgroundTransparency = 1 }, 0.16)
-		tw(scale, { Scale = 0.96 }, 0.16)
-		B.delay(0.18, function()
-			if self._slideTok == tok and self._drawer then
-				self._drawer.Visible = false
-				self:_cleanupPage()
-			end
-		end)
-	else
-		overlay.Visible = false
-		self:_cleanupPage()
+	local tok = self._slideTok
+	if not S("anim", true) then
+		nav.Position = U2(0, st.navX, 0, 0)
+		card.Position = U2(0, st.cardX, 0, 0)
+		drawer.Position = U2(0, st.drawerX, 0, 0)
+		if not open then drawer.Visible = false end
+		return
 	end
+	self._sliding = true
+	local info = TweenInfo.new(open and 0.48 or 0.42, QUINT, OUT)
+	TS:Create(nav, info, { Position = U2(0, st.navX, 0, 0) }):Play()
+	TS:Create(card, info, { Position = U2(0, st.cardX, 0, 0) }):Play()
+	TS:Create(drawer, info, { Position = U2(0, st.drawerX, 0, 0) }):Play()
+	B.delay(open and 0.5 or 0.44, function()
+		if self._slideTok ~= tok or not self._drawer then return end
+		self._sliding = false
+		if not open then self._drawer.Visible = false end
+	end)
 end
 
 function M:_controlsFor(asset)
 	local list, seen = {}, {}
-	local function addFrom(container)
+	local function addFrom(container, assetScoped)
 		if container and not seen[container] then
 			seen[container] = true
 			for _, d in ipairs(container._controls or {}) do
-				list[#list + 1] = d
+				local visible = true
+				if assetScoped then
+					local currentIndex = asset and asset._variantIndex or 1
+					if d.variantsPinned then
+						visible = d.variantsPinned[currentIndex] == true
+					elseif d.pinned == false then
+						visible = d.variantIndex == currentIndex
+					end
+				end
+				if visible then
+					list[#list + 1] = d
+				end
 			end
 		end
 	end
 	if asset then
-		addFrom(asset)
+		addFrom(asset, true)
 		addFrom(asset.tab)
 	end
 	addFrom(self._activeTab)
@@ -3126,12 +4481,11 @@ function M:_controlsFor(asset)
 end
 
 function M:_pagesFor(asset)
-	local out = {}
-	if #self:_controlsFor(asset) > 0 then
-		out[#out + 1] = PAGES.actions
-	end
-	if hasInfo(asset) then
-		out[#out + 1] = PAGES.info
+	local out = { PAGES.info }
+	local controls = self:_controlsFor(asset)
+	local hasVariants = asset and type(asset._variants) == "table" and #asset._variants > 1
+	if #controls > 0 or hasVariants then
+		out[#out + 1] = PAGES.controllers
 	end
 	if hasPreview(asset) then
 		out[#out + 1] = PAGES.preview
@@ -3277,6 +4631,47 @@ function M:_showPage(id, animate)
 	end
 end
 
+function M:_clearLargePreview()
+	self:_setPreviewFullscreen(false)
+	if self._detailPreviewCleanup then
+		pcall(self._detailPreviewCleanup)
+		self._detailPreviewCleanup = nil
+	end
+	if self._dRightPage then
+		for _, child in ipairs(self._dRightPage:GetChildren()) do child:Destroy() end
+		self._dRightPage.Visible = false
+	end
+end
+
+function M:_buildLargePreview(asset, enabled)
+	if not self._dRightPage then
+		return
+	end
+	if self._detailPreviewCleanup then
+		pcall(self._detailPreviewCleanup)
+		self._detailPreviewCleanup = nil
+	end
+	for _, child in ipairs(self._dRightPage:GetChildren()) do
+		child:Destroy()
+	end
+	self._dRightPage.Visible = self._drawerOpen == true
+	if enabled then
+		local ok, cleanup = pcall(PAGES.preview.build, self._dRightPage, asset, self)
+		if ok and type(cleanup) == "function" then
+			self._detailPreviewCleanup = cleanup
+		elseif not ok then
+			warn("[PreviewUI] large preview failed: " .. tostring(cleanup))
+		end
+	else
+		self:_setPreviewFullscreen(false)
+		txt("TextLabel", {
+			Text = "No preview available", TextSize = 13, TextColor3 = C.dim,
+			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+			Size = U2(1, 0, 1, 0),
+		}, self._dRightPage)
+	end
+end
+
 function M:_refreshDrawer(animate)
 	if not self._drawer then
 		return
@@ -3291,9 +4686,30 @@ function M:_refreshDrawer(animate)
 		sub = (sub ~= "" and (sub .. "  ·  ") or "") .. tostring(a.Creator)
 	end
 	self._dType.Text = sub
-	self._curPages = self:_pagesFor(a)
+	local pages = self:_pagesFor(a)
+	self._curPages = {}
+	local hasLargePreview = false
+	for _, p in ipairs(pages) do
+		if p.id == "preview" then
+			hasLargePreview = true
+		else
+			self._curPages[#self._curPages + 1] = p
+		end
+	end
+	if #self._curPages == 0 then
+		self._curPages[1] = { id = "empty", name = "Info", icon = "info", build = function(parent)
+			txt("TextLabel", { Text = "No additional information", TextColor3 = C.dim, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Center, Size = U2(1, 0, 0, 30) }, parent)
+		end }
+	end
 	self:_renderDrawerTabs()
+	if not self._page then
+		self._page = self._curPages[1].id
+	end
+	local found = false
+	for _, p in ipairs(self._curPages) do if p.id == self._page then found = true end end
+	if not found then self._page = self._curPages[1].id end
 	self:_showPage(self._page, animate)
+	self:_buildLargePreview(a, hasLargePreview)
 end
 
 return M
