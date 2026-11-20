@@ -1542,7 +1542,40 @@ function M.new(bridge, opts)
 	self._viewers = {}
 	self._order = 0
 	self._type, self._query = "All", ""
+	self._pluginCons = {}
 	attachControls(self)
+
+	local function loadPluginCore(path)
+		local base = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/"
+		local okBody, body = pcall(function() return game:HttpGet(base .. path) end)
+		if not okBody or type(body) ~= "string" or body == "" then
+			return nil, "download failed: " .. tostring(body)
+		end
+		local head = body:sub(1, 180):lower()
+		if body:sub(1, 1) == "<" or head:find("404", 1, true) or head:find("not found", 1, true) then
+			return nil, "source not found: " .. path
+		end
+		local fn, compileError = loadstring(body)
+		if type(fn) ~= "function" then return nil, tostring(compileError) end
+		local okModule, module = pcall(fn)
+		if not okModule or type(module) ~= "table" then return nil, tostring(module) end
+		return module
+	end
+	local registry, registryError = loadPluginCore("Plugins/Registry.lua")
+	local managerModule, managerError = loadPluginCore("Plugins/PluginManager.lua")
+	if registry and managerModule and type(managerModule.new) == "function" then
+		local okManager, manager = pcall(managerModule.new, self, B, registry)
+		if okManager and manager then
+			self._plugins = manager
+			local okLoad, loadError = pcall(function() manager:LoadInstalled() end)
+			if not okLoad then self._pluginLoadError = tostring(loadError) end
+		else
+			self._pluginLoadError = tostring(manager)
+		end
+	else
+		self._pluginLoadError = tostring(registryError or managerError or "Plugin Core unavailable")
+		warn("[PreviewUI] Plugin Core unavailable: " .. self._pluginLoadError)
+	end
 
 	table.insert(B.unloadHooks, function()
 		self:Destroy()
@@ -1624,6 +1657,223 @@ function M:Page(o)
 		self:_refreshDrawer(false)
 	end
 	return p
+end
+
+function M:RemovePage(page)
+	local target = type(page) == "table" and page or nil
+	for i = #self._pages, 1, -1 do
+		local current = self._pages[i]
+		if current == target or current.id == page then
+			table.remove(self._pages, i)
+			if self._page == current.id then self._page = nil end
+			if self._root and self._selected then self:_refreshDrawer(false) end
+			return true
+		end
+	end
+	return false
+end
+
+function M:CreateIcon(parent, name, size, color)
+	return mkIcon(parent, name, size or 14, color or C.dim)
+end
+
+function M:GetPluginUI()
+	return {
+		Create = new, Text = txt, Icon = mkIcon, Corner = corner, Stroke = stroke, Pad = pad,
+		Colors = C, Accent = ACCENTS[1],
+		Fonts = { Bold = GB, Medium = GM, Regular = G },
+		U2 = U2, V2 = V2, RunService = RunService,
+		IsPointer = isPtr, DragLocked = dragLocked,
+	}
+end
+
+function M:GetPlugins()
+	if not self._plugins then return {} end
+	return self._plugins:GetAvailable()
+end
+
+function M:GetPlugin(id)
+	if not self._plugins then return nil end
+	return self._plugins:Get(id)
+end
+
+function M:InstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Install(id)
+end
+
+function M:EnablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Enable(id)
+end
+
+function M:DisablePlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Disable(id)
+end
+
+function M:UninstallPlugin(id)
+	if not self._plugins then return false, self._pluginLoadError or "PLUGIN_CORE_UNAVAILABLE" end
+	return self._plugins:Uninstall(id)
+end
+
+function M:_setPluginsView(active)
+	for _, object in pairs(self._pluginChrome or {}) do
+		if object and object.Parent then object.Visible = not active end
+	end
+	if self._pluginSurface then self._pluginSurface.Visible = active end
+end
+
+function M:_clearPluginConnections()
+	for _, connection in ipairs(self._pluginCons or {}) do
+		pcall(function() connection:Disconnect() end)
+	end
+	self._pluginCons = {}
+end
+
+function M:_renderPluginsSurface()
+	local surface = self._pluginSurface
+	if not surface then return end
+	self:_clearPluginConnections()
+	for _, child in ipairs(surface:GetChildren()) do
+		if not child:IsA("UIPadding") then child:Destroy() end
+	end
+
+	local header = new("Frame", {
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(14, 10),
+		Size = U2(1, -28, 0, 58),
+	}, surface)
+	txt("TextLabel", {
+		Text = "Plugin Library", Font = GB, TextSize = 18, TextColor3 = C.txt,
+		Position = UDim2.fromOffset(2, 0), Size = U2(1, -4, 0, 24),
+	}, header)
+	txt("TextLabel", {
+		Text = "Optional tools for Preview", Font = GM, TextSize = 11, TextColor3 = C.dim,
+		Position = UDim2.fromOffset(2, 27), Size = U2(1, -4, 0, 17),
+	}, header)
+
+	local list = new("ScrollingFrame", {
+		Name = "PluginCards", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(14, 74), Size = U2(1, -28, 1, -84),
+		CanvasSize = U2(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = ACCENTS[1],
+	}, surface)
+	local layout = new("UIGridLayout", {
+		CellSize = UDim2.new(1, -4, 0, 158), CellPadding = UDim2.fromOffset(8, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, list)
+	pad(list, 2, 4, 2, 12)
+	local function updateColumns()
+		if not list.Parent then return end
+		layout.CellSize = list.AbsoluteSize.X >= 500
+			and UDim2.new(0.5, -5, 0, 158)
+			or UDim2.new(1, -4, 0, 158)
+	end
+	self._pluginCons[#self._pluginCons + 1] = list:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateColumns)
+	updateColumns()
+
+	local definitions = self:GetPlugins()
+	if #definitions == 0 then
+		txt("TextLabel", {
+			Text = self._pluginLoadError and ("Plugin system unavailable: " .. self._pluginLoadError) or "No plugins are currently available.",
+			Font = G, TextSize = 12, TextColor3 = C.dim, TextWrapped = true,
+			Position = UDim2.fromOffset(18, 88), Size = U2(1, -36, 0, 54),
+		}, surface)
+		return
+	end
+
+	local function notifyAction(label, ok, result)
+		if B.notify then
+			pcall(B.notify, {
+				Title = ok and "Plugins" or "Plugin error",
+				Desc = ok and (label .. " completed.") or tostring(result),
+				Type = ok and "Success" or "Warn", Duration = 4,
+			})
+		end
+	end
+	local function actionButton(parent, label, color, position, size, callback)
+		local button = txt("TextButton", {
+			Text = label, Font = GB, TextSize = 10, TextColor3 = Color3.new(1, 1, 1),
+			TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center,
+			BackgroundColor3 = color, BackgroundTransparency = 0, BorderSizePixel = 0,
+			Position = position, Size = size, AutoButtonColor = false,
+		}, parent)
+		corner(button, 7)
+		button.Activated:Connect(callback)
+		return button
+	end
+	local function run(label, callback)
+		local callOk, result, detail = pcall(callback)
+		local actionOk = callOk and result == true
+		notifyAction(label, actionOk, callOk and (detail or result) or result)
+		self:_renderPluginsSurface()
+	end
+
+	for index, definition in ipairs(definitions) do
+		local id = definition.Id
+		local installed, enabled = definition.Installed == true, definition.Enabled == true
+		local accent = id == "animation" and rgb(157, 112, 255) or rgb(75, 204, 143)
+		local statusText = not installed and "Not installed" or (enabled and "Enabled" or "Disabled")
+		local card = new("Frame", {
+			Name = "Plugin_" .. tostring(id), BackgroundColor3 = C.badge,
+			BorderSizePixel = 0, LayoutOrder = index,
+		}, list)
+		corner(card, 11)
+		stroke(card, C.border, 1)
+		local tile = new("Frame", {
+			BackgroundColor3 = accent, BackgroundTransparency = 0.84,
+			Position = UDim2.fromOffset(11, 10), Size = UDim2.fromOffset(38, 38),
+		}, card)
+		corner(tile, 10)
+		local glyph = mkIcon(tile, definition.Icon or "blocks", 21, accent)
+		glyph.AnchorPoint = V2(0.5, 0.5)
+		glyph.Position = U2(0.5, 0, 0.5, 0)
+		txt("TextLabel", {
+			Text = definition.Name or id, Font = GB, TextSize = 13,
+			Position = UDim2.fromOffset(58, 10), Size = U2(1, -70, 0, 19),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, card)
+		txt("TextLabel", {
+			Text = statusText .. "  ·  v" .. tostring(definition.Version or "1.0"),
+			Font = GM, TextSize = 9, TextColor3 = accent,
+			Position = UDim2.fromOffset(58, 30), Size = U2(1, -70, 0, 16),
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		}, card)
+		txt("TextLabel", {
+			Text = definition.Description or "", Font = G, TextSize = 10,
+			TextColor3 = C.dim, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
+			Position = UDim2.fromOffset(11, 55), Size = U2(1, -22, 0, 48),
+		}, card)
+
+		if not installed then
+			actionButton(card, "Install", accent, U2(0, 11, 1, -35), U2(1, -22, 0, 25), function()
+				run("Install " .. tostring(definition.Name), function() return self:InstallPlugin(id) end)
+			end)
+		else
+			local primary = enabled and "Disable" or "Enable"
+			local method = enabled and "DisablePlugin" or "EnablePlugin"
+			actionButton(card, primary, accent, U2(0, 11, 1, -35), U2(0.5, -16, 0, 25), function()
+				run(primary .. " " .. tostring(definition.Name), function() return self[method](self, id) end)
+			end)
+			actionButton(card, "Uninstall", C.btnBg, U2(0.5, 5, 1, -35), U2(0.5, -16, 0, 25), function()
+				run("Uninstall " .. tostring(definition.Name), function() return self:UninstallPlugin(id) end)
+			end)
+		end
+	end
+end
+
+function M:_buildPluginsSurface(parent)
+	if self._pluginSurface and self._pluginSurface.Parent then return end
+	self._pluginSurface = new("Frame", {
+		Name = "PvPluginLibrary", BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0), Size = U2(1, 0, 1, 0), Visible = false,
+	}, parent)
+	self:_renderPluginsSurface()
+end
+
+function M:_setupPluginsTab()
+	if self._pluginsTab or not self._plugins then return end
+	self._pluginsTab = self:Tab({ Name = "Plugins", Icon = "blocks" })
 end
 
 function M:GetTab(name)
@@ -1916,6 +2166,7 @@ function M:_teardown(removeTab)
 	self._tab = nil
 	self:_closeMenu()
 	self:_cleanupPage()
+	self:_clearPluginConnections()
 	for _, c in ipairs(self._cons) do
 		pcall(function() c:Disconnect() end)
 	end
@@ -1931,6 +2182,7 @@ function M:_teardown(removeTab)
 	self._drawerPanel, self._drawerScale = nil, nil
 	self._navList, self._grid, self._gridLayout, self._d = nil, nil, nil, nil
 	self._dTitle, self._dType, self._dTabs, self._dPages, self._pageRoot, self._indicator = nil, nil, nil, nil, nil, nil
+	self._pluginChrome, self._pluginSurface = nil, nil
 	self._cards, self._sideRefs, self._tabRefs, self._curPages = {}, {}, {}, {}
 	self._scrollers, self._phs, self._viewers = {}, {}, {}
 	self._activeTab, self._selected, self._drawerOpen, self._page = nil, nil, false, nil
@@ -1963,6 +2215,10 @@ end
 function M:Destroy()
 	if not self.alive then
 		return
+	end
+	if self._plugins then
+		pcall(function() self._plugins:Destroy() end)
+		self._plugins = nil
 	end
 	self.alive = false
 	self:_teardown(true)
@@ -2104,6 +2360,7 @@ function M:_build()
 		B.notify({ Title = "Preview UI", Desc = "Create a JustLib window first: JL:Window({...})", Type = "Warn", Duration = 4 })
 		return false
 	end
+	self:_setupPluginsTab()
 	local tab = win:Tab({
 		Name = self._opts.TabName or "Preview", Icon = self.Icon, Type = "Custom", Tooltip = self.Title,
 		OnClose = function()
@@ -2246,6 +2503,11 @@ function M:_build()
 		TextXAlignment = Enum.TextXAlignment.Center, AnchorPoint = V2(0.5, 0), Position = U2(0.5, 0, 0, 112), Size = UDim2.fromOffset(240, 20),
 	}, card)
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
+	self._pluginChrome = {
+		heading = heading, search = searchBox, filter = ddButton,
+		filterList = ddList, close = closeBtn, grid = grid, empty = emptyL,
+	}
+	if self._pluginsTab then self:_buildPluginsSurface(card) end
 
 	-- Details overlay: встроен в ту же вкладку и не создаёт отдельный ScreenGui.
 	local overlay = txt("TextButton", {
@@ -2418,6 +2680,7 @@ function M:_activate(tab)
 	end
 	self:_styleSidebar()
 	self:_applyFilter()
+	self:_setPluginsView(tab == self._pluginsTab)
 	self:_popGrid()
 end
 
