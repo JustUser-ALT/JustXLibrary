@@ -1718,8 +1718,13 @@ function M:UninstallPlugin(id)
 end
 
 function M:_setPluginsView(active)
+	active = active == true
 	for _, object in pairs(self._pluginChrome or {}) do
 		if object and object.Parent then object.Visible = not active end
+	end
+	if active and self._d then
+		self._d.ddList.Visible = false
+		self._d.empty.Visible = false
 	end
 	if self._pluginSurface then self._pluginSurface.Visible = active end
 end
@@ -2505,7 +2510,7 @@ function M:_build()
 	self._d = { empty = emptyL, ddText = ddText, ddList = ddList }
 	self._pluginChrome = {
 		heading = heading, search = searchBox, filter = ddButton,
-		filterList = ddList, close = closeBtn, grid = grid, empty = emptyL,
+		close = closeBtn, grid = grid,
 	}
 	if self._pluginsTab then self:_buildPluginsSurface(card) end
 
