@@ -5498,12 +5498,18 @@ function JL:Window(opts)
     end
     local TABPOS = UDim2.new(0,PADIN,0,PADIN + 36)
     local function offPos(dir) return UDim2.new(dir,PADIN,0,PADIN) end
-    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local _tabCount = 0
+    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local settingsTabId = nil; local _tabCount = 0
     local function styleTab(id,active)
         local u = tabUI[id]; if not u then return end
         tw(u.btn,{BackgroundColor3 = active and Color3.fromRGB(24,44,74) or Color3.fromRGB(34,34,40)},.15)
         local col = active and ACCENTS[1] or C.dim
-        if u.icon:IsA("TextLabel") then u.icon.TextColor3 = col else u.icon.ImageColor3 = col end
+        if u.icon:IsA("TextLabel") then
+            u.icon.TextColor3 = col
+            local image = u.icon:FindFirstChild("JLIconAsset")
+            if image and image:IsA("ImageLabel") then image.ImageColor3 = col end
+        else
+            u.icon.ImageColor3 = col
+        end
         if u.label then u.label.TextColor3 = col end
         u.ind.Visible = active
     end
@@ -6048,8 +6054,9 @@ function JL:Window(opts)
     end
     function Win:Tab(topts)
         topts = topts or {}; local typ = topts.Type or "Grid"; _tabCount = _tabCount + 1; local id = _tabCount
+        local isSettingsTab = topts._SettingsTab == true
         local btn = Instance.new("TextButton"); btn.Size = labelsOn and UDim2.new(0,SBW - 12,0,46) or UDim2.new(0,30,0,30); btn.BackgroundColor3 = Color3.fromRGB(34,34,40); btn.Text = ""; btn.AutoButtonColor = false
-        btn.BorderSizePixel = 0; btn.LayoutOrder = id; btn.Parent = sbCols[1].scroll; corner(8,btn)
+        btn.BorderSizePixel = 0; btn.LayoutOrder = isSettingsTab and 1000000 or id; btn.Parent = sbCols[1].scroll; corner(8,btn)
         sbBtns[id] = btn; btn:GetPropertyChangedSignal("Visible"):Connect(queueSidebar); queueSidebar()
         local ic = mkIcon(btn, topts.Icon or "◼", 16, 14); ic.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8); ic.Size = UDim2.new(0,16,0,16)
         local tabLabel
@@ -6057,13 +6064,14 @@ function JL:Window(opts)
         if ic:IsA("TextLabel") then ic.TextColor3 = C.dim else ic.ImageColor3 = C.dim end
         local ind = Instance.new("Frame"); ind.Size = UDim2.new(0,3,0,14); ind.Position = UDim2.new(0,-5,0.5,-7); ind.BackgroundColor3 = ACCENTS[1]; ind.BorderSizePixel = 0; ind.Visible = false; ind.Parent = btn; corner(2,ind)
         tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id))}
+        if isSettingsTab then settingsTabId = id end
         attachTip(btn, topts.Tooltip or topts.Name)
         local tabLock = attachLockHidden(btn, {Locked = topts.Locked, Hidden = topts.Hidden, LockedMessage = topts.LockedMessage, LockedTitle = topts.LockedTitle, Requires = topts.Requires, HiddenUntil = topts.HiddenUntil, OpenStore = topts.OpenStore})
         local tabFrame = Instance.new("Frame"); tabFrame.Size = UDim2.new(1,-2 * PADIN,1,-2 * PADIN - 36); tabFrame.Position = TABPOS
         tabFrame.BackgroundTransparency = 1; tabFrame.Visible = false; tabFrame.Parent = content
         tabFrames[id] = tabFrame
         btn.MouseButton1Click:Connect(function() switchToTab(id) end)
-        if not activeTabId and not topts.Hidden then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
+        if not activeTabId and not topts.Hidden and not isSettingsTab then activeTabId = id; tabFrame.Visible = true; styleTab(id,true) end
         local Tab = {Frame = tabFrame, Id = id}
         function Tab:SetLocked(v) tabLock.SetLocked(nil, v) end
         function Tab:SetHidden(v)
@@ -7159,7 +7167,7 @@ function JL:Window(opts)
     end)
     function Win:Settings()
         if opts.Settings == false then return nil end
-        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings"})
+        local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings", _SettingsTab = true})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
         local navW = 146
@@ -8324,6 +8332,11 @@ function JL:Window(opts)
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
     end
     if opts.Settings ~= false then Win:Settings() end
+    trackedDefer(function()
+        if _dead or activeTabId then return end
+        local id = settingsTabId
+        if id and tabFrames[id] and tabUI[id] and tabUI[id].btn.Visible then switchToTab(id) end
+    end)
     return Win
 end
 function JL:Unload()
