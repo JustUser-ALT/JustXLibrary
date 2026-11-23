@@ -242,6 +242,7 @@ createControl("Text and Label", function()
     assert(text and label, "Text / Label returned nil")
     text:Set("Text control updated")
     label:Set("Label control updated")
+    controlRefs.TextRow = text
     return true
 end)
 createControl("Screen", function()
@@ -601,8 +602,8 @@ manualSection:Button({
     Name = "Test Window Navigation",
     Callback = function()
         test("Window Navigation", function()
-            local textControl = controlRefs["Text and Label"]
-            assert(textControl, "Text test control missing")
+            local textControl = controlRefs.TextRow
+            assert(textControl and textControl.Row, "Text test row missing")
             assert(type(Window.GoTo) == "function", "Window:GoTo missing")
             return Window:GoTo(textControl.Row) == true
         end)
