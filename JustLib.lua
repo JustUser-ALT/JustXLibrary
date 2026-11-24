@@ -7098,7 +7098,9 @@ function JL:Window(opts)
 
     local function amShowInfo(entry)
         if AM.infoLayer then AM.infoLayer:Destroy(); AM.infoLayer=nil end
-        local layer=Instance.new("Frame"); layer.Name="AddonInfoLayer"; layer.Size=UDim2.new(1,0,1,0); layer.BackgroundColor3=Color3.fromRGB(0,0,0); layer.BackgroundTransparency=0.35; layer.ZIndex=110; layer.Parent=AM.panel
+        local host=(AM.panel and AM.panel.Visible) and AM.panel or win
+        if not host then return end
+        local layer=Instance.new("Frame"); layer.Name="AddonInfoLayer"; layer.Size=UDim2.new(1,0,1,0); layer.BackgroundColor3=Color3.fromRGB(0,0,0); layer.BackgroundTransparency=0.35; layer.ZIndex=110; layer.Parent=host
         local box=Instance.new("Frame"); box.Name="AddonInfo"; box.Size=UDim2.new(1,-34,0,220); box.AnchorPoint=Vector2.new(0.5,0.5); box.Position=UDim2.new(0.5,0,0.5,0); box.BackgroundColor3=C.panel; box.BorderSizePixel=0; box.ZIndex=111; box.Parent=layer; corner(12,box); stroke(C.border,1,box)
         newTxt({Parent=box,Text="ADDON DETAILS",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-52,0,14),Pos=UDim2.new(0,16,0,14),Z=112})
         local close=amUiButton(box,"×",1,function() layer:Destroy(); AM.infoLayer=nil end); close.Size=UDim2.new(0,28,0,26); close.Position=UDim2.new(1,-40,0,8); close.ZIndex=113
@@ -8303,14 +8305,27 @@ function JL:Window(opts)
                 local tag = newTxt({Parent=card,Text=isUser and (data.loaded and "ENABLED" or "USER ADDON") or "BUILT-IN PREVIEW",Font=GB,Size=6,Color=isUser and (data.loaded and Color3.fromRGB(110,220,160) or C.dim) or ACCENTS[1],Sz=UDim2.new(1,-18,0,10),Pos=UDim2.new(0,9,0,27)})
                 local desc = newTxt({Parent=card,Text=tostring(data.desc or "Addon preview"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-18,0,12),Pos=UDim2.new(0,9,0,40)})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
-                local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "INFO"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
-                action.MouseButton1Click:Connect(function()
-                    if isUser then
-                        AM.openLibrary()
-                    else
-                        JL:Notify({Title=tostring(data.name),Desc="This is a catalogue preview card. Addon actions will be connected in a later step.",Type="Info",Duration=4})
-                    end
-                end)
+                if isUser then
+                    local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = "MANAGE ADDON"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
+                    action.MouseButton1Click:Connect(function() AM.openLibrary() end)
+                else
+                    local info = Instance.new("TextButton"); info.Name="HomeAddonInfo"; info.Size=UDim2.new(0.5,-11,0,15); info.Position=UDim2.new(0,9,1,-18); info.BackgroundColor3=C.btnBg; info.BorderSizePixel=0; info.AutoButtonColor=false; info.Text="INFO"; info.Font=GB; info.TextSize=8; info.TextColor3=C.txt; info.Parent=card; corner(5,info)
+                    local install = Instance.new("TextButton"); install.Name="HomeAddonInstall"; install.Size=UDim2.new(0.5,-11,0,15); install.Position=UDim2.new(0.5,2,1,-18); install.BackgroundColor3=data.accent or ACCENTS[1]; install.BorderSizePixel=0; install.AutoButtonColor=false; install.Text="INSTALL"; install.Font=GB; install.TextSize=8; install.TextColor3=Color3.new(1,1,1); install.Parent=card; corner(5,install)
+                    info.MouseButton1Click:Connect(function()
+                        local entry=data
+                        for _,catalogEntry in ipairs(AM.catalog or {}) do
+                            if catalogEntry.id==data.id then entry=catalogEntry; break end
+                        end
+                        amShowInfo(entry)
+                    end)
+                    install.MouseButton1Click:Connect(function()
+                        if not data.id or AM.catalogDeleted[data.id] then return end
+                        AM.catalogInstalled[data.id]=true
+                        card.Visible=false
+                        if AM.applySearch and AM.panel then AM.applySearch() end
+                        JL:Notify({Title="Addon Added",Desc=tostring(data.name).." moved to Installed (visual preview).",Type="Success",Duration=3})
+                    end)
+                end
             end
 
             local samples = {
