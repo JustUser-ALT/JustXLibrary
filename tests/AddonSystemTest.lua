@@ -168,7 +168,6 @@ local windowOk, Window = pcall(function()
         HubId = "AddonSystemTest",
         Width = 700,
         Height = 540,
-        LoadIcons = false,
         Settings = true,
         AddonsFolder = TEST_FOLDER,
     })
