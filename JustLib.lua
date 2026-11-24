@@ -7240,6 +7240,15 @@ function JL:Window(opts)
         end
     end
 
+    function AM.openLibrary()
+        if not AM.tab then
+            AM.scan()
+            AM.buildTab()
+        end
+        if AM.tab and AM.tab.Select then AM.tab:Select() end
+        return AM.tab
+    end
+
     function AM.removeTab()
         if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
         if AM.tab then
@@ -8272,6 +8281,21 @@ function JL:Window(opts)
             newTxt({Parent=heading,Text="ADDONS",Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(0.6,0,1,0),Pos=UDim2.new(0,2,0,0)})
             local countText = newTxt({Parent=heading,Text="BUILT-IN  ·  USER",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(0.4,0,1,0),Pos=UDim2.new(0.6,0,0,0)})
             countText.TextXAlignment = Enum.TextXAlignment.Right
+            local browse = Instance.new("TextButton")
+            browse.Name = "BrowseAllAddons"
+            browse.Size = UDim2.new(0,76,0,20)
+            browse.Position = UDim2.new(1,-78,0,0)
+            browse.BackgroundColor3 = C.btnBg
+            browse.BorderSizePixel = 0
+            browse.AutoButtonColor = false
+            browse.Text = "VIEW ALL  ›"
+            browse.Font = GB
+            browse.TextSize = 8
+            browse.TextColor3 = ACCENTS[1]
+            browse.Parent = heading
+            corner(5,browse)
+            countText.Size = UDim2.new(0.4,-82,1,0)
+            browse.MouseButton1Click:Connect(function() AM.openLibrary() end)
 
             local gridHost = Instance.new("Frame"); gridHost.Name = "HomeAddonGrid"; gridHost.Size = UDim2.new(1,0,0,176); gridHost.BackgroundTransparency = 1; gridHost.LayoutOrder = 9001; gridHost.Parent = listCon
             local grid = Instance.new("UIGridLayout"); grid.CellSize = UDim2.new(0.5,-5,0,76); grid.CellPadding = UDim2.new(0,6,0,6); grid.SortOrder = Enum.SortOrder.LayoutOrder; grid.Parent = gridHost
@@ -8288,8 +8312,7 @@ function JL:Window(opts)
                 local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "PREVIEW"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
                 action.MouseButton1Click:Connect(function()
                     if isUser then
-                        AM.boot()
-                        if AM.tab and AM.tab.Select then AM.tab:Select() else JL:Notify({Title="Addons",Desc="Enable Addons in Settings to manage user addons.",Type="Info",Duration=4}) end
+                        AM.openLibrary()
                     else
                         JL:Notify({Title=tostring(data.name),Desc="This is a catalogue preview card. Addon actions will be connected in a later step.",Type="Info",Duration=4})
                     end
