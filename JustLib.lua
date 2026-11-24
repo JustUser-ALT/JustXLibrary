@@ -8252,7 +8252,7 @@ function JL:Window(opts)
             ord = ord + 1
             local heading = Instance.new("Frame"); heading.Size = UDim2.new(1,0,0,20); heading.BackgroundTransparency = 1; heading.LayoutOrder = 9000; heading.Parent = listCon
             newTxt({Parent=heading,Text="ADDONS",Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(0.6,0,1,0),Pos=UDim2.new(0,2,0,0)})
-            local countText = newTxt({Parent=heading,Text="BUILT-IN  ·  USER",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(0.4,0,1,0),Pos=UDim2.new(0.6,0,0,0)})
+            local countText = newTxt({Parent=heading,Text="DISCOVER  ·  IMPORTED",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(0.4,0,1,0),Pos=UDim2.new(0.6,0,0,0)})
             countText.TextXAlignment = Enum.TextXAlignment.Right
             local browse = Instance.new("TextButton")
             browse.Name = "BrowseAllAddons"
@@ -8282,7 +8282,7 @@ function JL:Window(opts)
                 local tag = newTxt({Parent=card,Text=isUser and (data.loaded and "ENABLED" or "USER ADDON") or "BUILT-IN PREVIEW",Font=GB,Size=6,Color=isUser and (data.loaded and Color3.fromRGB(110,220,160) or C.dim) or ACCENTS[1],Sz=UDim2.new(1,-18,0,10),Pos=UDim2.new(0,9,0,27)})
                 local desc = newTxt({Parent=card,Text=tostring(data.desc or "Addon preview"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-18,0,12),Pos=UDim2.new(0,9,0,40)})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
-                local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "PREVIEW"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
+                local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "INFO"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
                 action.MouseButton1Click:Connect(function()
                     if isUser then
                         AM.openLibrary()
@@ -8293,13 +8293,13 @@ function JL:Window(opts)
             end
 
             local samples = {
-                {name="Server Finder",icon="globe",desc="Discover and switch between game servers."},
-                {name="Player Toolkit",icon="users",desc="Quick player information and utilities."},
-                {name="UI Themes",icon="palette",desc="Customize the look of your hub."},
-                {name="Session Monitor",icon="activity",desc="Keep an eye on your current session."}
+                {id="server-finder",name="Server Finder",icon="globe",desc="Explore available servers and find a session."},
+                {id="player-toolkit",name="Player Toolkit",icon="users",desc="Quick player lookups and useful actions."},
+                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub."},
+                {id="session-monitor",name="Session Monitor",icon="activity",desc="Keep an eye on your current session."}
             }
             local cardOrder = 1
-            for _,sample in ipairs(samples) do addonCard(sample,cardOrder,false); cardOrder = cardOrder + 1 end
+            for _,sample in ipairs(samples) do if not AM.catalogInstalled[sample.id] then addonCard(sample,cardOrder,false); cardOrder = cardOrder + 1 end end
             for _,a in ipairs(AM.list or {}) do
                 addonCard({name=(a.meta and a.meta.name) or a.file,icon="puzzle",desc=(a.meta and a.meta.desc) or ("User addon · "..tostring(a.file)),loaded=a.loaded},cardOrder,true)
                 cardOrder = cardOrder + 1
