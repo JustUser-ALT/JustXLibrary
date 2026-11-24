@@ -1720,6 +1720,10 @@ function JL:Window(opts)
         if cardAccent and cardAccent.Parent then
             cardAccent.BackgroundColor3 = enabled and Color3.fromRGB(95,205,145) or ACCENTS[1]
         end
+        local cardAccent = a.cardAccent
+        if cardAccent and cardAccent.Parent then
+            cardAccent.BackgroundColor3 = enabled and Color3.fromRGB(95,205,145) or ACCENTS[1]
+        end
         local toggle = a.enableButton
         if toggle and toggle.Parent then
             toggle.Text = enabled and "●  Enabled" or "○  Enable Addon"
