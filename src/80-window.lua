@@ -1566,7 +1566,7 @@ function JL:Window(opts)
         local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=83})
         local install = Instance.new("TextButton")
         install.Size = UDim2.new(0,116,0,30); install.Position = UDim2.new(1,-130,1,-42)
-        install.BackgroundColor3 = ACC; install.BorderSizePixel = 0; install.Text = "Install"
+        install.BackgroundColor3 = ACCENTS[1]; install.BorderSizePixel = 0; install.Text = "Install"
         install.Font = GB; install.TextSize = 12; install.TextColor3 = Color3.new(1,1,1)
         install.ZIndex = 84; install.Parent = panel; corner(7,install)
         local function closeImport()
