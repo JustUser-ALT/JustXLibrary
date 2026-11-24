@@ -6709,12 +6709,12 @@ function JL:Window(opts)
     end
 
     local function amOpenImport()
-        if not AM.tab or AM.importGui then return end
+        if not AM.panel or AM.importGui then return end
         local overlay = Instance.new("TextButton")
         overlay.Name = "AddonImportOverlay"; overlay.Size = UDim2.new(1,0,1,0)
         overlay.BackgroundColor3 = Color3.new(0,0,0); overlay.BackgroundTransparency = 0.35
         overlay.BorderSizePixel = 0; overlay.Text = ""; overlay.AutoButtonColor = false
-        overlay.ZIndex = 80; overlay.Parent = AM.tab.Frame
+        overlay.ZIndex = 120; overlay.Parent = AM.panel
         local panel = Instance.new("Frame")
         panel.Name = "AddonImportPanel"; panel.AnchorPoint = Vector2.new(0.5,0.5)
         panel.Position = UDim2.new(0.5,0,0.5,0); panel.Size = UDim2.new(1,-24,0,360)
@@ -7193,13 +7193,135 @@ function JL:Window(opts)
         return card
     end
 
-    function AM.buildTab()
-        if AM.tab then return end
+    function AM.buildPanel()
+        if AM.panel then return end
         AM.building = true
-        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "Custom", Tooltip = "Addons"})
+        local panelW = math.min(CWW - 8, 390)
+        panelW = math.max(260, panelW)
+        local panel = Instance.new("Frame")
+        panel.Name = "JLUtilitySidebar"
+        panel.Size = UDim2.new(0, panelW, 1, 0)
+        panel.Position = UDim2.new(0, SBW + GAP + CWW - panelW, 0, 0)
+        panel.BackgroundColor3 = C.sidebar
+        panel.BorderSizePixel = 0
+        panel.ZIndex = 70
+        panel.Parent = win
+        corner(12, panel)
+        stroke(C.border, 1, panel)
+        AM.panel = panel
+
+        local header = Instance.new("Frame")
+        header.Name = "UtilityHeader"
+        header.Size = UDim2.new(1, -20, 0, 42)
+        header.Position = UDim2.new(0, 10, 0, 8)
+        header.BackgroundTransparency = 1
+        header.ZIndex = 72
+        header.Parent = panel
+        local title = newTxt({Parent=header,Text="ADDON LIBRARY",Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-42,0,18),Pos=UDim2.new(0,0,0,1),Z=73})
+        local subtitle = newTxt({Parent=header,Text="Your extensions and utilities",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-42,0,14),Pos=UDim2.new(0,0,0,21),Z=73})
+        local close = Instance.new("TextButton")
+        close.Name = "CloseUtilitySidebar"
+        close.Size = UDim2.new(0,30,0,30)
+        close.Position = UDim2.new(1,-30,0,2)
+        close.BackgroundColor3 = C.btnBg
+        close.BorderSizePixel = 0
+        close.AutoButtonColor = false
+        close.Text = "×"
+        close.Font = GB
+        close.TextSize = 19
+        close.TextColor3 = C.dim
+        close.ZIndex = 74
+        close.Parent = header
+        corner(8,close)
+        close.MouseButton1Click:Connect(function() AM.closeLibrary() end)
+
+        local searchWrap = Instance.new("Frame")
+        searchWrap.Name = "AddonSearchWrap"
+        searchWrap.Size = UDim2.new(1,-20,0,32)
+        searchWrap.Position = UDim2.new(0,10,0,56)
+        searchWrap.BackgroundColor3 = C.pHdr
+        searchWrap.BorderSizePixel = 0
+        searchWrap.ZIndex = 72
+        searchWrap.Parent = panel
+        corner(8,searchWrap)
+        local search = Instance.new("TextBox")
+        search.Name = "AddonSearch"
+        search.Size = UDim2.new(1,-18,1,0)
+        search.Position = UDim2.new(0,9,0,0)
+        search.BackgroundTransparency = 1
+        search.BorderSizePixel = 0
+        search.ClearTextOnFocus = false
+        search.Text = ""
+        search.PlaceholderText = "Search installed addons..."
+        search.Font = GM
+        search.TextSize = 10
+        search.TextColor3 = C.txt
+        search.PlaceholderColor3 = C.dim
+        search.TextXAlignment = Enum.TextXAlignment.Left
+        search.ZIndex = 73
+        search.Parent = searchWrap
+
+        local toolbar = Instance.new("Frame")
+        toolbar.Name = "AddonToolbar"
+        toolbar.Size = UDim2.new(1,-20,0,34)
+        toolbar.Position = UDim2.new(0,10,0,96)
+        toolbar.BackgroundTransparency = 1
+        toolbar.ZIndex = 72
+        toolbar.Parent = panel
+        local import = amUiButton(toolbar,"＋  Import",1,amOpenImport,ACCENTS[1])
+        import.Size = UDim2.new(0.34,-5,1,0)
+        local reload = amUiButton(toolbar,"↻  Reload",2,function() AM.refresh() end)
+        reload.Size = UDim2.new(0.33,-5,1,0)
+        reload.Position = UDim2.new(0.34,3,0,0)
+        local disable = amUiButton(toolbar,"Disable All",3,function() AM.disableAll(); AM.applySearch() end)
+        disable.Size = UDim2.new(0.33,-3,1,0)
+        disable.Position = UDim2.new(0.67,3,0,0)
+        disable.BackgroundColor3 = C.pHdr
+        disable.TextColor3 = C.dim
+
+        local autoRow = Instance.new("Frame")
+        autoRow.Name = "AddonAutoSaveRow"
+        autoRow.Size = UDim2.new(1,-20,0,28)
+        autoRow.Position = UDim2.new(0,10,0,136)
+        autoRow.BackgroundTransparency = 1
+        autoRow.ZIndex = 72
+        autoRow.Parent = panel
+        local autoLabel = newTxt({Parent=autoRow,Text="AUTO-ENABLE SAVED ADDONS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-58,1,0),Pos=UDim2.new(0,0,0,0),Z=73})
+        local autoButton = Instance.new("TextButton")
+        autoButton.Size = UDim2.new(0,48,0,22)
+        autoButton.Position = UDim2.new(1,-48,0.5,-11)
+        autoButton.BackgroundColor3 = C.pHdr
+        autoButton.BorderSizePixel = 0
+        autoButton.AutoButtonColor = false
+        autoButton.Font = GB
+        autoButton.TextSize = 8
+        autoButton.TextColor3 = C.dim
+        autoButton.ZIndex = 73
+        autoButton.Parent = autoRow
+        corner(7,autoButton)
+        local autoOn = cfgGet("_addons_autosave", false) == true
+        JL._addonAutoSave = autoOn
+        local function paintAuto()
+            autoButton.Text = autoOn and "ON" or "OFF"
+            autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
+            autoButton.TextColor3 = autoOn and Color3.fromRGB(125,230,170) or C.dim
+        end
+        paintAuto()
+        autoButton.MouseButton1Click:Connect(function()
+            autoOn = not autoOn
+            JL._addonAutoSave = autoOn
+            cfgSet("_addons_autosave",autoOn)
+            paintAuto()
+            if autoOn then cfgFlush() end
+            JL:Notify({Title="Addons",Desc=autoOn and "Auto-enable saved addons is on." or "Auto-enable saved addons is off.",Type="Info",Duration=3})
+        end)
+
+        local count = newTxt({Parent=panel,Text="",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,10,0,166),Z=72})
+        count.Name = "AddonCount"
         local scroll = Instance.new("ScrollingFrame")
         scroll.Name = "AddonLibraryScroll"
-        scroll.Size = UDim2.new(1,0,1,0)
+        scroll.Size = UDim2.new(1,-16,1,-190)
+        scroll.Position = UDim2.new(0,8,0,184)
         scroll.BackgroundTransparency = 1
         scroll.BorderSizePixel = 0
         scroll.ScrollBarThickness = 3
@@ -7208,31 +7330,41 @@ function JL:Window(opts)
         scroll.Active = true
         scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         scroll.CanvasSize = UDim2.new(0,0,0,0)
-        scroll.Parent = AM.tab.Frame
+        scroll.ZIndex = 72
+        scroll.Parent = panel
         local list = Instance.new("UIListLayout")
         list.FillDirection = Enum.FillDirection.Vertical
         list.SortOrder = Enum.SortOrder.LayoutOrder
-        list.Padding = UDim.new(0,10)
+        list.Padding = UDim.new(0,8)
         list.Parent = scroll
         local padding = Instance.new("UIPadding")
-        padding.PaddingTop = UDim.new(0,8)
-        padding.PaddingBottom = UDim.new(0,10)
-        padding.PaddingLeft = UDim.new(0,8)
-        padding.PaddingRight = UDim.new(0,8)
+        padding.PaddingTop = UDim.new(0,4)
+        padding.PaddingBottom = UDim.new(0,8)
+        padding.PaddingLeft = UDim.new(0,2)
+        padding.PaddingRight = UDim.new(0,5)
         padding.Parent = scroll
 
-        amBuildManager(scroll,1)
+        AM.searchBox = search
+        AM.resultLabel = count
+        AM.cardScroll = scroll
+        if AM.fsNote then
+            local note = amUiText(scroll,AM.fsNote,9,ERR_COL,34,1,GM)
+            note.Name = "AddonFilesystemWarning"
+        end
         if #AM.list == 0 and not AM.fsNote then
-            local empty,body = amUiCard(scroll,2,C.dim)
-            amUiText(body,"No addons installed",12,C.txt,22,1,GB)
-            amUiText(body,"Press Import Addon to install your first Lua addon, or place a .lua / .txt / .luau file in the Addons folder and reload.",10,C.dim,42,2,GM)
+            local empty,body = amUiCard(scroll,1,C.dim)
+            empty.Name = "AddonEmptyState"
+            amUiText(body,"Your library is empty",12,C.txt,22,1,GB)
+            amUiText(body,"Import a Lua addon or place a .lua / .txt / .luau file in the Addons folder.",10,C.dim,34,2,GM)
         else
             for i,a in ipairs(AM.list) do
-                local ok,e = pcall(amBuildCard,a,scroll,i+1)
+                local ok,e = pcall(amBuildCard,a,scroll,i + (AM.fsNote and 1 or 0))
                 if not ok then warn("[JustLib] addon '"..tostring(a.file).."' UI failed: "..tostring(e)) end
             end
         end
+        search:GetPropertyChangedSignal("Text"):Connect(function() AM.applySearch() end)
         AM.building = false
+        AM.applySearch()
         for _,a in ipairs(AM.list) do
             if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
                 if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
@@ -7240,45 +7372,65 @@ function JL:Window(opts)
         end
     end
 
-    function AM.openLibrary()
-        if not AM.tab then
-            AM.scan()
-            AM.buildTab()
+    function AM.applySearch()
+        if not AM.panel then return end
+        local query = tostring(AM.searchBox and AM.searchBox.Text or ""):lower():gsub("^%s+",""):gsub("%s+$","")
+        local shown = 0
+        for _,a in ipairs(AM.list) do
+            local hay = table.concat({tostring(a.meta.name or ""),tostring(a.meta.author or ""),tostring(a.meta.desc or ""),tostring(a.file or "")}," "):lower()
+            local visible = query == "" or hay:find(query,1,true) ~= nil
+            if a.card and a.card.Parent then a.card.Visible = visible end
+            if visible then shown = shown + 1 end
         end
-        if AM.tab and AM.tab.Select then AM.tab:Select() end
-        return AM.tab
+        if AM.resultLabel and AM.resultLabel.Parent then
+            AM.resultLabel.Text = tostring(shown).." INSTALLED  ·  "..tostring(#AM.list).." TOTAL"
+        end
+    end
+
+    function AM.openLibrary()
+        if not AM.panel then
+            AM.scan()
+            AM.buildPanel()
+        end
+        if AM.panel then AM.panel.Visible = true end
+        return AM.panel
+    end
+
+    function AM.closeLibrary()
+        if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
+        if AM.panel then AM.panel.Visible = false end
     end
 
     function AM.removeTab()
-        if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
-        if AM.tab then
-            local t = AM.tab; AM.tab = nil
-            pcall(function() t:Remove() end)
-        end
+        AM.closeLibrary()
+        if AM.panel then pcall(function() AM.panel:Destroy() end); AM.panel = nil end
+        AM.searchBox = nil
+        AM.resultLabel = nil
+        AM.cardScroll = nil
     end
 
     function AM.refresh()
-        if not AM.tab then return end
+        if not AM.panel then return end
         local keep = {}
         for _, a in ipairs(AM.list) do if a.loaded then keep[a.id] = true end end
         AM.disableAll()
         AM.removeTab()
         AM.scan()
-        AM.buildTab()
+        AM.buildPanel()
         for _, a in ipairs(AM.list) do
             if keep[a.id] and not a.loaded then
                 if AM.enable(a) then pcall(function() a.enableCtl:Set(true) end) end
             end
         end
-        if AM.tab and AM.tab.Select then AM.tab:Select() end
+        if AM.panel then AM.panel.Visible = true end
     end
 
     function AM.setEnabled(on)
         if on then
-            if not AM.tab then AM.scan(); AM.buildTab() end
+            AM.scan()
         else
             AM.disableAll()
-            AM.removeTab()
+            AM.closeLibrary()
         end
     end
     function AM.boot()
@@ -8013,10 +8165,10 @@ function JL:Window(opts)
             if JL._preview then JL._preview:Open() else JL:Notify({Title = "Preview UI", Desc = "No Preview created. Use JL:Preview()", Type = "Warn", Duration = 3}) end
         end)
         local pD = newPage("Addons", "Extensions loaded from the Addons folder")
-        addSwitch(pD, "Enable Addons", "Shows the Addons tab and lets you load addon files. Addons are code with full access: only use ones you trust", "_addons_on", false, function(v) AM.setEnabled(v) end)
+        addSwitch(pD, "Enable Addons", "Allows addon files to be loaded. Open the Utility Sidebar from Home to manage them. Addons execute with full access: only use trusted code.", "_addons_on", false, function(v) AM.setEnabled(v) end)
         addSwitch(pD, "Version Warnings", "Warns when an addon was made for a different JustLib version", "_addons_warn", true, function() end)
         addButton(pD, "Reload Addons", "Re-reads the folder and restarts running addons", "Reload", false, function()
-            if AM.tab then AM.refresh() else JL:Notify({Title = "Addons", Desc = "Turn on Enable Addons first", Type = "Warn", Duration = 3}) end
+            AM.scan(); if AM.panel then AM.refresh() else AM.openLibrary() end
         end)
         addValue(pD, "Folder", "Put .lua / .txt files here. Mark functions with --@toggle / --@button / --@slider / --@dropdown above them", AM.dir)
         local pR = newPage("Remote", "Floating quick-access panel for toggles, buttons and keybinds")
