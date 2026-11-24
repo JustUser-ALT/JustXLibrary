@@ -1202,6 +1202,19 @@ function JL:Window(opts)
     end
     local CTRL_KINDS = {toggle = true, button = true, slider = true, dropdown = true, input = true, label = true, divider = true}
     local NUMERIC_MODS = {default = true, min = true, max = true, step = true}
+    local function amModernMeta(src, fallback)
+        local info = src:match("Info%s*=%s*{(.-)}") or ""
+        local function field(key)
+            return info:match(key .. "%s*=%s*[\"']([^\"']*)[\"']")
+        end
+        return {
+            name = field("Name") or fallback or "Addon",
+            author = field("Author"),
+            version = field("Version"),
+            desc = field("Description"),
+            lib = field("Library"),
+        }
+    end
     local function amParse(src)
         local meta, ctrls, notes = {}, {}, {}
         local pending, libLine
@@ -1292,7 +1305,7 @@ function JL:Window(opts)
                     src = src:gsub("^\239\187\191", "")
                     local modern = src:match("^%s*return%s*{") ~= nil
                     local meta, ctrls, notes
-                    if modern then meta, ctrls, notes = {name = base}, {}, {}
+                    if modern then meta, ctrls, notes = amModernMeta(src, base), {}, {}
                     else meta, ctrls, notes = amParse(src) end
                     if not meta.name or meta.name == "" then meta.name = base end
                     local a = {id = id, file = base .. "." .. ext, src = src, meta = meta, ctrls = ctrls, notes = notes, modern = modern, loaded = false, keeps = {}, unload = {}}
@@ -1681,7 +1694,7 @@ function JL:Window(opts)
             end
             local modern = code:match("^%s*return%s*{") ~= nil
             local meta, ctrls, notes
-            if modern then meta, ctrls, notes = {name = "New Addon"}, {}, {}
+            if modern then meta, ctrls, notes = amModernMeta(code, "New Addon"), {}, {}
             else meta, ctrls, notes = amParse(code) end
             if not modern and (not meta.name or amTrim(meta.name) == "") then
                 status.Text = "Missing required metadata: --@name"; status.TextColor3 = ERR_COL
