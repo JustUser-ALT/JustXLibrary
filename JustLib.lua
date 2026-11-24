@@ -7099,6 +7099,7 @@ function JL:Window(opts)
         {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4},
     }
     AM.catalogInstalled = AM.catalogInstalled or {}
+    AM.catalogDeleted = AM.catalogDeleted or {}
     AM.activeView = AM.activeView or "Discover"
 
     local function amShowInfo(entry)
@@ -7168,7 +7169,7 @@ function JL:Window(opts)
                     end
                 end, C.btnBg); main.Size=UDim2.new(0.34,-4,1,0); main.Position=UDim2.new(0.33,2,0,0); main.Name="AddonUninstall"
                 local del=amUiButton(actions,"DELETE",3,function()
-                    if not isFile then AM.catalogInstalled[entry.id]=nil; AM.applySearch(); JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
+                    if not isFile then AM.catalogInstalled[entry.id]=nil; AM.catalogDeleted[entry.id]=true; AM.applySearch(); JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
                     else JL:Notify({Title="Addon Manager",Desc="Use the source manager to remove this file addon.",Type="Info",Duration=3}) end
                 end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.66,4,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
             else
@@ -7182,13 +7183,13 @@ function JL:Window(opts)
         if isDiscover then
             for i,entry in ipairs(AM.catalog) do
                 local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
-                if (query=="" or hay:find(query,1,true)) and not AM.catalogInstalled[entry.id] then shown=shown+1; makeCard(entry,shown,false,false) end
+                if (query=="" or hay:find(query,1,true)) and not AM.catalogInstalled[entry.id] and not AM.catalogDeleted[entry.id] then shown=shown+1; makeCard(entry,shown,false,false) end
             end
             if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"No addons found",12,C.txt,22,1,GB); amUiText(body,"Try a different search term.",9,C.dim,18,2,GM) end
             if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." AVAILABLE ADDONS" end
         else
             for i,entry in ipairs(AM.catalog) do
-                if AM.catalogInstalled[entry.id] then
+                if AM.catalogInstalled[entry.id] and not AM.catalogDeleted[entry.id] then
                     local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
                     if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,false) end
                 end
@@ -7200,6 +7201,14 @@ function JL:Window(opts)
             end
             if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"Nothing installed yet",12,C.txt,22,1,GB); amUiText(body,"Explore the catalogue or use + to add an addon source.",9,C.dim,24,2,GM) end
             if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." INSTALLED ADDONS" end
+        end
+        if win and win.GetDescendants then
+            for _,node in ipairs(win:GetDescendants()) do
+                if node:IsA("GuiObject") and node:GetAttribute("AddonCatalogId") then
+                    local id=node:GetAttribute("AddonCatalogId")
+                    node.Visible = not AM.catalogInstalled[id] and not AM.catalogDeleted[id]
+                end
+            end
         end
         if AM.discoverButton and AM.installedButton then
             local active=AM.activeView=="Installed"
@@ -8274,7 +8283,7 @@ function JL:Window(opts)
             local grid = Instance.new("UIGridLayout"); grid.CellSize = UDim2.new(0.5,-5,0,76); grid.CellPadding = UDim2.new(0,6,0,6); grid.SortOrder = Enum.SortOrder.LayoutOrder; grid.Parent = gridHost
 
             local function addonCard(data, order, isUser)
-                local card = Instance.new("Frame"); card.Name = isUser and "UserAddonCard" or "BuiltinAddonCard"; card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.LayoutOrder = order; card.Parent = gridHost; corner(9,card); stroke(C.border,1,card)
+                local card = Instance.new("Frame"); card.Name = isUser and "UserAddonCard" or "BuiltinAddonCard"; if data.id then card:SetAttribute("AddonCatalogId",data.id) end; card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.LayoutOrder = order; card.Parent = gridHost; corner(9,card); stroke(C.border,1,card)
                 local accent = Instance.new("Frame"); accent.Size = UDim2.new(0,3,1,-16); accent.Position = UDim2.new(0,0,0,8); accent.BackgroundColor3 = data.accent or ACCENTS[((order-1)%#ACCENTS)+1]; accent.BorderSizePixel = 0; accent.Parent = card; corner(2,accent)
                 local glyph = mkIcon(card,data.icon or "puzzle",16,3); glyph.Position = UDim2.new(0,9,0,8); glyph.Size = UDim2.new(0,16,0,16)
                 local title = newTxt({Parent=card,Text=tostring(data.name or "Addon"),Font=GB,Size=10,Color=C.txt,Sz=UDim2.new(1,-34,0,16),Pos=UDim2.new(0,31,0,8)})
