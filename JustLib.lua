@@ -6910,11 +6910,11 @@ function JL:Window(opts)
         local padding = Instance.new("UIPadding")
         padding.PaddingBottom = UDim.new(0,10)
         padding.Parent = body
-        return card, body, bar
+        return card, body, nil
     end
 
     local function amBuildCard(a, parent, order)
-        local card, body, accent = amUiCard(parent, order, ACCENTS[1])
+        local card, body = amUiCard(parent, order, ACCENTS[1])
         a.card = card
         local head = Instance.new("Frame")
         head.Name = "AddonHeader"
@@ -6950,7 +6950,7 @@ function JL:Window(opts)
         badge.Parent = head
         corner(7,badge)
         a.cardBadge = badge
-        a.cardAccent = accent
+        a.cardAccent = nil
 
         local meta = {}
         if a.meta.author and a.meta.author ~= "" then meta[#meta+1] = "by " .. tostring(a.meta.author) end
@@ -7158,9 +7158,8 @@ function JL:Window(opts)
         end
         local function makeCard(entry,order,isInstalled,isFile)
             local accent=ACCENTS[((order-1)%#ACCENTS)+1]
-            local card=Instance.new("Frame"); card.Name="AddonShowcaseCard"; card.Size=UDim2.new(1,-16,0,132); card.BackgroundColor3=C.pHdr; card.BorderSizePixel=0; card.LayoutOrder=order; card.Parent=AM.cardScroll; corner(12,card); stroke(C.border,1,card)
-            local bar=Instance.new("Frame"); bar.Size=UDim2.new(0,3,1,-20); bar.Position=UDim2.new(0,0,0,10); bar.BackgroundColor3=accent; bar.BorderSizePixel=0; bar.Parent=card; corner(2,bar)
-            local art=Instance.new("Frame"); art.Name="AddonArtwork"; art.Size=UDim2.new(0,88,0,88); art.Position=UDim2.new(0,12,0,12); art.BackgroundColor3=C.panel; art.BorderSizePixel=0; art.ClipsDescendants=true; art.Parent=card; corner(10,art)
+            local card=Instance.new("Frame"); card.Name="AddonShowcaseCard"; card.Size=UDim2.new(1,-16,0,144); card.BackgroundColor3=C.pHdr; card.BorderSizePixel=0; card.LayoutOrder=order; card.Parent=AM.cardScroll; corner(12,card); stroke(C.border,1,card)
+            local art=Instance.new("Frame"); art.Name="AddonArtwork"; art.Size=UDim2.new(0,88,0,88); art.Position=UDim2.new(0,16,0,12); art.BackgroundColor3=C.panel; art.BorderSizePixel=0; art.ClipsDescendants=true; art.Parent=card; corner(10,art)
             local imageSource=amImageSource(entry.image)
             if imageSource then
                 local image=Instance.new("ImageLabel"); image.Name="AddonImage"; image.Size=UDim2.new(1,0,1,0); image.BackgroundTransparency=1; image.BorderSizePixel=0; image.Image=imageSource; image.ScaleType=Enum.ScaleType.Crop; image.Parent=art
@@ -7168,27 +7167,27 @@ function JL:Window(opts)
                 local glyph=mkIcon(art,entry.icon or "puzzle",30,74); glyph.AnchorPoint=Vector2.new(0.5,0.5); glyph.Position=UDim2.new(0.5,0,0.5,0); glyph.Size=UDim2.new(0,34,0,34)
                 if glyph:IsA("TextLabel") then glyph.TextColor3=accent end
             end
-            local content=Instance.new("Frame"); content.Name="AddonCardContent"; content.Size=UDim2.new(1,-118,1,-20); content.Position=UDim2.new(0,110,0,10); content.BackgroundTransparency=1; content.Parent=card
+            local content=Instance.new("Frame"); content.Name="AddonCardContent"; content.Size=UDim2.new(1,-126,1,-24); content.Position=UDim2.new(0,118,0,12); content.BackgroundTransparency=1; content.Parent=card
             local title=newTxt({Parent=content,Text=tostring(entry.name or "Addon"),Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-2,0,20),Pos=UDim2.new(0,0,0,0),Z=74}); title.TextTruncate=Enum.TextTruncate.AtEnd
             local meta={}; if entry.author and entry.author~="" then meta[#meta+1]="by "..tostring(entry.author) end; if entry.version then meta[#meta+1]=amShowVer(entry.version) end
             local metaLabel=newTxt({Parent=content,Text=table.concat(meta,"  ·  "),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-2,0,14),Pos=UDim2.new(0,0,0,22),Z=74}); metaLabel.TextTruncate=Enum.TextTruncate.AtEnd
             local chip=newTxt({Parent=content,Text=isInstalled and "INSTALLED" or tostring(entry.category or "ADDON"),Font=GB,Size=7,Color=isInstalled and Color3.fromRGB(115,220,160) or accent,Sz=UDim2.new(0,82,0,16),Pos=UDim2.new(0,0,0,39),Z=74}); chip.BackgroundColor3=C.btnBg; chip.BackgroundTransparency=0; chip.TextXAlignment=Enum.TextXAlignment.Center; corner(5,chip)
             local desc=newTxt({Parent=content,Text=tostring(entry.desc or "A JustX Library extension preview."),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-2,0,26),Pos=UDim2.new(0,0,0,58),Z=74}); desc.TextYAlignment=Enum.TextYAlignment.Top; desc.TextTruncate=Enum.TextTruncate.AtEnd
-            local actions=Instance.new("Frame"); actions.Size=UDim2.new(1,-24,0,25); actions.Position=UDim2.new(0,12,1,-34); actions.BackgroundTransparency=1; actions.Parent=card
-            local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.32,-4,1,0); info.Name="AddonInfoButton"
+            local actions=Instance.new("Frame"); actions.Name="AddonCardActions"; actions.Size=UDim2.new(1,-32,0,30); actions.Position=UDim2.new(0,16,1,-42); actions.BackgroundTransparency=1; actions.Parent=card
+            local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.30,-4,1,0); info.Name="AddonInfoButton"
             local main
             if isInstalled then
                 main=amUiButton(actions,"UNINSTALL",2,function()
                     if isFile then JL:Notify({Title="Addon Manager",Desc="Imported source management will be connected to this view in a later step.",Type="Info",Duration=3})
                     else AM.catalogInstalled[entry.id]=nil; AM.applySearch() end
-                end,C.btnBg); main.Size=UDim2.new(0.34,-4,1,0); main.Position=UDim2.new(0.33,2,0,0); main.Name="AddonUninstall"
+                end,C.btnBg); main.Size=UDim2.new(0.34,-4,1,0); main.Position=UDim2.new(0.33,4,0,0); main.Name="AddonUninstall"
                 local del=amUiButton(actions,"DELETE",3,function()
                     if not isFile then AM.catalogInstalled[entry.id]=nil; AM.catalogDeleted[entry.id]=true; AM.applySearch(); JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
                     else JL:Notify({Title="Addon Manager",Desc="Imported source deletion will be connected later.",Type="Info",Duration=3}) end
-                end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.66,4,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
+                end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.67,8,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
             else
                 main=amUiButton(actions,"INSTALL",2,function() AM.catalogInstalled[entry.id]=true; AM.activeView="Installed"; AM.applySearch(); JL:Notify({Title="Addon Added",Desc=entry.name.." moved to Installed (visual preview).",Type="Success",Duration=3}) end,accent)
-                main.Size=UDim2.new(0.66,-4,1,0); main.Position=UDim2.new(0.34,4,0,0); main.Name="AddonInstall"
+                main.Size=UDim2.new(0.66,-8,1,0); main.Position=UDim2.new(0.34,8,0,0); main.Name="AddonInstall"
             end
         end
         if isDiscover then
