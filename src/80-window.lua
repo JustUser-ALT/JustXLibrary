@@ -1716,6 +1716,10 @@ function JL:Window(opts)
             badge.TextColor3 = enabled and Color3.fromRGB(110,220,160) or C.dim
             badge.BackgroundColor3 = enabled and Color3.fromRGB(35,75,58) or C.btnBg
         end
+        local cardAccent = a.cardAccent
+        if cardAccent and cardAccent.Parent then
+            cardAccent.BackgroundColor3 = enabled and Color3.fromRGB(95,205,145) or ACCENTS[1]
+        end
         local toggle = a.enableButton
         if toggle and toggle.Parent then
             toggle.Text = enabled and "●  Enabled" or "○  Enable Addon"
@@ -2089,7 +2093,7 @@ function JL:Window(opts)
     function AM.buildTab()
         if AM.tab then return end
         AM.building = true
-        AM.tab = Win:Tab({Name = "Addons", Icon = "puzzle", Type = "Custom", Tooltip = "Addons"})
+        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "Custom", Tooltip = "Addons"})
         local scroll = Instance.new("ScrollingFrame")
         scroll.Name = "AddonLibraryScroll"
         scroll.Size = UDim2.new(1,0,1,0)
