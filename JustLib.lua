@@ -117,6 +117,7 @@ local function createIconsModule(deps)
         house = "⌂", settings = "⚙", search = "⌕", ellipsis = "⋯", ["message-circle"] = "✉",
         ["key-round"] = "⚿", key = "⚿", ["log-out"] = "↗", gem = "◆", user = "●",
         home = "⌂", plus = "+", x = "×", close = "×", menu = "☰", ["chevron-right"] = "›",
+        ["refresh-cw"] = "↻", shuffle = "⇄", layers = "▱", users = "♟", puzzle = "◇", palette = "◉", activity = "⌁",
         ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
         copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
     }
