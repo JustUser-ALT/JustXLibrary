@@ -6827,157 +6827,427 @@ function JL:Window(opts)
         AM.importGui = overlay
     end
 
-    local function amStyleCard(sec, stateText)
-        local panel = sec and sec.Panel
-        if not panel then return nil end
-        panel.BackgroundColor3 = C.panel
-        panel.BorderSizePixel = 0
-        local edge
-        for _, child in ipairs(panel:GetChildren()) do
-            if child:IsA("UIStroke") then
-                child.Color = C.border
-                child.Thickness = 1
-                edge = child
-            end
-        end
-        for _, child in ipairs(panel:GetChildren()) do
-            if child:IsA("Frame") and child ~= sec.Content then
-                if child.Size.Y.Scale == 0 and child.Size.Y.Offset >= 30 then
-                    child.BackgroundColor3 = C.pHdr
-                    for _, item in ipairs(child:GetChildren()) do
-                        if item:IsA("TextLabel") and item.Text ~= "▼" then
-                            item.Size = UDim2.new(1,-130,item.Size.Y.Scale,item.Size.Y.Offset)
-                        end
-                    end
-                    local stripe = Instance.new("Frame")
-                    stripe.Name = "AddonAccent"
-                    stripe.Size = UDim2.new(0,3,1,-14)
-                    stripe.Position = UDim2.new(0,0,0,7)
-                    stripe.BackgroundColor3 = ACCENTS[1]
-                    stripe.BorderSizePixel = 0
-                    stripe.ZIndex = 5
-                    stripe.Parent = child
-                    corner(2, stripe)
-                    local badge = Instance.new("TextLabel")
-                    badge.Name = "AddonState"
-                    badge.AnchorPoint = Vector2.new(1,0.5)
-                    badge.Position = UDim2.new(1,-34,0.5,0)
-                    badge.Size = UDim2.new(0,68,0,19)
-                    badge.BackgroundColor3 = C.btnBg
-                    badge.BorderSizePixel = 0
-                    badge.Text = stateText or "INSTALLED"
-                    badge.Font = GB
-                    badge.TextSize = 8
-                    badge.TextColor3 = C.dim
-                    badge.ZIndex = 5
-                    badge.Parent = child
-                    corner(5, badge)
-                    sec._addonHeader = child
-                    sec._addonBadge = badge
-                    sec._addonEdge = edge
-                    break
-                end
-            end
-        end
-        return sec._addonBadge
-    end
     local function amSetCardState(a, enabled)
         if not a then return end
         local badge = a.cardBadge
         if badge and badge.Parent then
-            badge.Text = enabled and "ENABLED" or "INSTALLED"
+            badge.Text = enabled and "ENABLED" or "DISABLED"
             badge.TextColor3 = enabled and Color3.fromRGB(110,220,160) or C.dim
             badge.BackgroundColor3 = enabled and Color3.fromRGB(35,75,58) or C.btnBg
         end
-        if a.cardEdge and a.cardEdge.Parent then
-            a.cardEdge.Color = enabled and ACCENTS[1] or C.border
-            a.cardEdge.Thickness = enabled and 1.5 or 1
+        local toggle = a.enableButton
+        if toggle and toggle.Parent then
+            toggle.Text = enabled and "●  Enabled" or "○  Enable Addon"
+            toggle.BackgroundColor3 = enabled and Color3.fromRGB(35,75,58) or C.btnBg
+            toggle.TextColor3 = enabled and Color3.fromRGB(125,230,170) or C.txt
         end
     end
 
-    local function amBuildSection(a)
-        local sec = AM.tab:Section({Title = a.meta.name, Icon = "puzzle", Tooltip = a.meta.desc or a.file})
-        a.sec = sec
-        a.cardBadge = amStyleCard(sec, "INSTALLED")
-        a.cardEdge = sec._addonEdge
-        a.enableCtl = sec:Toggle({
-            Name = "Enabled", Flag = "addon." .. a.id .. ".enabled", Default = false, NoSave = true, Tooltip = a.meta.desc,
-            Callback = function(v)
-                if AM.building then return end
-                if v then if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
-                else AM.disable(a) end
-            end,
-        })
-        local sub = {}
-        if a.meta.author and a.meta.author ~= "" then sub[#sub + 1] = "by " .. a.meta.author end
-        if a.meta.version and a.meta.version ~= "" then sub[#sub + 1] = amShowVer(a.meta.version) end
-        sub[#sub + 1] = a.file
-        sec:Label({Text = table.concat(sub, "  ·  ")})
-        if a.meta.desc and a.meta.desc ~= "" then sec:Label({Text = a.meta.desc, Color = C.txt}) end
+    local function amUiText(parent, text, size, color, height, order, font)
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.BorderSizePixel = 0
+        label.Size = UDim2.new(1,0,0,height or 18)
+        label.Font = font or GM
+        label.Text = tostring(text or "")
+        label.TextSize = size or 10
+        label.TextColor3 = color or C.txt
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.TextWrapped = true
+        label.LayoutOrder = order or 1
+        label.Parent = parent
+        return label
+    end
+
+    local function amUiButton(parent, text, order, callback, accent)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(1,0,0,34)
+        b.BackgroundColor3 = accent or C.btnBg
+        b.BorderSizePixel = 0
+        b.AutoButtonColor = false
+        b.Text = tostring(text or "")
+        b.Font = GB
+        b.TextSize = 10
+        b.TextColor3 = C.txt
+        b.LayoutOrder = order or 1
+        b.Parent = parent
+        corner(8,b)
+        stroke(C.border,1,b)
+        b.MouseEnter:Connect(function()
+            if not touchLast() then tw(b,{BackgroundColor3=C.btnHov},0.1) end
+        end)
+        b.MouseLeave:Connect(function()
+            if b.Parent then tw(b,{BackgroundColor3=accent or C.btnBg},0.1) end
+        end)
+        b.MouseButton1Click:Connect(function()
+            if callback then callback() end
+        end)
+        return b
+    end
+
+    local function amUiCard(parent, order, accent)
+        local card = Instance.new("Frame")
+        card.Name = "AddonCard"
+        card.Size = UDim2.new(1,-16,0,0)
+        card.AutomaticSize = Enum.AutomaticSize.Y
+        card.BackgroundColor3 = C.panel
+        card.BorderSizePixel = 0
+        card.LayoutOrder = order or 1
+        card.Parent = parent
+        corner(12,card)
+        stroke(C.border,1,card)
+        local bar = Instance.new("Frame")
+        bar.Name = "Accent"
+        bar.Size = UDim2.new(1,0,0,3)
+        bar.BackgroundColor3 = accent or ACCENTS[1]
+        bar.BorderSizePixel = 0
+        bar.Parent = card
+        corner(2,bar)
+        local body = Instance.new("Frame")
+        body.Name = "CardContent"
+        body.Size = UDim2.new(1,-20,0,0)
+        body.Position = UDim2.new(0,10,0,11)
+        body.AutomaticSize = Enum.AutomaticSize.Y
+        body.BackgroundTransparency = 1
+        body.Parent = card
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Vertical
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0,7)
+        layout.Parent = body
+        local padding = Instance.new("UIPadding")
+        padding.PaddingBottom = UDim.new(0,10)
+        padding.Parent = body
+        return card, body, bar
+    end
+
+    local function amBuildCard(a, parent, order)
+        local card, body, accent = amUiCard(parent, order, ACCENTS[1])
+        a.card = card
+        local head = Instance.new("Frame")
+        head.Name = "AddonHeader"
+        head.Size = UDim2.new(1,0,0,34)
+        head.BackgroundTransparency = 1
+        head.LayoutOrder = 1
+        head.Parent = body
+
+        local title = Instance.new("TextLabel")
+        title.Name = "AddonName"
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1,-104,1,0)
+        title.Font = GB
+        title.Text = tostring(a.meta.name or a.file)
+        title.TextSize = 14
+        title.TextColor3 = C.txt
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.TextYAlignment = Enum.TextYAlignment.Center
+        title.TextTruncate = Enum.TextTruncate.AtEnd
+        title.Parent = head
+
+        local badge = Instance.new("TextLabel")
+        badge.Name = "AddonStatus"
+        badge.AnchorPoint = Vector2.new(1,0.5)
+        badge.Position = UDim2.new(1,0,0.5,0)
+        badge.Size = UDim2.new(0,94,0,22)
+        badge.BackgroundColor3 = C.btnBg
+        badge.BorderSizePixel = 0
+        badge.Font = GB
+        badge.Text = "DISABLED"
+        badge.TextSize = 8
+        badge.TextColor3 = C.dim
+        badge.Parent = head
+        corner(7,badge)
+        a.cardBadge = badge
+        a.cardAccent = accent
+
+        local meta = {}
+        if a.meta.author and a.meta.author ~= "" then meta[#meta+1] = "by " .. tostring(a.meta.author) end
+        if a.meta.version and a.meta.version ~= "" then meta[#meta+1] = amShowVer(a.meta.version) end
+        meta[#meta+1] = tostring(a.file)
+        local metaLabel = amUiText(body,table.concat(meta,"   ·   "),9,C.dim,16,2,GM)
+        metaLabel.Name = "AddonMetadata"
+
+        if a.meta.desc and a.meta.desc ~= "" then
+            local desc = tostring(a.meta.desc)
+            local h = math.max(28,fitH(desc,10,GM,math.max(180,parent.AbsoluteSize.X-58),18,8))
+            local descLabel = amUiText(body,desc,10,C.txt,h,3,GM)
+            descLabel.Name = "AddonDescription"
+            descLabel.TextYAlignment = Enum.TextYAlignment.Top
+        end
+
         if amWarnOn() then
+            local warning
             if a.outdated then
-                sec:Label({Text = "⚠ Made for JustLib " .. amShowVer(a.meta.lib) .. " (you have " .. amShowVer(JL.Version) .. "). It may not work correctly.", Color = WARN_COL})
+                warning = "Made for JustLib " .. amShowVer(a.meta.lib) .. " (you have " .. amShowVer(JL.Version) .. "). It may not work correctly."
             elseif a.needsNewer then
-                sec:Label({Text = "⚠ Needs JustLib " .. amShowVer(a.meta.lib) .. " or newer (you have " .. amShowVer(JL.Version) .. ").", Color = WARN_COL})
+                warning = "Needs JustLib " .. amShowVer(a.meta.lib) .. " or newer (you have " .. amShowVer(JL.Version) .. ")."
+            end
+            if warning then
+                local w = amUiText(body,"⚠  "..warning,9,WARN_COL,fitH(warning,9,GM,math.max(180,parent.AbsoluteSize.X-58),16,8),4,GM)
+                w.TextYAlignment = Enum.TextYAlignment.Top
             end
         end
-        for _, note in ipairs(a.notes) do sec:Label({Text = "⚠ " .. note, Color = WARN_COL}) end
-        local hasCtl = false
-        for _, c in ipairs(a.ctrls) do if c.kind ~= "label" and c.kind ~= "divider" then hasCtl = true end end
-        if hasCtl then sec:Divider({Label = "Settings"}) end
-        for _, c in ipairs(a.ctrls) do
-            local ok, e = pcall(amBuildControl, a, sec, c)
-            if not ok then sec:Label({Text = "⚠ " .. tostring(c.o.name or c.fn) .. ": " .. tostring(e), Color = ERR_COL}) end
+        for _,note in ipairs(a.notes) do
+            local w = amUiText(body,"⚠  "..tostring(note),9,WARN_COL,fitH(note,9,GM,math.max(180,parent.AbsoluteSize.X-58),16,8),5,GM)
+            w.TextYAlignment = Enum.TextYAlignment.Top
         end
-        sec:Button({Name = "Remove Addon", Tooltip = "Deletes this addon file from the Addons folder", Callback = function()
+
+        local settingsHead = Instance.new("Frame")
+        settingsHead.Name = "SettingsHeader"
+        settingsHead.Size = UDim2.new(1,0,0,20)
+        settingsHead.BackgroundTransparency = 1
+        settingsHead.LayoutOrder = 6
+        settingsHead.Parent = body
+        local settingsTitle = Instance.new("TextLabel")
+        settingsTitle.BackgroundTransparency = 1
+        settingsTitle.Size = UDim2.new(1,0,1,0)
+        settingsTitle.Font = GB
+        settingsTitle.Text = "ADDON CONTROLS"
+        settingsTitle.TextSize = 8
+        settingsTitle.TextColor3 = C.dim
+        settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+        settingsTitle.Parent = settingsHead
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(1,0,0,1)
+        line.Position = UDim2.new(0,0,1,-1)
+        line.BackgroundColor3 = C.border
+        line.BorderSizePixel = 0
+        line.Parent = settingsHead
+
+        local controlsHost = Instance.new("Frame")
+        controlsHost.Name = "AddonControls"
+        controlsHost.Size = UDim2.new(1,0,0,0)
+        controlsHost.AutomaticSize = Enum.AutomaticSize.Y
+        controlsHost.BackgroundTransparency = 1
+        controlsHost.LayoutOrder = 7
+        controlsHost.Parent = body
+        local controlsLayout = Instance.new("UIListLayout")
+        controlsLayout.FillDirection = Enum.FillDirection.Vertical
+        controlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        controlsLayout.Padding = UDim.new(0,6)
+        controlsLayout.Parent = controlsHost
+        local controlsPad = Instance.new("UIPadding")
+        controlsPad.PaddingLeft = UDim.new(0,2)
+        controlsPad.PaddingRight = UDim.new(0,2)
+        controlsPad.Parent = controlsHost
+
+        local innerWidth = math.max(180,parent.AbsoluteSize.X-52)
+        local sec = attachWidgets(controlsHost,innerWidth,ACCENTS[1],uiScale,sg,attachTip,hubConfig)
+        a.sec = sec
+        local hasControls = #a.ctrls > 0
+        if not hasControls then
+            amUiText(controlsHost,"This addon does not expose any controls.",9,C.dim,20,1,GM)
+        else
+            for _,c in ipairs(a.ctrls) do
+                local ok,e = pcall(amBuildControl,a,sec,c)
+                if not ok then
+                    amUiText(controlsHost,"⚠ "..tostring(c.o.name or c.fn)..": "..tostring(e),9,ERR_COL,28,999,GM)
+                end
+            end
+        end
+
+        local actions = Instance.new("Frame")
+        actions.Name = "AddonActions"
+        actions.Size = UDim2.new(1,0,0,36)
+        actions.BackgroundTransparency = 1
+        actions.LayoutOrder = 8
+        actions.Parent = body
+        local actionLayout = Instance.new("UIListLayout")
+        actionLayout.FillDirection = Enum.FillDirection.Horizontal
+        actionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        actionLayout.Padding = UDim.new(0,8)
+        actionLayout.Parent = actions
+
+        local enable = amUiButton(actions,"○  Enable Addon",1,function()
+            if a.loaded then
+                AM.disable(a)
+            else
+                if not AM.enable(a) then amSetCardState(a,false) end
+            end
+            if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
+            amSetCardState(a,a.loaded)
+        end)
+        enable.Name = "AddonEnable"
+        enable.Size = UDim2.new(0.62,-4,0,36)
+        a.enableButton = enable
+        local remove = amUiButton(actions,"Remove",2,function()
             if not delfile then
                 JL:Notify({Title="Addons",Desc="This executor does not support deleting files.",Type="Error",Duration=4})
                 return
             end
             local filePath = AM.dir .. "/" .. a.file
-            local ok, err = pcall(delfile, filePath)
+            local ok,err = pcall(delfile,filePath)
             if not ok then
-                JL:Notify({Title="Addons",Desc="Could not delete addon: " .. tostring(err),Type="Error",Duration=4})
+                JL:Notify({Title="Addons",Desc="Could not delete addon: "..tostring(err),Type="Error",Duration=4})
                 return
             end
             AM.refresh()
-            JL:Notify({Title="Addon Removed",Desc=a.meta.name .. " was deleted.",Type="Success",Duration=3})
-        end})
+            JL:Notify({Title="Addon Removed",Desc=a.meta.name.." was deleted.",Type="Success",Duration=3})
+        end)
+        remove.Name = "AddonRemove"
+        remove.Size = UDim2.new(0.38,-4,0,36)
+        remove.BackgroundColor3 = C.pHdr
+        remove.TextColor3 = C.dim
+
+        -- Existing addon lifecycle code expects a control with Set().
+        a.enableCtl = {
+            Set = function(_,v)
+                if v then
+                    if not AM.enable(a) then amSetCardState(a,false) end
+                else
+                    AM.disable(a)
+                end
+                if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
+                amSetCardState(a,a.loaded)
+            end
+        }
+        amSetCardState(a,a.loaded)
+        return card
+    end
+
+    local function amBuildManager(parent, order)
+        local card,body = amUiCard(parent,order,ACCENTS[2] or ACCENTS[1])
+        card.Name = "AddonManagerCard"
+        local head = Instance.new("Frame")
+        head.Size = UDim2.new(1,0,0,36)
+        head.BackgroundTransparency = 1
+        head.LayoutOrder = 1
+        head.Parent = body
+        local title = Instance.new("TextLabel")
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1,-84,1,0)
+        title.Font = GB
+        title.Text = "ADDON LIBRARY"
+        title.TextSize = 13
+        title.TextColor3 = C.txt
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = head
+        local tag = Instance.new("TextLabel")
+        tag.AnchorPoint = Vector2.new(1,0.5)
+        tag.Position = UDim2.new(1,0,0.5,0)
+        tag.Size = UDim2.new(0,76,0,20)
+        tag.BackgroundColor3 = C.btnBg
+        tag.BorderSizePixel = 0
+        tag.Font = GB
+        tag.Text = "MANAGER"
+        tag.TextSize = 8
+        tag.TextColor3 = C.dim
+        tag.Parent = head
+        corner(6,tag)
+        amUiText(body,"Import, manage and configure your installed Lua addons.",10,C.dim,20,2,GM)
+        amUiText(body,"⚠  Addons execute code with executor access. Only install files you trust.",9,WARN_COL,32,3,GM)
+        if AM.fsNote then amUiText(body,AM.fsNote,9,ERR_COL,30,4,GM) end
+
+        local import = amUiButton(body,"＋   Import Addon",5,amOpenImport,ACCENTS[1])
+        import.Name = "ImportAddon"
+        local autosaveRow = Instance.new("Frame")
+        autosaveRow.Size = UDim2.new(1,0,0,34)
+        autosaveRow.BackgroundColor3 = C.btnBg
+        autosaveRow.BorderSizePixel = 0
+        autosaveRow.LayoutOrder = 6
+        autosaveRow.Parent = body
+        corner(8,autosaveRow)
+        local autoLabel = Instance.new("TextLabel")
+        autoLabel.BackgroundTransparency = 1
+        autoLabel.Position = UDim2.new(0,10,0,0)
+        autoLabel.Size = UDim2.new(1,-86,1,0)
+        autoLabel.Font = GB
+        autoLabel.Text = "Auto Save"
+        autoLabel.TextSize = 10
+        autoLabel.TextColor3 = C.txt
+        autoLabel.TextXAlignment = Enum.TextXAlignment.Left
+        autoLabel.Parent = autosaveRow
+        local autoButton = Instance.new("TextButton")
+        autoButton.Size = UDim2.new(0,62,0,24)
+        autoButton.Position = UDim2.new(1,-72,0.5,-12)
+        autoButton.BackgroundColor3 = C.pHdr
+        autoButton.BorderSizePixel = 0
+        autoButton.AutoButtonColor = false
+        autoButton.Font = GB
+        autoButton.TextSize = 9
+        autoButton.TextColor3 = C.dim
+        autoButton.Parent = autosaveRow
+        corner(7,autoButton)
+        local autoOn = cfgGet("_addons_autosave", false) == true
+        JL._addonAutoSave = autoOn
+        local function paintAuto()
+            autoButton.Text = autoOn and "ON" or "OFF"
+            autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
+            autoButton.TextColor3 = autoOn and Color3.fromRGB(125,230,170) or C.dim
+        end
+        paintAuto()
+        autoButton.MouseButton1Click:Connect(function()
+            autoOn = not autoOn
+            JL._addonAutoSave = autoOn
+            cfgSet("_addons_autosave", autoOn)
+            paintAuto()
+            if autoOn then cfgFlush() end
+            JL:Notify({Title="Addons",Desc=autoOn and "Auto Save enabled." or "Auto Save disabled.",Type="Info",Duration=3})
+        end)
+
+        local managerActions = Instance.new("Frame")
+        managerActions.Size = UDim2.new(1,0,0,34)
+        managerActions.BackgroundTransparency = 1
+        managerActions.LayoutOrder = 7
+        managerActions.Parent = body
+        local managerLayout = Instance.new("UIListLayout")
+        managerLayout.FillDirection = Enum.FillDirection.Horizontal
+        managerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        managerLayout.Padding = UDim.new(0,8)
+        managerLayout.Parent = managerActions
+        local reload = amUiButton(managerActions,"↻  Reload Files",1,function() AM.refresh() end)
+        reload.Size = UDim2.new(0.5,-4,0,34)
+        local disable = amUiButton(managerActions,"Disable All",2,function() AM.disableAll() end)
+        disable.Size = UDim2.new(0.5,-4,0,34)
+        disable.BackgroundColor3 = C.pHdr
+        disable.TextColor3 = C.dim
+        return card
     end
 
     function AM.buildTab()
         if AM.tab then return end
         AM.building = true
-        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "List", Tooltip = "Addons"})
-        local top = AM.tab:Section({Title = "ADDON LIBRARY", Icon = "puzzle", Tooltip = "Installed addons and library management"})
-        amStyleCard(top, "MANAGER")
-        top:Label({Text = "Folder: " .. AM.dir .. "  ·  .lua .txt .luau"})
-        top:Label({Text = "⚠ Addons are code with full access. Only enable addons you trust.", Color = WARN_COL})
-        if AM.fsNote then top:Label({Text = AM.fsNote, Color = ERR_COL}) end
-        top:Button({Name = "+  Import Addon", Tooltip = "Paste a complete Lua addon file and install it", Callback = amOpenImport})
-        top:Toggle({
-            Name = "Auto Save", Flag = "_addons_autosave", Default = false,
-            Tooltip = "Off (default): addons and their toggles start disabled every launch. On: they are remembered and restored.",
-            Callback = function(v)
-                JL._addonAutoSave = v
-                if AM.building then return end
-                if v then cfgFlush() end
-                JL:Notify({Title = "Addons", Desc = v and "Auto Save on: enabled addons will be restored next launch" or "Auto Save off: addons start disabled next launch", Type = "Info", Duration = 3})
-            end,
-        })
-        top:Button({Name = "Reload Files", Tooltip = "Scans the Addons folder and restarts running addons", Callback = function() AM.refresh() end})
-        top:Button({Name = "Disable All", Tooltip = "Turns off every running addon", Callback = function() AM.disableAll() end})
+        AM.tab = Win:Tab({Name = "Addons", Icon = "puzzle", Type = "Custom", Tooltip = "Addons"})
+        local scroll = Instance.new("ScrollingFrame")
+        scroll.Name = "AddonLibraryScroll"
+        scroll.Size = UDim2.new(1,0,1,0)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 3
+        scroll.ScrollBarImageColor3 = ACCENTS[1]
+        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        scroll.Active = true
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.new(0,0,0,0)
+        scroll.Parent = AM.tab.Frame
+        local list = Instance.new("UIListLayout")
+        list.FillDirection = Enum.FillDirection.Vertical
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Padding = UDim.new(0,10)
+        list.Parent = scroll
+        local padding = Instance.new("UIPadding")
+        padding.PaddingTop = UDim.new(0,8)
+        padding.PaddingBottom = UDim.new(0,10)
+        padding.PaddingLeft = UDim.new(0,8)
+        padding.PaddingRight = UDim.new(0,8)
+        padding.Parent = scroll
+
+        amBuildManager(scroll,1)
         if #AM.list == 0 and not AM.fsNote then
-            top:Label({Text = "No addons installed yet. Press + to paste one, or put a .lua / .txt / .luau file in the folder and reload."})
-        end
-        for _, a in ipairs(AM.list) do
-            local ok, e = pcall(amBuildSection, a)
-            if not ok then warn("[JustLib] addon '" .. tostring(a.file) .. "' UI failed: " .. tostring(e)) end
+            local empty,body = amUiCard(scroll,2,C.dim)
+            amUiText(body,"No addons installed",12,C.txt,22,1,GB)
+            amUiText(body,"Press Import Addon to install your first Lua addon, or place a .lua / .txt / .luau file in the Addons folder and reload.",10,C.dim,42,2,GM)
+        else
+            for i,a in ipairs(AM.list) do
+                local ok,e = pcall(amBuildCard,a,scroll,i+1)
+                if not ok then warn("[JustLib] addon '"..tostring(a.file).."' UI failed: "..tostring(e)) end
+            end
         end
         AM.building = false
-        for _, a in ipairs(AM.list) do
-            if a.enableCtl and cfgGet("addon." .. a.id .. ".enabled", false) == true then
-                if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
+        for _,a in ipairs(AM.list) do
+            if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
+                if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
             end
         end
     end
