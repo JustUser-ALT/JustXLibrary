@@ -6887,18 +6887,10 @@ function JL:Window(opts)
         card.Parent = parent
         corner(12,card)
         stroke(C.border,1,card)
-        local bar = Instance.new("Frame")
-        bar.Name = "Accent"
-        bar.Size = UDim2.new(0,3,1,-18)
-        bar.Position = UDim2.new(0,0,0,9)
-        bar.BackgroundColor3 = accent or ACCENTS[1]
-        bar.BorderSizePixel = 0
-        bar.Parent = card
-        corner(2,bar)
         local body = Instance.new("Frame")
         body.Name = "CardContent"
-        body.Size = UDim2.new(1,-26,0,0)
-        body.Position = UDim2.new(0,14,0,8)
+        body.Size = UDim2.new(1,-32,0,0)
+        body.Position = UDim2.new(0,16,0,10)
         body.AutomaticSize = Enum.AutomaticSize.Y
         body.BackgroundTransparency = 1
         body.Parent = card
