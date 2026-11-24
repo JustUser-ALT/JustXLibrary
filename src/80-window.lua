@@ -1290,9 +1290,12 @@ function JL:Window(opts)
                     while used[id] do k = k + 1; id = baseId .. k end
                     used[id] = true
                     src = src:gsub("^\239\187\191", "")
-                    local meta, ctrls, notes = amParse(src)
+                    local modern = src:match("^%s*return%s*{") ~= nil
+                    local meta, ctrls, notes
+                    if modern then meta, ctrls, notes = {name = base}, {}, {}
+                    else meta, ctrls, notes = amParse(src) end
                     if not meta.name or meta.name == "" then meta.name = base end
-                    local a = {id = id, file = base .. "." .. ext, src = src, meta = meta, ctrls = ctrls, notes = notes, loaded = false, keeps = {}, unload = {}}
+                    local a = {id = id, file = base .. "." .. ext, src = src, meta = meta, ctrls = ctrls, notes = notes, modern = modern, loaded = false, keeps = {}, unload = {}}
                     if meta.lib and meta.lib ~= "" then
                         local cmp = amVerCmp(JL.Version, meta.lib)
                         a.outdated = cmp > 0; a.needsNewer = cmp < 0
@@ -1371,6 +1374,65 @@ function JL:Window(opts)
         api.OnUnload = dual(function(fn) if type(fn) == "function" then a.unload[#a.unload + 1] = fn end end)
         api.Save = dual(function(k, v) cfgSet("addon." .. a.id .. ".data." .. tostring(k), v) end)
         api.Load = dual(function(k, d) return cfgGet("addon." .. a.id .. ".data." .. tostring(k), d) end)
+        local function addControl(kind, options)
+            options = type(options) == "table" and options or {Name = tostring(options or "")}
+            a.modernControlIndex = (a.modernControlIndex or 0) + 1
+            local index = a.modernControlIndex
+            local c = a.ctrls[index]
+            if c then
+                c.o = options
+                c.name = tostring(options.Name or options.Title or kind)
+                return c.ui
+            end
+            local name = tostring(options.Name or options.Title or kind)
+            c = {kind = kind:lower(), name = name, o = options, state = options.Default}
+            a.ctrls[index] = c
+            local b = {
+                Name = name, Tooltip = options.Tooltip, Flag = "addon." .. a.id .. "." .. tostring(index),
+                Default = options.Default, NoSave = true, Locked = not a.loaded,
+                LockedTitle = a.meta.name, LockedMessage = "Enable the addon first",
+                Callback = function(value)
+                    c.state = value
+                    if not a.loaded or type(c.o.Callback) ~= "function" then return end
+                    local ok, err = pcall(c.o.Callback, value)
+                    if not ok then amSetErr(a, name .. ": " .. tostring(err)) end
+                end
+            }
+            if options.Icon then b.Icon = options.Icon end
+            if kind == "Toggle" then
+                c.ui = a.sec:Toggle(b)
+            elseif kind == "Button" then
+                b.Callback = function()
+                    if not a.loaded or type(c.o.Callback) ~= "function" then return end
+                    local ok, err = pcall(c.o.Callback)
+                    if not ok then amSetErr(a, name .. ": " .. tostring(err)) end
+                end
+                c.ui = a.sec:Button(b)
+            elseif kind == "Slider" then
+                b.Min = tonumber(options.Min) or 0; b.Max = tonumber(options.Max) or 100
+                b.Step = tonumber(options.Step) or 1
+                c.ui = a.sec:Slider(b)
+            elseif kind == "Dropdown" then
+                b.Options = options.Values or options.Options or {}
+                b.MultiSelect = options.MultiSelect == true
+                c.ui = a.sec:Dropdown(b)
+            elseif kind == "Input" then
+                b.Placeholder = options.Placeholder
+                c.ui = a.sec:Input(b)
+            elseif kind == "Label" then
+                c.ui = a.sec:Label({Text = tostring(options.Text or options.Name or "")})
+            elseif kind == "Divider" then
+                c.ui = a.sec:Divider({Label = tostring(options.Text or options.Name or "")})
+            end
+            return c.ui
+        end
+        api.Toggle = dual(function(o) return addControl("Toggle", o) end)
+        api.Button = dual(function(o) return addControl("Button", o) end)
+        api.Slider = dual(function(o) return addControl("Slider", o) end)
+        api.Dropdown = dual(function(o) return addControl("Dropdown", o) end)
+        api.Input = dual(function(o) return addControl("Input", o) end)
+        api.Label = dual(function(o) return addControl("Label", o) end)
+        api.Divider = dual(function(o) return addControl("Divider", o) end)
         return api
     end
 
@@ -1381,17 +1443,38 @@ function JL:Window(opts)
         amClearErr(a)
         a.keeps = {}; a.unload = {}; a.store = {fn = {}}
         local api = amApi(a)
-        local runErr
-        a.thread = trackedSpawn(function()
-            local ok, e = pcall(fn, api, a.store)
-            if not ok then runErr = tostring(e) end
-        end)
-        if runErr then
-            amClean(a); a.store = nil; a.thread = nil
-            amSetErr(a, runErr)
-            return false
+        if a.modern then
+            local ok, definition = pcall(fn, api, a.store)
+            if not ok then amClean(a); a.store = nil; amSetErr(a, tostring(definition)); return false end
+            if type(definition) ~= "table" then amClean(a); a.store = nil; amSetErr(a, "Addon file must return a table"); return false end
+            local info = type(definition.Info) == "table" and definition.Info or {}
+            a.meta.name = tostring(info.Name or a.meta.name)
+            a.meta.author = info.Author and tostring(info.Author) or nil
+            a.meta.version = info.Version and tostring(info.Version) or nil
+            a.meta.desc = info.Description and tostring(info.Description) or nil
+            a.meta.lib = info.Library and tostring(info.Library) or nil
+            if type(definition.Init) ~= "function" then amClean(a); a.store = nil; amSetErr(a, "Addon table must contain an Init function"); return false end
+            a.loaded = true
+            a.modernControlIndex = 0
+            local initOk, initErr = pcall(definition.Init, api)
+            if not initOk then
+                a.loaded = false; amClean(a); a.store = nil
+                amSetErr(a, "Init: " .. tostring(initErr)); return false
+            end
+            if a.meta.desc and a.meta.desc ~= "" then pcall(function() a.sec:Label({Text = a.meta.desc, Color = C.txt}) end) end
+        else
+            local runErr
+            a.thread = trackedSpawn(function()
+                local ok, e = pcall(fn, api, a.store)
+                if not ok then runErr = tostring(e) end
+            end)
+            if runErr then
+                amClean(a); a.store = nil; a.thread = nil
+                amSetErr(a, runErr)
+                return false
+            end
+            a.loaded = true
         end
-        a.loaded = true
         for _, c in ipairs(a.ctrls) do
             if c.ui and c.ui.SetLocked then pcall(function() c.ui:SetLocked(false) end) end
         end
@@ -1585,8 +1668,11 @@ function JL:Window(opts)
                 status.Text = "Executor file or compiler support is missing."; status.TextColor3 = ERR_COL
                 return
             end
-            local meta, ctrls, notes = amParse(code)
-            if not meta.name or amTrim(meta.name) == "" then
+            local modern = code:match("^%s*return%s*{") ~= nil
+            local meta, ctrls, notes
+            if modern then meta, ctrls, notes = {name = "New Addon"}, {}, {}
+            else meta, ctrls, notes = amParse(code) end
+            if not modern and (not meta.name or amTrim(meta.name) == "") then
                 status.Text = "Missing required metadata: --@name"; status.TextColor3 = ERR_COL
                 return
             end
