@@ -6721,7 +6721,7 @@ function JL:Window(opts)
         panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 121; panel.Parent = overlay
         corner(10,panel); stroke(C.border,1,panel)
         newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=123})
-        newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=83})
+        newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=123})
         local close = Instance.new("TextButton")
         close.Size = UDim2.new(0,30,0,30); close.Position = UDim2.new(1,-40,0,8)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.Text = "×"
@@ -6735,9 +6735,9 @@ function JL:Window(opts)
         editor.TextYAlignment = Enum.TextYAlignment.Top; editor.Font = Enum.Font.Code
         editor.TextSize = 12; editor.TextColor3 = C.txt; editor.PlaceholderColor3 = C.dim
         editor.PlaceholderText = "return {\n    Info = {\n        Name = \"My Addon\",\n        Author = \"Your name\",\n        Version = \"1.0\",\n        Description = \"Addon description\"\n    },\n    Init = function(Addon)\n        Addon:Toggle({\n            Name = \"Example toggle\",\n            Default = false,\n            Callback = function(value)\n                print(value)\n            end\n        })\n    end\n}"
-        editor.Text = ""; editor.ZIndex = 83; editor.Parent = panel
+        editor.Text = ""; editor.ZIndex = 123; editor.Parent = panel
         corner(7,editor); stroke(C.border,1,editor)
-        local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=83})
+        local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=123})
         local install = Instance.new("TextButton")
         install.Size = UDim2.new(0,116,0,30); install.Position = UDim2.new(1,-130,1,-42)
         install.BackgroundColor3 = ACCENTS[1]; install.BorderSizePixel = 0; install.Text = "Install"
@@ -7321,7 +7321,7 @@ function JL:Window(opts)
         if AM.panel then AM.panel.Visible = false end
     end
 
-    function AM.removeTab()
+    function AM.removePanel()
         AM.closeLibrary()
         if AM.panel then pcall(function() AM.panel:Destroy() end); AM.panel = nil end
         AM.searchBox = nil
@@ -7334,7 +7334,7 @@ function JL:Window(opts)
         local keep = {}
         for _, a in ipairs(AM.list) do if a.loaded then keep[a.id] = true end end
         AM.disableAll()
-        AM.removeTab()
+        AM.removePanel()
         AM.scan()
         AM.buildPanel()
         for _, a in ipairs(AM.list) do
