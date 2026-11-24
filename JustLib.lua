@@ -6596,12 +6596,14 @@ function JL:Window(opts)
                 or ("Needs JustLib " .. amShowVer(a.meta.lib) .. " or newer, you have " .. amShowVer(JL.Version) .. ". It may not work correctly.")
             JL:Notify({Title = a.meta.name, Desc = msg, Type = "Warn", Duration = 5})
         end
+        amSetCardState(a, true)
         return true
     end
 
     function AM.disable(a, skipUI)
         if not a.loaded then return end
         a.loaded = false
+        amSetCardState(a, false)
         for _, c in ipairs(a.ctrls) do
             if c.fn and c.kind == "toggle" and c.state then
                 local f = a.store and a.store.fn and a.store.fn[c.fn]
@@ -6693,6 +6695,7 @@ function JL:Window(opts)
                 if AM.building then return end
                 if v then if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
                 else AM.disable(a) end
+                amSetCardState(a, a.loaded)
             end,
         })
         local sub = {}
@@ -6751,7 +6754,7 @@ function JL:Window(opts)
         editor.TextWrapped = false; editor.TextXAlignment = Enum.TextXAlignment.Left
         editor.TextYAlignment = Enum.TextYAlignment.Top; editor.Font = Enum.Font.Code
         editor.TextSize = 12; editor.TextColor3 = C.txt; editor.PlaceholderColor3 = C.dim
-        editor.PlaceholderText = "--@name My Addon\n--@author Your name\n--@version 1.0\n\nPaste addon code here..."
+        editor.PlaceholderText = "return {\n    Info = {\n        Name = \"My Addon\",\n        Author = \"Your name\",\n        Version = \"1.0\",\n        Description = \"Addon description\"\n    },\n    Init = function(Addon)\n        Addon:Toggle({\n            Name = \"Example toggle\",\n            Default = false,\n            Callback = function(value)\n                print(value)\n            end\n        })\n    end\n}"
         editor.Text = ""; editor.ZIndex = 83; editor.Parent = panel
         corner(7,editor); stroke(C.border,1,editor)
         local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=83})
@@ -6824,9 +6827,74 @@ function JL:Window(opts)
         AM.importGui = overlay
     end
 
+    local function amStyleCard(sec, stateText)
+        local panel = sec and sec.Panel
+        if not panel then return nil end
+        panel.BackgroundColor3 = C.panel
+        panel.BorderSizePixel = 0
+        local edge
+        for _, child in ipairs(panel:GetChildren()) do
+            if child:IsA("UIStroke") then
+                child.Color = C.border
+                child.Thickness = 1
+                edge = child
+            elseif child:IsA("Frame") and child ~= sec.Content then
+                if child.Size.Y.Scale == 0 and child.Size.Y.Offset >= 30 then
+                    child.BackgroundColor3 = C.pHdr
+                    for _, item in ipairs(child:GetChildren()) do
+                        if item:IsA("Frame") and item.BackgroundColor3 == ACCENTS[1] then item.BackgroundColor3 = ACCENTS[1] end
+                    end
+                    local stripe = Instance.new("Frame")
+                    stripe.Name = "AddonAccent"
+                    stripe.Size = UDim2.new(0,3,1,-14)
+                    stripe.Position = UDim2.new(0,0,0,7)
+                    stripe.BackgroundColor3 = ACCENTS[1]
+                    stripe.BorderSizePixel = 0
+                    stripe.ZIndex = 5
+                    stripe.Parent = child
+                    corner(2, stripe)
+                    local badge = Instance.new("TextLabel")
+                    badge.Name = "AddonState"
+                    badge.AnchorPoint = Vector2.new(1,0.5)
+                    badge.Position = UDim2.new(1,-34,0.5,0)
+                    badge.Size = UDim2.new(0,68,0,19)
+                    badge.BackgroundColor3 = C.btnBg
+                    badge.BorderSizePixel = 0
+                    badge.Text = stateText or "INSTALLED"
+                    badge.Font = GB
+                    badge.TextSize = 8
+                    badge.TextColor3 = C.dim
+                    badge.ZIndex = 5
+                    badge.Parent = child
+                    corner(5, badge)
+                    sec._addonHeader = child
+                    sec._addonBadge = badge
+                    sec._addonEdge = edge
+                    break
+                end
+            end
+        end
+        return sec._addonBadge
+    end
+    local function amSetCardState(a, enabled)
+        if not a then return end
+        local badge = a.cardBadge
+        if badge and badge.Parent then
+            badge.Text = enabled and "ENABLED" or "INSTALLED"
+            badge.TextColor3 = enabled and Color3.fromRGB(110,220,160) or C.dim
+            badge.BackgroundColor3 = enabled and Color3.fromRGB(35,75,58) or C.btnBg
+        end
+        if a.cardEdge and a.cardEdge.Parent then
+            a.cardEdge.Color = enabled and ACCENTS[1] or C.border
+            a.cardEdge.Thickness = enabled and 1.5 or 1
+        end
+    end
+
     local function amBuildSection(a)
         local sec = AM.tab:Section({Title = a.meta.name, Icon = "puzzle", Tooltip = a.meta.desc or a.file})
         a.sec = sec
+        a.cardBadge = amStyleCard(sec, "INSTALLED")
+        a.cardEdge = sec._addonEdge
         a.enableCtl = sec:Toggle({
             Name = "Enabled", Flag = "addon." .. a.id .. ".enabled", Default = false, NoSave = true, Tooltip = a.meta.desc,
             Callback = function(v)
@@ -6876,7 +6944,8 @@ function JL:Window(opts)
         if AM.tab then return end
         AM.building = true
         AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "List", Tooltip = "Addons"})
-        local top = AM.tab:Section({Title = "Your Addons", Icon = "puzzle"})
+        local top = AM.tab:Section({Title = "ADDON LIBRARY", Icon = "puzzle", Tooltip = "Installed addons and library management"})
+        amStyleCard(top, "MANAGER")
         top:Label({Text = "Folder: " .. AM.dir .. "  ·  .lua .txt .luau"})
         top:Label({Text = "⚠ Addons are code with full access. Only enable addons you trust.", Color = WARN_COL})
         if AM.fsNote then top:Label({Text = AM.fsNote, Color = ERR_COL}) end
