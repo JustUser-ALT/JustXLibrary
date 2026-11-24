@@ -8223,6 +8223,48 @@ function JL:Window(opts)
             newTxt({Parent=row,Text="Welcome to " .. (hopts.WelcomeTitle or opts.Title or "the Hub") .. "!",Font=GB,Size=17,Sz=UDim2.new(1,0,1,0),Pos=UDim2.new(0,2,0,0)})
         end
         do
+            local card = newCard(50)
+            local iconButton = Instance.new("ImageButton"); iconButton.Name = "PlaceActionsButton"; iconButton.Size = UDim2.new(0,36,0,36); iconButton.Position = UDim2.new(0,8,0,7); iconButton.BackgroundColor3 = C.pHdr; iconButton.BorderSizePixel = 0; iconButton.AutoButtonColor = false; iconButton.Parent = card; corner(8,iconButton)
+            iconButton:SetAttribute("JLNoRepaint", true)
+            local icon = Instance.new("ImageLabel"); icon.Size = UDim2.new(1,0,1,0); icon.BackgroundTransparency = 1; icon.BorderSizePixel = 0; icon.Parent = iconButton; corner(8,icon)
+            icon:SetAttribute("JLNoRepaint", true)
+            local actionGlyph = mkIcon(iconButton, "ellipsis", 15, 4); actionGlyph.AnchorPoint = Vector2.new(1,1); actionGlyph.Position = UDim2.new(1,-2,1,-2); actionGlyph.Size = UDim2.new(0,16,0,16); actionGlyph.BackgroundColor3 = C.panel; actionGlyph.BackgroundTransparency = 0.1
+            local nameL = newTxt({Parent=card,Text="Loading place...",Font=GB,Size=12,Sz=UDim2.new(1,-112,0,18),Pos=UDim2.new(0,54,0,7)})
+            local byL = newTxt({Parent=card,Text="Current experience",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-112,0,14),Pos=UDim2.new(0,54,0,27)})
+            local placeMeta = newTxt({Parent=card,Text="PLACE  " .. tostring(game.PlaceId),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(0,110,0,14),Pos=UDim2.new(1,-118,0,18)})
+            placeMeta.TextXAlignment = Enum.TextXAlignment.Right
+            trackedSpawn(function()
+                local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
+                if ok and info then
+                    nameL.Text = info.Name or "Unknown"
+                    byL.Text = "by " .. ((info.Creator and info.Creator.Name) or "Unknown")
+                    if info.IconImageAssetId and info.IconImageAssetId ~= 0 then icon.Image = "rbxassetid://" .. info.IconImageAssetId end
+                end
+            end)
+            local actionOverlay
+            local function closePlaceActions() if actionOverlay then actionOverlay:Destroy(); actionOverlay = nil end end
+            local function openPlaceActions()
+                closePlaceActions()
+                actionOverlay = Instance.new("Frame"); actionOverlay.Name = "PlaceActionsMenu"; actionOverlay.Size = UDim2.new(1,0,1,0); actionOverlay.BackgroundColor3 = Color3.fromRGB(3,5,9); actionOverlay.BackgroundTransparency = 0.25; actionOverlay.BorderSizePixel = 0; actionOverlay.ZIndex = 90; actionOverlay.Parent = root
+                local panel = Instance.new("Frame"); panel.Size = UDim2.new(0,270,0,220); panel.AnchorPoint = Vector2.new(0.5,0.5); panel.Position = UDim2.new(0.5,0,0.5,0); panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 91; panel.Parent = actionOverlay; corner(10,panel); stroke(C.border,1,panel)
+                newTxt({Parent=panel,Text="PLACE ACTIONS",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-48,0,14),Pos=UDim2.new(0,14,0,12),Z=92})
+                local close = Instance.new("TextButton"); close.Size = UDim2.new(0,26,0,24); close.Position = UDim2.new(1,-36,0,6); close.Text = "×"; close.Font = GB; close.TextSize = 17; close.TextColor3 = C.txt; close.BackgroundColor3 = C.pHdr; close.BorderSizePixel = 0; close.ZIndex = 92; close.Parent = panel; corner(6,close); close.MouseButton1Click:Connect(closePlaceActions)
+                local function action(label,iconName,y,callback)
+                    local b = Instance.new("TextButton"); b.Size = UDim2.new(1,-24,0,28); b.Position = UDim2.new(0,12,0,y); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false; b.Text = ""; b.ZIndex = 92; b.Parent = panel; corner(6,b); stroke(C.border,1,b)
+                    local glyph = mkIcon(b,iconName,15,93); glyph.Position = UDim2.new(0,9,0.5,-7); glyph.Size = UDim2.new(0,15,0,15)
+                    newTxt({Parent=b,Text=label,Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-42,1,0),Pos=UDim2.new(0,32,0,0),Z=93})
+                    b.MouseButton1Click:Connect(function() closePlaceActions(); callback() end)
+                    return b
+                end
+                action("Rejoin","refresh-cw",42,function() pcall(function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,game.JobId,LP) end) end)
+                action("Server hop","shuffle",76,function() pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId,LP) end) end)
+                action("Join Lowest Server","users",110,function() joinLowestServer(game.PlaceId,function(msg) JL:Notify({Title="Server Hop",Desc=msg,Type="Error",Duration=4}) end) end)
+                action("Open sub-places","layers",144,function() openSubPlaces(game.GameId) end)
+                action("Copy Place ID","copy",178,function() if setclipboard then setclipboard(tostring(game.PlaceId)); JL:Notify({Title="Copied",Desc="Place ID copied",Type="Success",Duration=3}) end end)
+            end
+            iconButton.MouseButton1Click:Connect(openPlaceActions)
+        end
+        do
             local h = 180
             local card = newCard(h)
             card.BackgroundTransparency = 1
@@ -8817,44 +8859,7 @@ function JL:Window(opts)
                 end)
             end
         end
-        do
-            local h = 82
-            local card = newCard(h)
-            local iconButton = Instance.new("ImageButton"); iconButton.Name = "PlaceActionsButton"; iconButton.Size = UDim2.new(0,54,0,54); iconButton.Position = UDim2.new(0,12,0,14); iconButton.BackgroundColor3 = C.pHdr; iconButton.BorderSizePixel = 0; iconButton.AutoButtonColor = false; iconButton.Parent = card; corner(10,iconButton)
-            iconButton:SetAttribute("JLNoRepaint", true)
-            local icon = Instance.new("ImageLabel"); icon.Size = UDim2.new(1,0,1,0); icon.BackgroundTransparency = 1; icon.BorderSizePixel = 0; icon.Parent = iconButton; corner(10,icon)
-            icon:SetAttribute("JLNoRepaint", true)
-            local actionGlyph = mkIcon(iconButton, "ellipsis", 18, 4); actionGlyph.AnchorPoint = Vector2.new(1,1); actionGlyph.Position = UDim2.new(1,-4,1,-4); actionGlyph.Size = UDim2.new(0,18,0,18); actionGlyph.BackgroundColor3 = C.panel; actionGlyph.BackgroundTransparency = 0.1
-            local nameL = newTxt({Parent=card,Text="Loading place...",Font=GB,Size=13,Sz=UDim2.new(1,-96,0,18),Pos=UDim2.new(0,78,0,14)})
-            local byL = newTxt({Parent=card,Text="Current experience",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-96,0,14),Pos=UDim2.new(0,78,0,35)})
-            newTxt({Parent=card,Text="PLACE  " .. tostring(game.PlaceId) .. "   ·   SERVER  " .. string.sub(tostring(game.JobId),1,8) .. "...",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-24,0,12),Pos=UDim2.new(0,78,0,54)})
-            trackedSpawn(function()
-                local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
-                if ok and info then
-                    nameL.Text = info.Name or "Unknown"
-                    byL.Text = "by " .. ((info.Creator and info.Creator.Name) or "Unknown")
-                    if info.IconImageAssetId and info.IconImageAssetId ~= 0 then icon.Image = "rbxassetid://" .. info.IconImageAssetId end
-                end
-            end)
-            local actionOverlay
-            local function closePlaceActions() if actionOverlay then actionOverlay:Destroy(); actionOverlay = nil end end
-            local function openPlaceActions()
-                closePlaceActions()
-                actionOverlay = Instance.new("Frame"); actionOverlay.Name = "PlaceActionsMenu"; actionOverlay.Size = UDim2.new(1,0,1,0); actionOverlay.BackgroundColor3 = Color3.fromRGB(3,5,9); actionOverlay.BackgroundTransparency = 0.25; actionOverlay.BorderSizePixel = 0; actionOverlay.ZIndex = 90; actionOverlay.Parent = root
-                local panel = Instance.new("Frame"); panel.Size = UDim2.new(0,270,0,220); panel.AnchorPoint = Vector2.new(0.5,0.5); panel.Position = UDim2.new(0.5,0,0.5,0); panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 91; panel.Parent = actionOverlay; corner(10,panel); stroke(C.border,1,panel)
-                newTxt({Parent=panel,Text="PLACE ACTIONS",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-48,0,14),Pos=UDim2.new(0,14,0,12),Z=92})
-                local close = Instance.new("TextButton"); close.Size = UDim2.new(0,26,0,24); close.Position = UDim2.new(1,-36,0,6); close.Text = "×"; close.Font = GB; close.TextSize = 17; close.TextColor3 = C.txt; close.BackgroundColor3 = C.pHdr; close.BorderSizePixel = 0; close.ZIndex = 92; close.Parent = panel; corner(6,close); close.MouseButton1Click:Connect(closePlaceActions)
-                local function action(label,y,callback)
-                    local b = Instance.new("TextButton"); b.Size = UDim2.new(1,-24,0,28); b.Position = UDim2.new(0,12,0,y); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false; b.Text = label; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.ZIndex = 92; b.Parent = panel; corner(6,b); stroke(C.border,1,b); b.MouseButton1Click:Connect(function() closePlaceActions(); callback() end); return b
-                end
-                action("Rejoin current server",42,function() pcall(function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,game.JobId,LP) end) end)
-                action("Server hop",76,function() pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId,LP) end) end)
-                action("Join lowest population",110,function() joinLowestServer(game.PlaceId,function(msg) JL:Notify({Title="Server Hop",Desc=msg,Type="Error",Duration=4}) end) end)
-                action("Open sub-places",144,function() openSubPlaces(game.GameId) end)
-                action("Copy Place ID",178,function() if setclipboard then setclipboard(tostring(game.PlaceId)); JL:Notify({Title="Copied",Desc="Place ID copied",Type="Success",Duration=3}) end end)
-            end
-            iconButton.MouseButton1Click:Connect(openPlaceActions)
-        end
+
         if hopts.DiscordInvite or hopts.Website then
             local h = 60
             local card = newCard(h)
