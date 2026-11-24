@@ -6311,6 +6311,7 @@ function JL:Window(opts)
             author = field("Author"),
             version = field("Version"),
             desc = field("Description"),
+            image = field("Image") or field("Thumbnail") or field("IconAsset"),
             lib = field("Library"),
         }
     end
@@ -6329,6 +6330,7 @@ function JL:Window(opts)
                 elseif key == "version" then meta.version = rest
                 elseif key == "lib" or key == "requires" or key == "target" or key == "jl" then meta.lib = rest
                 elseif key == "description" or key == "desc" then meta.desc = rest
+                elseif key == "image" or key == "thumbnail" or key == "iconasset" then meta.image = rest
                 elseif CTRL_KINDS[key] then
                     if pending then notes[#notes + 1] = "line " .. pending.line .. ": --@" .. pending.kind .. " has no function below it"; pending = nil end
                     local isStatic = (key == "label" or key == "divider")
@@ -7217,11 +7219,20 @@ function JL:Window(opts)
         end
     end
 
+    local function amSetMainChromeVisible(visible)
+        if not win then return end
+        for _,name in ipairs({"JLGlobalSearchButton","JLMinimizeButton","JLUnloadButton","JLGlobalSearchPanel"}) do
+            local obj=win:FindFirstChild(name)
+            if obj and obj:IsA("GuiObject") then obj.Visible=visible end
+        end
+    end
+
     function AM.openLibrary()
         if not AM.panel then
             AM.scan()
             AM.buildPanel()
         end
+        amSetMainChromeVisible(false)
         if AM.panel then AM.panel.Visible = true end
         return AM.panel
     end
@@ -7229,6 +7240,7 @@ function JL:Window(opts)
     function AM.closeLibrary()
         if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
         if AM.panel then AM.panel.Visible = false end
+        amSetMainChromeVisible(true)
     end
 
     function AM.removePanel()
