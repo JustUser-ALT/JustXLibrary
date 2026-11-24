@@ -7092,218 +7092,119 @@ function JL:Window(opts)
         return card
     end
 
+    AM.catalog = AM.catalog or {
+        {id="server-finder",name="Server Finder",author="JustX Team",version="1.0.0",category="UTILITY",icon="globe",desc="Explore available servers and find a session that fits your needs.",accent=1},
+        {id="player-toolkit",name="Player Toolkit",author="JustX Team",version="1.0.0",category="PLAYER",icon="users",desc="A collection of quick player lookups and useful session actions.",accent=2},
+        {id="ui-themes",name="UI Themes",author="JustX Team",version="1.0.0",category="APPEARANCE",icon="palette",desc="Give JustX Library a different visual style with curated themes.",accent=3},
+        {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4},
+    }
+    AM.catalogInstalled = AM.catalogInstalled or {}
+    AM.activeView = AM.activeView or "Discover"
+
+    local function amShowInfo(entry)
+        if AM.infoLayer then AM.infoLayer:Destroy(); AM.infoLayer=nil end
+        local layer=Instance.new("Frame"); layer.Name="AddonInfoLayer"; layer.Size=UDim2.new(1,0,1,0); layer.BackgroundColor3=Color3.fromRGB(0,0,0); layer.BackgroundTransparency=0.35; layer.ZIndex=110; layer.Parent=AM.panel
+        local box=Instance.new("Frame"); box.Name="AddonInfo"; box.Size=UDim2.new(1,-34,0,220); box.AnchorPoint=Vector2.new(0.5,0.5); box.Position=UDim2.new(0.5,0,0.5,0); box.BackgroundColor3=C.panel; box.BorderSizePixel=0; box.ZIndex=111; box.Parent=layer; corner(12,box); stroke(C.border,1,box)
+        newTxt({Parent=box,Text="ADDON DETAILS",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-52,0,14),Pos=UDim2.new(0,16,0,14),Z=112})
+        local close=amUiButton(box,"×",1,function() layer:Destroy(); AM.infoLayer=nil end); close.Size=UDim2.new(0,28,0,26); close.Position=UDim2.new(1,-40,0,8); close.ZIndex=113
+        newTxt({Parent=box,Text=tostring(entry.name or "Addon"),Font=GB,Size=17,Color=C.txt,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,39),Z=112})
+        newTxt({Parent=box,Text="BY "..string.upper(tostring(entry.author or "COMMUNITY")).."   ·   "..amShowVer(entry.version or "1.0"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,70),Z=112})
+        local desc= newTxt({Parent=box,Text=tostring(entry.desc or "No description provided."),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-32,0,54),Pos=UDim2.new(0,16,0,96),Z=112}); desc.TextYAlignment=Enum.TextYAlignment.Top
+        newTxt({Parent=box,Text="CATEGORY   /   "..string.upper(tostring(entry.category or "ADDON")),Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,162),Z=112})
+        newTxt({Parent=box,Text="This is a catalogue preview. Addon functionality will be connected later.",Font=GM,Size=8,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,181),Z=112})
+        AM.infoLayer=layer
+    end
+
     function AM.buildPanel()
         if AM.panel then return end
-        AM.building = true
-        local panelW = math.min(CWW - 8, 390)
-        panelW = math.max(260, panelW)
-        local panel = Instance.new("Frame")
-        panel.Name = "JLUtilitySidebar"
-        panel.Size = UDim2.new(0, panelW, 1, 0)
-        panel.Position = UDim2.new(0, SBW + GAP + CWW - panelW, 0, 0)
-        panel.BackgroundColor3 = C.sidebar
-        panel.BorderSizePixel = 0
-        panel.ZIndex = 70
-        panel.Parent = win
-        corner(12, panel)
-        stroke(C.border, 1, panel)
-        AM.panel = panel
-
-        local header = Instance.new("Frame")
-        header.Name = "UtilityHeader"
-        header.Size = UDim2.new(1, -20, 0, 42)
-        header.Position = UDim2.new(0, 10, 0, 8)
-        header.BackgroundTransparency = 1
-        header.ZIndex = 72
-        header.Parent = panel
-        local title = newTxt({Parent=header,Text="ADDON LIBRARY",Font=GB,Size=12,Color=C.txt,Sz=UDim2.new(1,-42,0,18),Pos=UDim2.new(0,0,0,1),Z=73})
-        local subtitle = newTxt({Parent=header,Text="Your extensions and utilities",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-42,0,14),Pos=UDim2.new(0,0,0,21),Z=73})
-        local close = Instance.new("TextButton")
-        close.Name = "CloseUtilitySidebar"
-        close.Size = UDim2.new(0,30,0,30)
-        close.Position = UDim2.new(1,-30,0,2)
-        close.BackgroundColor3 = C.btnBg
-        close.BorderSizePixel = 0
-        close.AutoButtonColor = false
-        close.Text = "×"
-        close.Font = GB
-        close.TextSize = 19
-        close.TextColor3 = C.dim
-        close.ZIndex = 74
-        close.Parent = header
-        corner(8,close)
-        close.MouseButton1Click:Connect(function() AM.closeLibrary() end)
-
-        local searchWrap = Instance.new("Frame")
-        searchWrap.Name = "AddonSearchWrap"
-        searchWrap.Size = UDim2.new(1,-20,0,32)
-        searchWrap.Position = UDim2.new(0,10,0,56)
-        searchWrap.BackgroundColor3 = C.pHdr
-        searchWrap.BorderSizePixel = 0
-        searchWrap.ZIndex = 72
-        searchWrap.Parent = panel
-        corner(8,searchWrap)
-        local search = Instance.new("TextBox")
-        search.Name = "AddonSearch"
-        search.Size = UDim2.new(1,-18,1,0)
-        search.Position = UDim2.new(0,9,0,0)
-        search.BackgroundTransparency = 1
-        search.BorderSizePixel = 0
-        search.ClearTextOnFocus = false
-        search.Text = ""
-        search.PlaceholderText = "Search installed addons..."
-        search.Font = GM
-        search.TextSize = 10
-        search.TextColor3 = C.txt
-        search.PlaceholderColor3 = C.dim
-        search.TextXAlignment = Enum.TextXAlignment.Left
-        search.ZIndex = 73
-        search.Parent = searchWrap
-
-        local toolbar = Instance.new("Frame")
-        toolbar.Name = "AddonToolbar"
-        toolbar.Size = UDim2.new(1,-20,0,34)
-        toolbar.Position = UDim2.new(0,10,0,96)
-        toolbar.BackgroundTransparency = 1
-        toolbar.ZIndex = 72
-        toolbar.Parent = panel
-        local import = amUiButton(toolbar,"＋  Import",1,amOpenImport,ACCENTS[1])
-        import.Size = UDim2.new(0.34,-5,1,0)
-        local reload = amUiButton(toolbar,"↻  Reload",2,function() AM.refresh() end)
-        reload.Size = UDim2.new(0.33,-5,1,0)
-        reload.Position = UDim2.new(0.34,3,0,0)
-        local disable = amUiButton(toolbar,"Disable All",3,function() AM.disableAll(); AM.applySearch() end)
-        disable.Size = UDim2.new(0.33,-3,1,0)
-        disable.Position = UDim2.new(0.67,3,0,0)
-        disable.BackgroundColor3 = C.pHdr
-        disable.TextColor3 = C.dim
-
-        local autoRow = Instance.new("Frame")
-        autoRow.Name = "AddonAutoSaveRow"
-        autoRow.Size = UDim2.new(1,-20,0,28)
-        autoRow.Position = UDim2.new(0,10,0,136)
-        autoRow.BackgroundTransparency = 1
-        autoRow.ZIndex = 72
-        autoRow.Parent = panel
-        local autoLabel = newTxt({Parent=autoRow,Text="AUTO-ENABLE SAVED ADDONS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-190,1,0),Pos=UDim2.new(0,0,0,0),Z=73})
-        local previewButton = Instance.new("TextButton")
-        previewButton.Name = "OpenPreviewUI"
-        previewButton.Size = UDim2.new(0,112,0,22)
-        previewButton.Position = UDim2.new(1,-166,0.5,-11)
-        previewButton.BackgroundColor3 = C.btnBg
-        previewButton.BorderSizePixel = 0
-        previewButton.AutoButtonColor = false
-        previewButton.Text = "Preview UI  ↗"
-        previewButton.Font = GB
-        previewButton.TextSize = 8
-        previewButton.TextColor3 = ACCENTS[1]
-        previewButton.ZIndex = 73
-        previewButton.Parent = autoRow
-        corner(7,previewButton)
-        previewButton.MouseButton1Click:Connect(function()
-            if JL._preview and JL._preview.Open then
-                JL._preview:Open()
-            else
-                JL:Notify({Title="Preview UI",Desc="No Preview UI has been created yet. Use JL:Preview().",Type="Warn",Duration=3})
-            end
-        end)
-        local autoButton = Instance.new("TextButton")
-        autoButton.Size = UDim2.new(0,48,0,22)
-        autoButton.Position = UDim2.new(1,-48,0.5,-11)
-        autoButton.BackgroundColor3 = C.pHdr
-        autoButton.BorderSizePixel = 0
-        autoButton.AutoButtonColor = false
-        autoButton.Font = GB
-        autoButton.TextSize = 8
-        autoButton.TextColor3 = C.dim
-        autoButton.ZIndex = 73
-        autoButton.Parent = autoRow
-        corner(7,autoButton)
-        local autoOn = cfgGet("_addons_autosave", false) == true
-        JL._addonAutoSave = autoOn
-        local function paintAuto()
-            autoButton.Text = autoOn and "ON" or "OFF"
-            autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
-            autoButton.TextColor3 = autoOn and Color3.fromRGB(125,230,170) or C.dim
-        end
-        paintAuto()
-        autoButton.MouseButton1Click:Connect(function()
-            autoOn = not autoOn
-            JL._addonAutoSave = autoOn
-            cfgSet("_addons_autosave",autoOn)
-            paintAuto()
-            if autoOn then cfgFlush() end
-            JL:Notify({Title="Addons",Desc=autoOn and "Auto-enable saved addons is on." or "Auto-enable saved addons is off.",Type="Info",Duration=3})
-        end)
-
-        local count = newTxt({Parent=panel,Text="",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-20,0,14),Pos=UDim2.new(0,10,0,166),Z=72})
-        count.Name = "AddonCount"
-        local scroll = Instance.new("ScrollingFrame")
-        scroll.Name = "AddonLibraryScroll"
-        scroll.Size = UDim2.new(1,-16,1,-190)
-        scroll.Position = UDim2.new(0,8,0,184)
-        scroll.BackgroundTransparency = 1
-        scroll.BorderSizePixel = 0
-        scroll.ScrollBarThickness = 3
-        scroll.ScrollBarImageColor3 = ACCENTS[1]
-        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-        scroll.Active = true
-        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        scroll.CanvasSize = UDim2.new(0,0,0,0)
-        scroll.ZIndex = 72
-        scroll.Parent = panel
-        local list = Instance.new("UIListLayout")
-        list.FillDirection = Enum.FillDirection.Vertical
-        list.SortOrder = Enum.SortOrder.LayoutOrder
-        list.Padding = UDim.new(0,8)
-        list.Parent = scroll
-        local padding = Instance.new("UIPadding")
-        padding.PaddingTop = UDim.new(0,4)
-        padding.PaddingBottom = UDim.new(0,8)
-        padding.PaddingLeft = UDim.new(0,2)
-        padding.PaddingRight = UDim.new(0,5)
-        padding.Parent = scroll
-
-        AM.searchBox = search
-        AM.resultLabel = count
-        AM.cardScroll = scroll
-        if AM.fsNote then
-            local note = amUiText(scroll,AM.fsNote,9,ERR_COL,34,1,GM)
-            note.Name = "AddonFilesystemWarning"
-        end
-        if #AM.list == 0 and not AM.fsNote then
-            local empty,body = amUiCard(scroll,1,C.dim)
-            empty.Name = "AddonEmptyState"
-            amUiText(body,"Your library is empty",12,C.txt,22,1,GB)
-            amUiText(body,"Import a Lua addon or place a .lua / .txt / .luau file in the Addons folder.",10,C.dim,34,2,GM)
-        else
-            for i,a in ipairs(AM.list) do
-                local ok,e = pcall(amBuildCard,a,scroll,i + (AM.fsNote and 1 or 0))
-                if not ok then warn("[JustLib] addon '"..tostring(a.file).."' UI failed: "..tostring(e)) end
-            end
-        end
+        AM.building=true
+        local panelW=math.min(math.max(300,CWW-8),440)
+        local panel=Instance.new("Frame"); panel.Name="JLAddonLibrary"; panel.Size=UDim2.new(0,panelW,1,0); panel.Position=UDim2.new(0,SBW+GAP+CWW-panelW,0,0); panel.BackgroundColor3=C.sidebar; panel.BorderSizePixel=0; panel.ZIndex=70; panel.Parent=win; corner(13,panel); stroke(C.border,1,panel); AM.panel=panel
+        local header=Instance.new("Frame"); header.Size=UDim2.new(1,-24,0,48); header.Position=UDim2.new(0,12,0,10); header.BackgroundTransparency=1; header.ZIndex=72; header.Parent=panel
+        newTxt({Parent=header,Text="ADDON LIBRARY",Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-50,0,19),Pos=UDim2.new(0,0,0,0),Z=73})
+        newTxt({Parent=header,Text="EXPAND YOUR JUSTX EXPERIENCE",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-50,0,14),Pos=UDim2.new(0,0,0,23),Z=73})
+        local plus=amUiButton(header,"+",1,amOpenImport,ACCENTS[1]); plus.Name="AddonAddSource"; plus.Size=UDim2.new(0,32,0,30); plus.Position=UDim2.new(1,-68,0,3); plus.TextSize=17
+        local close=amUiButton(header,"×",2,function() AM.closeLibrary() end); close.Name="CloseAddonLibrary"; close.Size=UDim2.new(0,30,0,30); close.Position=UDim2.new(1,-32,0,3); close.TextSize=17
+        local tabs=Instance.new("Frame"); tabs.Name="AddonViews"; tabs.Size=UDim2.new(1,-24,0,36); tabs.Position=UDim2.new(0,12,0,66); tabs.BackgroundColor3=C.pHdr; tabs.BorderSizePixel=0; tabs.ZIndex=72; tabs.Parent=panel; corner(9,tabs)
+        local discover=amUiButton(tabs,"DISCOVER",1,function() AM.activeView="Discover"; AM.applySearch() end); discover.Size=UDim2.new(0.5,-3,1,-6); discover.Position=UDim2.new(0,3,0,3); discover.Name="DiscoverTab"
+        local installed=amUiButton(tabs,"INSTALLED",2,function() AM.activeView="Installed"; AM.applySearch() end); installed.Size=UDim2.new(0.5,-3,1,-6); installed.Position=UDim2.new(0.5,0,0,3); installed.Name="InstalledTab"
+        local searchWrap=Instance.new("Frame"); searchWrap.Size=UDim2.new(1,-24,0,32); searchWrap.Position=UDim2.new(0,12,0,110); searchWrap.BackgroundColor3=C.pHdr; searchWrap.BorderSizePixel=0; searchWrap.ZIndex=72; searchWrap.Parent=panel; corner(8,searchWrap)
+        local search=Instance.new("TextBox"); search.Name="AddonSearch"; search.Size=UDim2.new(1,-18,1,0); search.Position=UDim2.new(0,9,0,0); search.BackgroundTransparency=1; search.BorderSizePixel=0; search.ClearTextOnFocus=false; search.Text=""; search.PlaceholderText="Search addons..."; search.Font=GM; search.TextSize=10; search.TextColor3=C.txt; search.PlaceholderColor3=C.dim; search.TextXAlignment=Enum.TextXAlignment.Left; search.ZIndex=73; search.Parent=searchWrap
+        local summary=newTxt({Parent=panel,Text="",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-24,0,14),Pos=UDim2.new(0,12,0,150),Z=72}); summary.Name="AddonCount"
+        local scroll=Instance.new("ScrollingFrame"); scroll.Name="AddonLibraryScroll"; scroll.Size=UDim2.new(1,-16,1,-178); scroll.Position=UDim2.new(0,8,0,170); scroll.BackgroundTransparency=1; scroll.BorderSizePixel=0; scroll.ScrollBarThickness=3; scroll.ScrollBarImageColor3=ACCENTS[1]; scroll.ScrollingDirection=Enum.ScrollingDirection.Y; scroll.Active=true; scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; scroll.CanvasSize=UDim2.new(0,0,0,0); scroll.ZIndex=72; scroll.Parent=panel
+        local layout=Instance.new("UIListLayout"); layout.FillDirection=Enum.FillDirection.Vertical; layout.SortOrder=Enum.SortOrder.LayoutOrder; layout.Padding=UDim.new(0,9); layout.Parent=scroll
+        local pad=Instance.new("UIPadding"); pad.PaddingTop=UDim.new(0,4); pad.PaddingBottom=UDim.new(0,10); pad.PaddingLeft=UDim.new(0,2); pad.PaddingRight=UDim.new(0,5); pad.Parent=scroll
+        AM.searchBox=search; AM.resultLabel=summary; AM.cardScroll=scroll; AM.discoverButton=discover; AM.installedButton=installed
         search:GetPropertyChangedSignal("Text"):Connect(function() AM.applySearch() end)
-        AM.building = false
+        AM.building=false
         AM.applySearch()
-        for _,a in ipairs(AM.list) do
-            if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
-                if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
-            end
-        end
     end
 
     function AM.applySearch()
-        if not AM.panel then return end
-        local query = tostring(AM.searchBox and AM.searchBox.Text or ""):lower():gsub("^%s+",""):gsub("%s+$","")
-        local shown = 0
-        for _,a in ipairs(AM.list) do
-            local hay = table.concat({tostring(a.meta.name or ""),tostring(a.meta.author or ""),tostring(a.meta.desc or ""),tostring(a.file or "")}," "):lower()
-            local visible = query == "" or hay:find(query,1,true) ~= nil
-            if a.card and a.card.Parent then a.card.Visible = visible end
-            if visible then shown = shown + 1 end
+        if not AM.panel or not AM.cardScroll then return end
+        for _,child in ipairs(AM.cardScroll:GetChildren()) do if child:IsA("GuiObject") and child.Name~="UIListLayout" and child.Name~="UIPadding" then child:Destroy() end end
+        local query=tostring(AM.searchBox and AM.searchBox.Text or ""):lower():gsub("^%s+",""):gsub("%s+$","")
+        local isDiscover=AM.activeView~="Installed"
+        local shown=0
+        local function makeCard(entry,order,isInstalled,isFile)
+            local accent=ACCENTS[((order-1)%#ACCENTS)+1]
+            local card,body,bar=amUiCard(AM.cardScroll,order,accent); card.Name="AddonShowcaseCard"
+            local head=Instance.new("Frame"); head.Size=UDim2.new(1,0,0,34); head.BackgroundTransparency=1; head.LayoutOrder=1; head.Parent=body
+            local glyph=mkIcon(head,entry.icon or "puzzle",18,74); glyph.Position=UDim2.new(0,0,0,7); glyph.TextColor3=accent
+            local title=newTxt({Parent=head,Text=tostring(entry.name or "Addon"),Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-112,0,20),Pos=UDim2.new(0,27,0,0),Z=74}); title.TextTruncate=Enum.TextTruncate.AtEnd
+            local chip=newTxt({Parent=head,Text=isInstalled and "INSTALLED" or tostring(entry.category or "ADDON"),Font=GB,Size=7,Color=isInstalled and Color3.fromRGB(115,220,160) or accent,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(0,82,0,20),Pos=UDim2.new(1,-82,0,5),Z=74}); chip.BackgroundColor3=C.btnBg; chip.BackgroundTransparency=0; corner(6,chip)
+            local meta={}; if entry.author and entry.author~="" then meta[#meta+1]="by "..tostring(entry.author) end; if entry.version then meta[#meta+1]=amShowVer(entry.version) end
+            amUiText(body,table.concat(meta,"   ·   "),8,C.dim,14,2,GM)
+            local desc=amUiText(body,tostring(entry.desc or "A JustX Library extension preview."),9,C.txt,30,3,GM); desc.TextYAlignment=Enum.TextYAlignment.Top
+            local actions=Instance.new("Frame"); actions.Size=UDim2.new(1,0,0,30); actions.BackgroundTransparency=1; actions.LayoutOrder=4; actions.Parent=body
+            local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.32,-4,1,0); info.Name="AddonInfoButton"
+            local main
+            if isInstalled then
+                main=amUiButton(actions,"UNINSTALL",2,function()
+                    if isFile then
+                        JL:Notify({Title="Addon Manager",Desc="File-based addon lifecycle remains available in the source manager.",Type="Info",Duration=3})
+                    else
+                        AM.catalogInstalled[entry.id]=nil; AM.applySearch()
+                    end
+                end, C.btnBg); main.Size=UDim2.new(0.34,-4,1,0); main.Position=UDim2.new(0.33,2,0,0); main.Name="AddonUninstall"
+                local del=amUiButton(actions,"DELETE",3,function()
+                    if not isFile then AM.catalogInstalled[entry.id]=nil; AM.applySearch(); JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
+                    else JL:Notify({Title="Addon Manager",Desc="Use the source manager to remove this file addon.",Type="Info",Duration=3}) end
+                end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.66,4,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
+            else
+                main=amUiButton(actions,"INSTALL",2,function()
+                    AM.catalogInstalled[entry.id]=true; AM.activeView="Installed"; AM.applySearch()
+                    JL:Notify({Title="Addon Added",Desc=entry.name.." moved to Installed (visual preview).",Type="Success",Duration=3})
+                end,accent); main.Size=UDim2.new(0.66,-4,1,0); main.Position=UDim2.new(0.34,4,0,0); main.Name="AddonInstall"
+            end
+            card.Visible=true
         end
-        if AM.resultLabel and AM.resultLabel.Parent then
-            AM.resultLabel.Text = tostring(shown).." INSTALLED  ·  "..tostring(#AM.list).." TOTAL"
+        if isDiscover then
+            for i,entry in ipairs(AM.catalog) do
+                local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
+                if (query=="" or hay:find(query,1,true)) and not AM.catalogInstalled[entry.id] then shown=shown+1; makeCard(entry,shown,false,false) end
+            end
+            if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"No addons found",12,C.txt,22,1,GB); amUiText(body,"Try a different search term.",9,C.dim,18,2,GM) end
+            if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." AVAILABLE ADDONS" end
+        else
+            for i,entry in ipairs(AM.catalog) do
+                if AM.catalogInstalled[entry.id] then
+                    local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
+                    if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,false) end
+                end
+            end
+            for _,a in ipairs(AM.list or {}) do
+                local entry={id=a.id,name=a.meta.name or a.file,author=a.meta.author,version=a.meta.version,desc=a.meta.desc or "Imported addon source.",category="IMPORTED",icon="file-code"}
+                local hay=(entry.name.." "..tostring(entry.author or "").." "..entry.desc):lower()
+                if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,true) end
+            end
+            if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"Nothing installed yet",12,C.txt,22,1,GB); amUiText(body,"Explore the catalogue or use + to add an addon source.",9,C.dim,24,2,GM) end
+            if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." INSTALLED ADDONS" end
+        end
+        if AM.discoverButton and AM.installedButton then
+            local active=AM.activeView=="Installed"
+            AM.discoverButton.BackgroundColor3=active and C.pHdr or ACCENTS[1]; AM.discoverButton.TextColor3=active and C.dim or Color3.new(1,1,1)
+            AM.installedButton.BackgroundColor3=active and ACCENTS[1] or C.pHdr; AM.installedButton.TextColor3=active and Color3.new(1,1,1) or C.dim
         end
     end
 
