@@ -1981,6 +1981,7 @@ function JL:Window(opts)
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
+            if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
             amSetCardState(a,a.loaded)
         end)
         enable.Name = "AddonEnable"
@@ -2013,6 +2014,7 @@ function JL:Window(opts)
                 else
                     AM.disable(a)
                 end
+                if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
                 amSetCardState(a,a.loaded)
             end
         }
@@ -2083,7 +2085,8 @@ function JL:Window(opts)
         autoButton.TextColor3 = C.dim
         autoButton.Parent = autosaveRow
         corner(7,autoButton)
-        local autoOn = JL._addonAutoSave == true
+        local autoOn = cfgGet("_addons_autosave", false) == true
+        JL._addonAutoSave = autoOn
         local function paintAuto()
             autoButton.Text = autoOn and "ON" or "OFF"
             autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
@@ -2093,6 +2096,7 @@ function JL:Window(opts)
         autoButton.MouseButton1Click:Connect(function()
             autoOn = not autoOn
             JL._addonAutoSave = autoOn
+            cfgSet("_addons_autosave", autoOn)
             paintAuto()
             if autoOn then cfgFlush() end
             JL:Notify({Title="Addons",Desc=autoOn and "Auto Save enabled." or "Auto Save disabled.",Type="Info",Duration=3})
@@ -2158,7 +2162,7 @@ function JL:Window(opts)
         end
         AM.building = false
         for _,a in ipairs(AM.list) do
-            if cfgGet("addon."..a.id..".enabled",false) == true then
+            if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
                 if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
             end
         end
