@@ -5498,7 +5498,7 @@ function JL:Window(opts)
     end
     local TABPOS = UDim2.new(0,PADIN,0,PADIN + 36)
     local function offPos(dir) return UDim2.new(dir,PADIN,0,PADIN) end
-    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local settingsTabId = nil; local _tabCount = 0
+    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local settingsTabId = nil; local _tabCount = 0; local homeTabInstance = nil
     local function styleTab(id,active)
         local u = tabUI[id]; if not u then return end
         tw(u.btn,{BackgroundColor3 = active and Color3.fromRGB(24,44,74) or Color3.fromRGB(34,34,40)},.15)
@@ -8181,8 +8181,10 @@ function JL:Window(opts)
         end
     end)
     function Win:HomeTab(hopts)
+        if homeTabInstance and not homeTabInstance:IsRemoved() then return homeTabInstance end
         hopts = hopts or {}
         local T = self:Tab({Name = hopts.Name or "Home", Icon = hopts.Icon or "house", Tooltip = hopts.Tooltip, Type = "Custom"})
+        homeTabInstance = T
         local id = T.Id
         if tabUI[id] then tabUI[id].btn.LayoutOrder = -1000 end
         switchToTab(id)
@@ -8910,7 +8912,10 @@ function JL:Window(opts)
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
     end
-    if opts.Settings ~= false then Win:Settings() end
+    -- Home and Settings are built-in tabs and are always created.
+    -- Home is created first and selected as the startup tab.
+    Win:HomeTab(type(opts.HomeTab) == "table" and opts.HomeTab or nil)
+    Win:Settings()
     trackedDefer(function()
         if _dead or activeTabId then return end
         local id = settingsTabId
