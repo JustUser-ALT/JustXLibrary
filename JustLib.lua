@@ -7745,7 +7745,6 @@ function JL:Window(opts)
         end
     end)
     function Win:Settings()
-        if opts.Settings == false then return nil end
         local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings", _SettingsTab = true})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
