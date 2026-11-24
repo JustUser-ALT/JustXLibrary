@@ -1527,14 +1527,166 @@ function JL:Window(opts)
         end
     end
 
+    local function amSafeFileName(name)
+        local s = tostring(name or "Addon"):gsub("[^%w%-%_ ]", ""):gsub("%s+", "_"):gsub("_+", "_")
+        s = s:gsub("^[_%-]+", ""):gsub("[_%-]+$", "")
+        if s == "" then s = "Addon" end
+        return s:sub(1, 48)
+    end
+
+    local function amOpenImport()
+        if not AM.tab or AM.importGui then return end
+        local overlay = Instance.new("TextButton")
+        overlay.Name = "AddonImportOverlay"; overlay.Size = UDim2.new(1,0,1,0)
+        overlay.BackgroundColor3 = Color3.new(0,0,0); overlay.BackgroundTransparency = 0.35
+        overlay.BorderSizePixel = 0; overlay.Text = ""; overlay.AutoButtonColor = false
+        overlay.ZIndex = 80; overlay.Parent = AM.tab.Frame
+        local panel = Instance.new("Frame")
+        panel.Name = "AddonImportPanel"; panel.AnchorPoint = Vector2.new(0.5,0.5)
+        panel.Position = UDim2.new(0.5,0,0.5,0); panel.Size = UDim2.new(1,-24,0,360)
+        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 81; panel.Parent = overlay
+        corner(10,panel); stroke(C.border,1,panel)
+        newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=83})
+        newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=83})
+        local close = Instance.new("TextButton")
+        close.Size = UDim2.new(0,30,0,30); close.Position = UDim2.new(1,-40,0,8)
+        close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.Text = "×"
+        close.Font = GB; close.TextSize = 20; close.TextColor3 = C.txt; close.ZIndex = 84; close.Parent = panel
+        corner(7,close)
+        local editor = Instance.new("TextBox")
+        editor.Name = "AddonCode"; editor.Size = UDim2.new(1,-28,1,-112)
+        editor.Position = UDim2.new(0,14,0,66); editor.BackgroundColor3 = C.pHdr
+        editor.BorderSizePixel = 0; editor.ClearTextOnFocus = false; editor.MultiLine = true
+        editor.TextWrapped = false; editor.TextXAlignment = Enum.TextXAlignment.Left
+        editor.TextYAlignment = Enum.TextYAlignment.Top; editor.Font = Enum.Font.Code
+        editor.TextSize = 12; editor.TextColor3 = C.txt; editor.PlaceholderColor3 = C.dim
+        editor.PlaceholderText = "--@name My Addon\n--@author Your name\n--@version 1.0\n\nPaste addon code here..."
+        editor.Text = ""; editor.ZIndex = 83; editor.Parent = panel
+        corner(7,editor); stroke(C.border,1,editor)
+        local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=83})
+        local install = Instance.new("TextButton")
+        install.Size = UDim2.new(0,116,0,30); install.Position = UDim2.new(1,-130,1,-42)
+        install.BackgroundColor3 = ACC; install.BorderSizePixel = 0; install.Text = "Install"
+        install.Font = GB; install.TextSize = 12; install.TextColor3 = Color3.new(1,1,1)
+        install.ZIndex = 84; install.Parent = panel; corner(7,install)
+        local function closeImport()
+            AM.importGui = nil
+            if overlay then overlay:Destroy() end
+        end
+        close.MouseButton1Click:Connect(closeImport)
+        overlay.MouseButton1Click:Connect(function() end)
+        install.MouseButton1Click:Connect(function()
+            local code = editor.Text or ""
+            if code:gsub("%s","") == "" then
+                status.Text = "Paste the addon source first."; status.TextColor3 = ERR_COL
+                return
+            end
+            if not (writefile and loadstring and amFsOK() and amEnsureDir()) then
+                status.Text = "Executor file or compiler support is missing."; status.TextColor3 = ERR_COL
+                return
+            end
+            local meta, ctrls, notes = amParse(code)
+            if not meta.name or amTrim(meta.name) == "" then
+                status.Text = "Missing required metadata: --@name"; status.TextColor3 = ERR_COL
+                return
+            end
+            if #notes > 0 then
+                status.Text = "Fix addon directives: " .. tostring(notes[1]); status.TextColor3 = ERR_COL
+                return
+            end
+            local compile, syntaxErr = loadstring(amBuildCode(code, ctrls), "=Addon_Import_Check")
+            if not compile then
+                status.Text = "Lua syntax error: " .. tostring(syntaxErr); status.TextColor3 = ERR_COL
+                return
+            end
+            local base = amSafeFileName(meta.name)
+            local path, suffix = AM.dir .. "/" .. base .. ".lua", 1
+            while isfile and isfile(path) do
+                suffix = suffix + 1
+                path = AM.dir .. "/" .. base .. "_" .. tostring(suffix) .. ".lua"
+            end
+            if not isfile then
+                local listedOk, listed = pcall(listfiles, AM.dir)
+                if not listedOk or type(listed) ~= "table" then
+                    status.Text = "Could not check for an existing filename."; status.TextColor3 = ERR_COL
+                    return
+                end
+                local taken = {}
+                for _, item in ipairs(listed) do taken[tostring(item):lower()] = true end
+                while taken[path:lower()] do
+                    suffix = suffix + 1
+                    path = AM.dir .. "/" .. base .. "_" .. tostring(suffix) .. ".lua"
+                end
+            end
+            local wrote, writeErr = pcall(writefile, path, code)
+            if not wrote then
+                status.Text = "Could not save addon: " .. tostring(writeErr); status.TextColor3 = ERR_COL
+                return
+            end
+            closeImport()
+            AM.refresh()
+            JL:Notify({Title="Addon Installed",Desc=meta.name .. " was added to your library.",Type="Success",Duration=4})
+        end)
+        AM.importGui = overlay
+    end
+
+    local function amBuildSection(a)
+        local sec = AM.tab:Section({Title = a.meta.name, Icon = "puzzle", Tooltip = a.meta.desc or a.file})
+        a.sec = sec
+        a.enableCtl = sec:Toggle({
+            Name = "Enabled", Flag = "addon." .. a.id .. ".enabled", Default = false, NoSave = true, Tooltip = a.meta.desc,
+            Callback = function(v)
+                if AM.building then return end
+                if v then if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
+                else AM.disable(a) end
+            end,
+        })
+        local sub = {}
+        if a.meta.author and a.meta.author ~= "" then sub[#sub + 1] = "by " .. a.meta.author end
+        if a.meta.version and a.meta.version ~= "" then sub[#sub + 1] = amShowVer(a.meta.version) end
+        sub[#sub + 1] = a.file
+        sec:Label({Text = table.concat(sub, "  ·  ")})
+        if a.meta.desc and a.meta.desc ~= "" then sec:Label({Text = a.meta.desc, Color = C.txt}) end
+        if amWarnOn() then
+            if a.outdated then
+                sec:Label({Text = "⚠ Made for JustLib " .. amShowVer(a.meta.lib) .. " (you have " .. amShowVer(JL.Version) .. "). It may not work correctly.", Color = WARN_COL})
+            elseif a.needsNewer then
+                sec:Label({Text = "⚠ Needs JustLib " .. amShowVer(a.meta.lib) .. " or newer (you have " .. amShowVer(JL.Version) .. ").", Color = WARN_COL})
+            end
+        end
+        for _, note in ipairs(a.notes) do sec:Label({Text = "⚠ " .. note, Color = WARN_COL}) end
+        local hasCtl = false
+        for _, c in ipairs(a.ctrls) do if c.kind ~= "label" and c.kind ~= "divider" then hasCtl = true end end
+        if hasCtl then sec:Divider({Label = "Settings"}) end
+        for _, c in ipairs(a.ctrls) do
+            local ok, e = pcall(amBuildControl, a, sec, c)
+            if not ok then sec:Label({Text = "⚠ " .. tostring(c.o.name or c.fn) .. ": " .. tostring(e), Color = ERR_COL}) end
+        end
+        sec:Button({Name = "Remove Addon", Tooltip = "Deletes this addon file from the Addons folder", Callback = function()
+            if not delfile then
+                JL:Notify({Title="Addons",Desc="This executor does not support deleting files.",Type="Error",Duration=4})
+                return
+            end
+            local filePath = AM.dir .. "/" .. a.file
+            local ok, err = pcall(delfile, filePath)
+            if not ok then
+                JL:Notify({Title="Addons",Desc="Could not delete addon: " .. tostring(err),Type="Error",Duration=4})
+                return
+            end
+            AM.refresh()
+            JL:Notify({Title="Addon Removed",Desc=a.meta.name .. " was deleted.",Type="Success",Duration=3})
+        end})
+    end
+
     function AM.buildTab()
         if AM.tab then return end
         AM.building = true
-        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "Grid", Tooltip = "Addons"})
-        local top = AM.tab:Section({Title = "Addons", Column = 1})
+        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "List", Tooltip = "Addons"})
+        local top = AM.tab:Section({Title = "Your Addons", Icon = "puzzle"})
         top:Label({Text = "Folder: " .. AM.dir .. "  ·  .lua .txt .luau"})
         top:Label({Text = "⚠ Addons are code with full access. Only enable addons you trust.", Color = WARN_COL})
         if AM.fsNote then top:Label({Text = AM.fsNote, Color = ERR_COL}) end
+        top:Button({Name = "+  Import Addon", Tooltip = "Paste a complete Lua addon file and install it", Callback = amOpenImport})
         top:Toggle({
             Name = "Auto Save", Flag = "_addons_autosave", Default = false,
             Tooltip = "Off (default): addons and their toggles start disabled every launch. On: they are remembered and restored.",
@@ -1545,17 +1697,16 @@ function JL:Window(opts)
                 JL:Notify({Title = "Addons", Desc = v and "Auto Save on: enabled addons will be restored next launch" or "Auto Save off: addons start disabled next launch", Type = "Info", Duration = 3})
             end,
         })
-        top:Button({Name = "Reload Addons", Tooltip = "Re-reads the folder. Running addons are restarted", Callback = function() AM.refresh() end})
+        top:Button({Name = "Reload Files", Tooltip = "Scans the Addons folder and restarts running addons", Callback = function() AM.refresh() end})
         top:Button({Name = "Disable All", Tooltip = "Turns off every running addon", Callback = function() AM.disableAll() end})
         if #AM.list == 0 and not AM.fsNote then
-            top:Label({Text = "No addon files found yet. Put .lua or .txt files into the folder and press Reload Addons."})
+            top:Label({Text = "No addons installed yet. Press + to paste one, or put a .lua / .txt / .luau file in the folder and reload."})
         end
         for _, a in ipairs(AM.list) do
             local ok, e = pcall(amBuildSection, a)
             if not ok then warn("[JustLib] addon '" .. tostring(a.file) .. "' UI failed: " .. tostring(e)) end
         end
         AM.building = false
-        -- Auto Save включён: поднимаем аддоны, которые были включены в прошлый раз
         for _, a in ipairs(AM.list) do
             if a.enableCtl and cfgGet("addon." .. a.id .. ".enabled", false) == true then
                 if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
@@ -1564,6 +1715,7 @@ function JL:Window(opts)
     end
 
     function AM.removeTab()
+        if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
         if AM.tab then
             local t = AM.tab; AM.tab = nil
             pcall(function() t:Remove() end)
