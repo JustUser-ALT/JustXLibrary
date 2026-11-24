@@ -8268,24 +8268,24 @@ function JL:Window(opts)
         do
             pcall(function() AM.scan() end)
             ord = ord + 1
-            local heading = Instance.new("Frame"); heading.Size = UDim2.new(1,0,0,24); heading.BackgroundTransparency = 1; heading.LayoutOrder = ord; heading.Parent = listCon
+            local heading = Instance.new("Frame"); heading.Size = UDim2.new(1,0,0,20); heading.BackgroundTransparency = 1; heading.LayoutOrder = 9000; heading.Parent = listCon
             newTxt({Parent=heading,Text="ADDONS",Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(0.6,0,1,0),Pos=UDim2.new(0,2,0,0)})
             local countText = newTxt({Parent=heading,Text="BUILT-IN  ·  USER",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(0.4,0,1,0),Pos=UDim2.new(0.6,0,0,0)})
             countText.TextXAlignment = Enum.TextXAlignment.Right
 
-            local gridHost = Instance.new("Frame"); gridHost.Name = "HomeAddonGrid"; gridHost.Size = UDim2.new(1,0,0,224); gridHost.BackgroundTransparency = 1; gridHost.LayoutOrder = ord + 1; gridHost.Parent = listCon
-            local grid = Instance.new("UIGridLayout"); grid.CellSize = UDim2.new(0.5,-5,0,104); grid.CellPadding = UDim2.new(0,8,0,8); grid.SortOrder = Enum.SortOrder.LayoutOrder; grid.Parent = gridHost
+            local gridHost = Instance.new("Frame"); gridHost.Name = "HomeAddonGrid"; gridHost.Size = UDim2.new(1,0,0,176); gridHost.BackgroundTransparency = 1; gridHost.LayoutOrder = 9001; gridHost.Parent = listCon
+            local grid = Instance.new("UIGridLayout"); grid.CellSize = UDim2.new(0.5,-5,0,76); grid.CellPadding = UDim2.new(0,6,0,6); grid.SortOrder = Enum.SortOrder.LayoutOrder; grid.Parent = gridHost
 
             local function addonCard(data, order, isUser)
                 local card = Instance.new("Frame"); card.Name = isUser and "UserAddonCard" or "BuiltinAddonCard"; card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.LayoutOrder = order; card.Parent = gridHost; corner(9,card); stroke(C.border,1,card)
                 local accent = Instance.new("Frame"); accent.Size = UDim2.new(0,3,1,-16); accent.Position = UDim2.new(0,0,0,8); accent.BackgroundColor3 = data.accent or ACCENTS[((order-1)%#ACCENTS)+1]; accent.BorderSizePixel = 0; accent.Parent = card; corner(2,accent)
-                local glyph = mkIcon(card,data.icon or "puzzle",19,3); glyph.Position = UDim2.new(0,11,0,10); glyph.Size = UDim2.new(0,19,0,19)
-                local title = newTxt({Parent=card,Text=tostring(data.name or "Addon"),Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-42,0,18),Pos=UDim2.new(0,37,0,10)})
+                local glyph = mkIcon(card,data.icon or "puzzle",16,3); glyph.Position = UDim2.new(0,9,0,8); glyph.Size = UDim2.new(0,16,0,16)
+                local title = newTxt({Parent=card,Text=tostring(data.name or "Addon"),Font=GB,Size=10,Color=C.txt,Sz=UDim2.new(1,-34,0,16),Pos=UDim2.new(0,31,0,8)})
                 title.TextTruncate = Enum.TextTruncate.AtEnd
-                local tag = newTxt({Parent=card,Text=isUser and (data.loaded and "ENABLED" or "USER ADDON") or "BUILT-IN PREVIEW",Font=GB,Size=7,Color=isUser and (data.loaded and Color3.fromRGB(110,220,160) or C.dim) or ACCENTS[1],Sz=UDim2.new(1,-20,0,12),Pos=UDim2.new(0,11,0,34)})
-                local desc = newTxt({Parent=card,Text=tostring(data.desc or "Addon preview"),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-20,0,30),Pos=UDim2.new(0,11,0,49)})
+                local tag = newTxt({Parent=card,Text=isUser and (data.loaded and "ENABLED" or "USER ADDON") or "BUILT-IN PREVIEW",Font=GB,Size=6,Color=isUser and (data.loaded and Color3.fromRGB(110,220,160) or C.dim) or ACCENTS[1],Sz=UDim2.new(1,-18,0,10),Pos=UDim2.new(0,9,0,27)})
+                local desc = newTxt({Parent=card,Text=tostring(data.desc or "Addon preview"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-18,0,12),Pos=UDim2.new(0,9,0,40)})
                 desc.TextYAlignment = Enum.TextYAlignment.Top
-                local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-20,0,18); action.Position = UDim2.new(0,10,1,-23); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "PREVIEW"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
+                local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = isUser and "MANAGE ADDON" or "PREVIEW"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
                 action.MouseButton1Click:Connect(function()
                     if isUser then
                         AM.boot()
@@ -8308,7 +8308,7 @@ function JL:Window(opts)
                 addonCard({name=(a.meta and a.meta.name) or a.file,icon="puzzle",desc=(a.meta and a.meta.desc) or ("User addon · "..tostring(a.file)),loaded=a.loaded},cardOrder,true)
                 cardOrder = cardOrder + 1
             end
-            gridHost.Size = UDim2.new(1,0,0,math.max(104,math.ceil((cardOrder-1)/2)*112))
+            gridHost.Size = UDim2.new(1,0,0,math.max(76,math.ceil((cardOrder-1)/2)*82))
             ord = ord + 1
         end
         do
