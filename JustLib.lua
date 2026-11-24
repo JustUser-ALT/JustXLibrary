@@ -6686,41 +6686,6 @@ function JL:Window(opts)
         end
     end
 
-    local function amBuildSection(a)
-        local sec = AM.tab:Section({Title = a.meta.name})
-        a.sec = sec
-        a.enableCtl = sec:Toggle({
-            Name = "Enabled", Flag = "addon." .. a.id .. ".enabled", Default = false, NoSave = true, Tooltip = a.meta.desc,
-            Callback = function(v)
-                if AM.building then return end
-                if v then if not AM.enable(a) then pcall(function() a.enableCtl:Set(false) end) end
-                else AM.disable(a) end
-                amSetCardState(a, a.loaded)
-            end,
-        })
-        local sub = {}
-        if a.meta.author and a.meta.author ~= "" then sub[#sub + 1] = "by " .. a.meta.author end
-        if a.meta.version and a.meta.version ~= "" then sub[#sub + 1] = amShowVer(a.meta.version) end
-        sub[#sub + 1] = a.file
-        sec:Label({Text = table.concat(sub, "  ·  ")})
-        if a.meta.desc and a.meta.desc ~= "" then sec:Label({Text = a.meta.desc, Color = C.txt}) end
-        if amWarnOn() then
-            if a.outdated then
-                sec:Label({Text = "⚠ Made for JustLib " .. amShowVer(a.meta.lib) .. " (you have " .. amShowVer(JL.Version) .. "). It may not work correctly.", Color = WARN_COL})
-            elseif a.needsNewer then
-                sec:Label({Text = "⚠ Needs JustLib " .. amShowVer(a.meta.lib) .. " or newer (you have " .. amShowVer(JL.Version) .. ").", Color = WARN_COL})
-            end
-        end
-        for _, note in ipairs(a.notes) do sec:Label({Text = "⚠ " .. note, Color = WARN_COL}) end
-        local hasCtl = false
-        for _, c in ipairs(a.ctrls) do if c.kind ~= "label" and c.kind ~= "divider" then hasCtl = true end end
-        if hasCtl then sec:Divider({Label = "Controls"}) end
-        for _, c in ipairs(a.ctrls) do
-            local ok, e = pcall(amBuildControl, a, sec, c)
-            if not ok then sec:Label({Text = "⚠ " .. tostring(c.o.name or c.fn) .. ": " .. tostring(e), Color = ERR_COL}) end
-        end
-    end
-
     local function amSafeFileName(name)
         local s = tostring(name or "Addon"):gsub("[^%w%-%_ ]", ""):gsub("%s+", "_"):gsub("_+", "_")
         s = s:gsub("^[_%-]+", ""):gsub("[_%-]+$", "")
