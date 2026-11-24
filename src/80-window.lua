@@ -1453,6 +1453,13 @@ function JL:Window(opts)
             a.meta.version = info.Version and tostring(info.Version) or nil
             a.meta.desc = info.Description and tostring(info.Description) or nil
             a.meta.lib = info.Library and tostring(info.Library) or nil
+            api.Name = a.meta.name
+            if a.meta.author or a.meta.version then
+                local details = {}
+                if a.meta.author then details[#details + 1] = "by " .. a.meta.author end
+                if a.meta.version then details[#details + 1] = amShowVer(a.meta.version) end
+                pcall(function() a.sec:Label({Text = table.concat(details, "  ·  ")}) end)
+            end
             if type(definition.Init) ~= "function" then amClean(a); a.store = nil; amSetErr(a, "Addon table must contain an Init function"); return false end
             a.loaded = true
             a.modernControlIndex = 0
@@ -1502,6 +1509,10 @@ function JL:Window(opts)
             if c.fn and c.kind == "toggle" and c.state then
                 local f = a.store and a.store.fn and a.store.fn[c.fn]
                 if type(f) == "function" then pcall(f, false) end
+            elseif a.modern and c.kind == "toggle" and c.state and c.o and type(c.o.Callback) == "function" then
+                pcall(c.o.Callback, false)
+                c.state = false
+                pcall(function() if c.ui then c.ui:Set(false) end end)
             end
         end
         for i = #a.unload, 1, -1 do pcall(a.unload[i]) end
