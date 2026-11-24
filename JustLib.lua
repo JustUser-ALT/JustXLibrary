@@ -6718,14 +6718,14 @@ function JL:Window(opts)
         local panel = Instance.new("Frame")
         panel.Name = "AddonImportPanel"; panel.AnchorPoint = Vector2.new(0.5,0.5)
         panel.Position = UDim2.new(0.5,0,0.5,0); panel.Size = UDim2.new(1,-24,0,360)
-        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 81; panel.Parent = overlay
+        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 121; panel.Parent = overlay
         corner(10,panel); stroke(C.border,1,panel)
-        newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=83})
+        newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=123})
         newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=83})
         local close = Instance.new("TextButton")
         close.Size = UDim2.new(0,30,0,30); close.Position = UDim2.new(1,-40,0,8)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.Text = "×"
-        close.Font = GB; close.TextSize = 20; close.TextColor3 = C.txt; close.ZIndex = 84; close.Parent = panel
+        close.Font = GB; close.TextSize = 20; close.TextColor3 = C.txt; close.ZIndex = 124; close.Parent = panel
         corner(7,close)
         local editor = Instance.new("TextBox")
         editor.Name = "AddonCode"; editor.Size = UDim2.new(1,-28,1,-112)
