@@ -6077,7 +6077,7 @@ function JL:Window(opts)
             tabLabel = newTxt({Parent=btn,Text=tabText,Font=GB,Size=labelsOn and 9 or 8,Color=C.dim,XAlign=Enum.TextXAlignment.Center,YAlign=Enum.TextYAlignment.Center,Wrap=true,Sz=UDim2.new(1,-4,1,-4),Pos=UDim2.new(0,2,0,2),Z=14})
         end
         local ind = Instance.new("Frame"); ind.Size = UDim2.new(0,3,0,14); ind.Position = UDim2.new(0,-5,0.5,-7); ind.BackgroundColor3 = ACCENTS[1]; ind.BorderSizePixel = 0; ind.Visible = false; ind.Parent = btn; corner(2,ind)
-        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id))}
+        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = tabText}
         if isSettingsTab then settingsTabId = id end
         attachTip(btn, topts.Tooltip or topts.Name)
         local tabLock = attachLockHidden(btn, {Locked = topts.Locked, Hidden = topts.Hidden, LockedMessage = topts.LockedMessage, LockedTitle = topts.LockedTitle, Requires = topts.Requires, HiddenUntil = topts.HiddenUntil, OpenStore = topts.OpenStore})
