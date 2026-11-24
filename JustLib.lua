@@ -6879,7 +6879,7 @@ function JL:Window(opts)
         card.Name = "AddonCard"
         card.Size = UDim2.new(1,-16,0,0)
         card.AutomaticSize = Enum.AutomaticSize.Y
-        card.BackgroundColor3 = C.panel
+        card.BackgroundColor3 = C.pHdr
         card.BorderSizePixel = 0
         card.LayoutOrder = order or 1
         card.Parent = parent
@@ -6887,15 +6887,16 @@ function JL:Window(opts)
         stroke(C.border,1,card)
         local bar = Instance.new("Frame")
         bar.Name = "Accent"
-        bar.Size = UDim2.new(1,0,0,3)
+        bar.Size = UDim2.new(0,3,1,-18)
+        bar.Position = UDim2.new(0,0,0,9)
         bar.BackgroundColor3 = accent or ACCENTS[1]
         bar.BorderSizePixel = 0
         bar.Parent = card
         corner(2,bar)
         local body = Instance.new("Frame")
         body.Name = "CardContent"
-        body.Size = UDim2.new(1,-20,0,0)
-        body.Position = UDim2.new(0,10,0,11)
+        body.Size = UDim2.new(1,-26,0,0)
+        body.Position = UDim2.new(0,14,0,8)
         body.AutomaticSize = Enum.AutomaticSize.Y
         body.BackgroundTransparency = 1
         body.Parent = card
@@ -6996,12 +6997,9 @@ function JL:Window(opts)
         settingsTitle.TextColor3 = C.dim
         settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
         settingsTitle.Parent = settingsHead
-        local line = Instance.new("Frame")
-        line.Size = UDim2.new(1,0,0,1)
-        line.Position = UDim2.new(0,0,1,-1)
-        line.BackgroundColor3 = C.border
-        line.BorderSizePixel = 0
-        line.Parent = settingsHead
+        settingsTitle.Text = "CONTROLS & OPTIONS"
+        settingsTitle.TextColor3 = ACCENTS[1]
+        settingsTitle.TextSize = 8
 
         local controlsHost = Instance.new("Frame")
         controlsHost.Name = "AddonControls"
@@ -7091,105 +7089,6 @@ function JL:Window(opts)
             end
         }
         amSetCardState(a,a.loaded)
-        return card
-    end
-
-    local function amBuildManager(parent, order)
-        local card,body = amUiCard(parent,order,ACCENTS[2] or ACCENTS[1])
-        card.Name = "AddonManagerCard"
-        local head = Instance.new("Frame")
-        head.Size = UDim2.new(1,0,0,36)
-        head.BackgroundTransparency = 1
-        head.LayoutOrder = 1
-        head.Parent = body
-        local title = Instance.new("TextLabel")
-        title.BackgroundTransparency = 1
-        title.Size = UDim2.new(1,-84,1,0)
-        title.Font = GB
-        title.Text = "ADDON LIBRARY"
-        title.TextSize = 13
-        title.TextColor3 = C.txt
-        title.TextXAlignment = Enum.TextXAlignment.Left
-        title.Parent = head
-        local tag = Instance.new("TextLabel")
-        tag.AnchorPoint = Vector2.new(1,0.5)
-        tag.Position = UDim2.new(1,0,0.5,0)
-        tag.Size = UDim2.new(0,76,0,20)
-        tag.BackgroundColor3 = C.btnBg
-        tag.BorderSizePixel = 0
-        tag.Font = GB
-        tag.Text = "MANAGER"
-        tag.TextSize = 8
-        tag.TextColor3 = C.dim
-        tag.Parent = head
-        corner(6,tag)
-        amUiText(body,"Import, manage and configure your installed Lua addons.",10,C.dim,20,2,GM)
-        amUiText(body,"⚠  Addons execute code with executor access. Only install files you trust.",9,WARN_COL,32,3,GM)
-        if AM.fsNote then amUiText(body,AM.fsNote,9,ERR_COL,30,4,GM) end
-
-        local import = amUiButton(body,"＋   Import Addon",5,amOpenImport,ACCENTS[1])
-        import.Name = "ImportAddon"
-        local autosaveRow = Instance.new("Frame")
-        autosaveRow.Size = UDim2.new(1,0,0,34)
-        autosaveRow.BackgroundColor3 = C.btnBg
-        autosaveRow.BorderSizePixel = 0
-        autosaveRow.LayoutOrder = 6
-        autosaveRow.Parent = body
-        corner(8,autosaveRow)
-        local autoLabel = Instance.new("TextLabel")
-        autoLabel.BackgroundTransparency = 1
-        autoLabel.Position = UDim2.new(0,10,0,0)
-        autoLabel.Size = UDim2.new(1,-86,1,0)
-        autoLabel.Font = GB
-        autoLabel.Text = "Auto Save"
-        autoLabel.TextSize = 10
-        autoLabel.TextColor3 = C.txt
-        autoLabel.TextXAlignment = Enum.TextXAlignment.Left
-        autoLabel.Parent = autosaveRow
-        local autoButton = Instance.new("TextButton")
-        autoButton.Size = UDim2.new(0,62,0,24)
-        autoButton.Position = UDim2.new(1,-72,0.5,-12)
-        autoButton.BackgroundColor3 = C.pHdr
-        autoButton.BorderSizePixel = 0
-        autoButton.AutoButtonColor = false
-        autoButton.Font = GB
-        autoButton.TextSize = 9
-        autoButton.TextColor3 = C.dim
-        autoButton.Parent = autosaveRow
-        corner(7,autoButton)
-        local autoOn = cfgGet("_addons_autosave", false) == true
-        JL._addonAutoSave = autoOn
-        local function paintAuto()
-            autoButton.Text = autoOn and "ON" or "OFF"
-            autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
-            autoButton.TextColor3 = autoOn and Color3.fromRGB(125,230,170) or C.dim
-        end
-        paintAuto()
-        autoButton.MouseButton1Click:Connect(function()
-            autoOn = not autoOn
-            JL._addonAutoSave = autoOn
-            cfgSet("_addons_autosave", autoOn)
-            paintAuto()
-            if autoOn then cfgFlush() end
-            JL:Notify({Title="Addons",Desc=autoOn and "Auto Save enabled." or "Auto Save disabled.",Type="Info",Duration=3})
-        end)
-
-        local managerActions = Instance.new("Frame")
-        managerActions.Size = UDim2.new(1,0,0,34)
-        managerActions.BackgroundTransparency = 1
-        managerActions.LayoutOrder = 7
-        managerActions.Parent = body
-        local managerLayout = Instance.new("UIListLayout")
-        managerLayout.FillDirection = Enum.FillDirection.Horizontal
-        managerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        managerLayout.Padding = UDim.new(0,8)
-        managerLayout.Parent = managerActions
-        local reload = amUiButton(managerActions,"↻  Reload Files",1,function() AM.refresh() end)
-        reload.Size = UDim2.new(0.5,-4,0,34)
-        local disable = amUiButton(managerActions,"Disable All",2,function() AM.disableAll() end)
-        disable.Size = UDim2.new(0.5,-4,0,34)
-        disable.BackgroundColor3 = C.pHdr
-        disable.TextColor3 = C.dim
         return card
     end
 
@@ -7286,7 +7185,28 @@ function JL:Window(opts)
         autoRow.BackgroundTransparency = 1
         autoRow.ZIndex = 72
         autoRow.Parent = panel
-        local autoLabel = newTxt({Parent=autoRow,Text="AUTO-ENABLE SAVED ADDONS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-58,1,0),Pos=UDim2.new(0,0,0,0),Z=73})
+        local autoLabel = newTxt({Parent=autoRow,Text="AUTO-ENABLE SAVED ADDONS",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-190,1,0),Pos=UDim2.new(0,0,0,0),Z=73})
+        local previewButton = Instance.new("TextButton")
+        previewButton.Name = "OpenPreviewUI"
+        previewButton.Size = UDim2.new(0,112,0,22)
+        previewButton.Position = UDim2.new(1,-166,0.5,-11)
+        previewButton.BackgroundColor3 = C.btnBg
+        previewButton.BorderSizePixel = 0
+        previewButton.AutoButtonColor = false
+        previewButton.Text = "Preview UI  ↗"
+        previewButton.Font = GB
+        previewButton.TextSize = 8
+        previewButton.TextColor3 = ACCENTS[1]
+        previewButton.ZIndex = 73
+        previewButton.Parent = autoRow
+        corner(7,previewButton)
+        previewButton.MouseButton1Click:Connect(function()
+            if JL._preview and JL._preview.Open then
+                JL._preview:Open()
+            else
+                JL:Notify({Title="Preview UI",Desc="No Preview UI has been created yet. Use JL:Preview().",Type="Warn",Duration=3})
+            end
+        end)
         local autoButton = Instance.new("TextButton")
         autoButton.Size = UDim2.new(0,48,0,22)
         autoButton.Position = UDim2.new(1,-48,0.5,-11)
