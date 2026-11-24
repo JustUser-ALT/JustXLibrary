@@ -113,6 +113,13 @@ local function createIconsModule(deps)
 
     JL._iconOverrides = {}
     JL._iconTextNodes = {}
+    local ICON_GLYPHS = {
+        house = "⌂", settings = "⚙", search = "⌕", ellipsis = "⋯", ["message-circle"] = "✉",
+        ["key-round"] = "⚿", key = "⚿", ["log-out"] = "↗", gem = "◆", user = "●",
+        home = "⌂", plus = "+", x = "×", close = "×", menu = "☰", ["chevron-right"] = "›",
+        ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
+        copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
+    }
     local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
     local function iconAsset(name)
         local pack = JL._iconPack
@@ -218,7 +225,7 @@ local function createIconsModule(deps)
             end
             return true
         end
-        label.Text = entry.name
+        label.Text = ICON_GLYPHS[entry.name] or entry.name
         label.TextTransparency = 0
         label.Font = GB
         return false
@@ -309,7 +316,7 @@ local function createIconsModule(deps)
                 label.Text = ""
                 label.TextTransparency = 1
             else
-                label.Text = resolved
+                label.Text = ICON_GLYPHS[resolved] or resolved
             end
         end
         return label
