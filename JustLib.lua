@@ -8307,7 +8307,8 @@ function JL:Window(opts)
                 addonCard({name=(a.meta and a.meta.name) or a.file,icon="puzzle",desc=(a.meta and a.meta.desc) or ("User addon · "..tostring(a.file)),loaded=a.loaded},cardOrder,true)
                 cardOrder = cardOrder + 1
             end
-            gridHost.Size = UDim2.new(1,0,0,math.max(104,math.ceil(cardOrder/2)*112))
+            gridHost.Size = UDim2.new(1,0,0,math.max(104,math.ceil((cardOrder-1)/2)*112))
+            ord = ord + 1
         end
         do
             local h = 180
