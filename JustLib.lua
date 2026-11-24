@@ -6838,11 +6838,16 @@ function JL:Window(opts)
                 child.Color = C.border
                 child.Thickness = 1
                 edge = child
-            elseif child:IsA("Frame") and child ~= sec.Content then
+            end
+        end
+        for _, child in ipairs(panel:GetChildren()) do
+            if child:IsA("Frame") and child ~= sec.Content then
                 if child.Size.Y.Scale == 0 and child.Size.Y.Offset >= 30 then
                     child.BackgroundColor3 = C.pHdr
                     for _, item in ipairs(child:GetChildren()) do
-                        if item:IsA("Frame") and item.BackgroundColor3 == ACCENTS[1] then item.BackgroundColor3 = ACCENTS[1] end
+                        if item:IsA("TextLabel") and item.Text ~= "▼" then
+                            item.Size = UDim2.new(1,-130,item.Size.Y.Scale,item.Size.Y.Offset)
+                        end
                     end
                     local stripe = Instance.new("Frame")
                     stripe.Name = "AddonAccent"
