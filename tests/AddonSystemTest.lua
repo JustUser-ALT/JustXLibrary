@@ -250,7 +250,10 @@ if testAddon then
     status("New Lua table format detected", testAddon.modern == true)
     status("Addon metadata parsed", testAddon.meta.name == "Addon System Test",
         tostring(testAddon.meta.author or "?") .. " · " .. tostring(testAddon.meta.version or "?"))
-    status("Addon card created", testAddon.sec ~= nil and testAddon.enableCtl ~= nil)
+    status("Standalone addon card created",
+        testAddon.card ~= nil and testAddon.cardBadge ~= nil and testAddon.enableButton ~= nil,
+        testAddon.card and testAddon.card.Name or "card UI missing")
+    status("Addon control host created", testAddon.sec ~= nil and testAddon.sec.Toggle ~= nil)
 
     local enabled, enableError = pcall(function()
         return Addons.enable(testAddon)
@@ -310,7 +313,7 @@ else
     status("All interactive controls created", false, "requires file access")
 end
 
-addManualLabel("manual_intro", "Open the Addons tab to inspect the real UI. The test addon should appear as its own card.")
+addManualLabel("manual_intro", "Open the Addons tab. The test addon should appear as a separate rounded card with its own header, status badge, description, controls area and action buttons.")
 addManualLabel("manual_import", "Tap + Import Addon and check that the multiline import window opens and closes.")
 addManualLabel("manual_controls", "Tap each test control. Callback activity is printed in the executor console.")
 addManualLabel("manual_storage", "Tap Test Save / Load inside the test addon card and check the console / notification.")
