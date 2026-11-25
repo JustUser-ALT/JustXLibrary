@@ -7140,16 +7140,25 @@ function JL:Window(opts)
             or amFindCatalogAddon(entry) ~= nil
     end
 
-    local function amRescanPreservingEnabled()
-        local keep = {}
-        for _, addon in ipairs(AM.list or {}) do
-            if addon.loaded then keep[tostring(addon.file or ""):lower()] = true end
+    local function amRegisterCatalogAddon(entry, source)
+        local base = tostring(entry.file):match("([^\\/]+)%.%w+$") or tostring(entry.id or "addon")
+        local id = base:lower():gsub("[^%w]+", "_")
+        local baseId, suffix = id, 1
+        local used = {}
+        for _, addon in ipairs(AM.list or {}) do used[addon.id] = true end
+        while used[id] do
+            suffix = suffix + 1
+            id = baseId .. suffix
         end
-        AM.disableAll()
-        AM.scan()
-        for _, addon in ipairs(AM.list or {}) do
-            if keep[tostring(addon.file or ""):lower()] then AM.enable(addon) end
-        end
+        local meta = amModernMeta(source, entry.name)
+        local addon = {
+            id = id, file = entry.file, src = source, meta = meta,
+            ctrls = {}, notes = {}, modern = true, loaded = false,
+            keeps = {}, unload = {},
+        }
+        AM.list = AM.list or {}
+        AM.list[#AM.list + 1] = addon
+        return addon
     end
 
     local function amInstallCatalogEntry(entry)
@@ -7183,9 +7192,7 @@ function JL:Window(opts)
         local okWrite, writeErr = pcall(writefile, path, source)
         if not okWrite then return false, "Could not save addon: " .. tostring(writeErr) end
 
-        amRescanPreservingEnabled()
-        local installed = amFindCatalogAddon(entry)
-        if not installed then return false, "The addon was saved but was not detected in the Addons folder." end
+        local installed = amRegisterCatalogAddon(entry, source)
         local enabled = AM.enable(installed)
         AM.activeView = "Installed"
         if AM.panel then AM.applySearch() end
@@ -7199,10 +7206,6 @@ function JL:Window(opts)
             JL:Notify({Title="Addon Manager",Desc="This executor does not support deleting addon files.",Type="Error",Duration=4})
             return false
         end
-        local keep = {}
-        for _, item in ipairs(AM.list or {}) do
-            if item ~= addon and item.loaded then keep[tostring(item.file or ""):lower()] = true end
-        end
         if addon.loaded then AM.disable(addon) end
         local path = AM.dir .. "/" .. tostring(addon.file)
         local okDelete, deleteErr = pcall(delfile, path)
@@ -7210,10 +7213,8 @@ function JL:Window(opts)
             JL:Notify({Title="Addon Manager",Desc="Could not delete addon: "..tostring(deleteErr),Type="Error",Duration=4})
             return false
         end
-        AM.disableAll()
-        AM.scan()
-        for _, item in ipairs(AM.list or {}) do
-            if keep[tostring(item.file or ""):lower()] then AM.enable(item) end
+        for index = #(AM.list or {}), 1, -1 do
+            if AM.list[index] == addon then table.remove(AM.list, index); break end
         end
         if AM.panel then AM.applySearch() end
         JL:Notify({Title="Addon Removed",Desc=tostring(addon.meta and addon.meta.name or addon.file).." was uninstalled.",Type="Success",Duration=3})
@@ -7397,15 +7398,7 @@ function JL:Window(opts)
 
     function AM.openLibrary()
         if not AM.panel then
-            local keep = {}
-            for _, addon in ipairs(AM.list or {}) do
-                if addon.loaded then keep[tostring(addon.file or ""):lower()] = true end
-            end
-            AM.disableAll()
-            AM.scan()
-            for _, addon in ipairs(AM.list or {}) do
-                if keep[tostring(addon.file or ""):lower()] then AM.enable(addon) end
-            end
+            if type(AM.list) ~= "table" or #AM.list == 0 then AM.scan() end
             AM.buildPanel()
         end
         amSetMainChromeVisible(false)
