@@ -6547,6 +6547,36 @@ function JL:Window(opts)
         api.Input = dual(function(o) return addControl("Input", o) end)
         api.Label = dual(function(o) return addControl("Label", o) end)
         api.Divider = dual(function(o) return addControl("Divider", o) end)
+        -- Built-in addons may register compact actions beside the global search.
+        api.TopbarButton = dual(function(options)
+            options = type(options) == "table" and options or {}
+            local button = Instance.new("TextButton")
+            button.Name = "JLAddonTopbar_" .. tostring(a.id)
+            button.Size = UDim2.new(0,28,0,28)
+            button.Position = UDim2.new(1,-(PADIN + 102 + 132 + 34),0,5)
+            button.BackgroundColor3 = C.panel
+            button.BorderSizePixel = 0
+            button.AutoButtonColor = false
+            button.Text = tostring(options.Text or ">_")
+            button.Font = GB
+            button.TextSize = 12
+            button.TextColor3 = C.txt
+            button.Parent = win
+            button.ZIndex = 80
+            corner(8,button); stroke(C.border,1,button)
+            button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3=C.btnHov},.1) end end)
+            button.MouseLeave:Connect(function() tw(button,{BackgroundColor3=C.panel},.1) end)
+            local connection = button.MouseButton1Click:Connect(function()
+                if not a.loaded then return end
+                if type(options.Callback) == "function" then
+                    local ok, err = pcall(options.Callback, button)
+                    if not ok then amSetErr(a, tostring(err)) end
+                end
+            end)
+            a.keeps[#a.keeps + 1] = connection
+            a.keeps[#a.keeps + 1] = button
+            return button
+        end)
         return api
     end
 
