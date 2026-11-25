@@ -6705,7 +6705,9 @@ function JL:Window(opts)
         amSetCardState(a, true)
         -- Every successfully enabled addon must survive a hub restart.
         cfgSet("_addon_enabled_" .. a.id, true)
+        AM.savedState.ManagerEnabled = true
         amSetSavedAddon(a.id, true)
+        amSaveSavedState()
         return true
     end
 
