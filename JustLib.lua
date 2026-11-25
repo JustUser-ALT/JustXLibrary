@@ -113,14 +113,6 @@ local function createIconsModule(deps)
 
     JL._iconOverrides = {}
     JL._iconTextNodes = {}
-    local ICON_GLYPHS = {
-        house = "⌂", settings = "⚙", search = "⌕", ellipsis = "⋯", ["message-circle"] = "✉",
-        ["key-round"] = "⚿", key = "⚿", ["log-out"] = "↗", gem = "◆", user = "●",
-        home = "⌂", plus = "+", x = "×", close = "×", menu = "☰", ["chevron-right"] = "›",
-        ["refresh-cw"] = "↻", shuffle = "⇄", layers = "▱", users = "♟", puzzle = "◇", palette = "◉", activity = "⌁",
-        ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
-        copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
-    }
     local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
     local function iconAsset(name)
         local pack = JL._iconPack
@@ -226,7 +218,7 @@ local function createIconsModule(deps)
             end
             return true
         end
-        label.Text = ICON_GLYPHS[entry.name] or entry.name
+        label.Text = entry.name
         label.TextTransparency = 0
         label.Font = GB
         return false
@@ -317,7 +309,7 @@ local function createIconsModule(deps)
                 label.Text = ""
                 label.TextTransparency = 1
             else
-                label.Text = ICON_GLYPHS[resolved] or resolved
+                label.Text = resolved
             end
         end
         return label
@@ -5112,7 +5104,7 @@ function JL:Window(opts)
     local hubStartTick = tick()
     local windowBuildStarted = os.clock()
     local iconLoadStarted = os.clock()
-    if not JL._iconPack then
+    if not JL._iconPack and opts.LoadIcons ~= false then
         trackedSpawn(function()
             local ok = self:LoadIconPack(opts.IconPackURL)
             if JL._perfEnabled then
@@ -5506,7 +5498,7 @@ function JL:Window(opts)
     end
     local TABPOS = UDim2.new(0,PADIN,0,PADIN + 36)
     local function offPos(dir) return UDim2.new(dir,PADIN,0,PADIN) end
-    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local settingsTabId = nil; local _tabCount = 0; local homeTabInstance = nil
+    local tabFrames = {}; local tabUI = {}; local tabScrollers = {}; local activeTabId = nil; local settingsTabId = nil; local _tabCount = 0
     local function styleTab(id,active)
         local u = tabUI[id]; if not u then return end
         tw(u.btn,{BackgroundColor3 = active and Color3.fromRGB(24,44,74) or Color3.fromRGB(34,34,40)},.15)
@@ -6066,19 +6058,12 @@ function JL:Window(opts)
         local btn = Instance.new("TextButton"); btn.Size = labelsOn and UDim2.new(0,SBW - 12,0,46) or UDim2.new(0,30,0,30); btn.BackgroundColor3 = Color3.fromRGB(34,34,40); btn.Text = ""; btn.AutoButtonColor = false
         btn.BorderSizePixel = 0; btn.LayoutOrder = isSettingsTab and 1000000 or id; btn.Parent = sbCols[1].scroll; corner(8,btn)
         sbBtns[id] = btn; btn:GetPropertyChangedSignal("Visible"):Connect(queueSidebar); queueSidebar()
-        local ic, tabLabel
-        local tabText = tostring(topts.Text or topts.Name or ("Tab" .. tostring(id)))
-        if topts.Icon ~= nil and tostring(topts.Icon) ~= "" then
-            ic = mkIcon(btn, topts.Icon, 16, 14)
-            ic.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8)
-            ic.Size = UDim2.new(0,16,0,16)
-            if labelsOn then tabLabel = newTxt({Parent=btn,Text=tabText,Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-4,0,12),Pos=UDim2.new(0,2,0,28),Z=14}) end
-            if ic:IsA("TextLabel") then ic.TextColor3 = C.dim else ic.ImageColor3 = C.dim end
-        else
-            tabLabel = newTxt({Parent=btn,Text=tabText,Font=GB,Size=labelsOn and 9 or 8,Color=C.dim,XAlign=Enum.TextXAlignment.Center,YAlign=Enum.TextYAlignment.Center,Wrap=true,Sz=UDim2.new(1,-4,1,-4),Pos=UDim2.new(0,2,0,2),Z=14})
-        end
+        local ic = mkIcon(btn, topts.Icon or "◼", 16, 14); ic.Position = labelsOn and UDim2.new(0.5,-8,0,8) or UDim2.new(0.5,-8,0.5,-8); ic.Size = UDim2.new(0,16,0,16)
+        local tabLabel
+        if labelsOn then tabLabel = newTxt({Parent=btn,Text=topts.Name or "",Font=GB,Size=9,Color=C.dim,XAlign=Enum.TextXAlignment.Center,Sz=UDim2.new(1,-4,0,12),Pos=UDim2.new(0,2,0,28),Z=14}) end
+        if ic:IsA("TextLabel") then ic.TextColor3 = C.dim else ic.ImageColor3 = C.dim end
         local ind = Instance.new("Frame"); ind.Size = UDim2.new(0,3,0,14); ind.Position = UDim2.new(0,-5,0.5,-7); ind.BackgroundColor3 = ACCENTS[1]; ind.BorderSizePixel = 0; ind.Visible = false; ind.Parent = btn; corner(2,ind)
-        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = tabText}
+        tabUI[id] = {btn = btn, icon = ic, ind = ind, label = tabLabel, name = topts.Name or ("Tab " .. tostring(id))}
         if isSettingsTab then settingsTabId = id end
         attachTip(btn, topts.Tooltip or topts.Name)
         local tabLock = attachLockHidden(btn, {Locked = topts.Locked, Hidden = topts.Hidden, LockedMessage = topts.LockedMessage, LockedTitle = topts.LockedTitle, Requires = topts.Requires, HiddenUntil = topts.HiddenUntil, OpenStore = topts.OpenStore})
@@ -6311,7 +6296,6 @@ function JL:Window(opts)
             author = field("Author"),
             version = field("Version"),
             desc = field("Description"),
-            image = field("Image") or field("Thumbnail") or field("IconAsset"),
             lib = field("Library"),
         }
     end
@@ -6330,7 +6314,6 @@ function JL:Window(opts)
                 elseif key == "version" then meta.version = rest
                 elseif key == "lib" or key == "requires" or key == "target" or key == "jl" then meta.lib = rest
                 elseif key == "description" or key == "desc" then meta.desc = rest
-                elseif key == "image" or key == "thumbnail" or key == "iconasset" then meta.image = rest
                 elseif CTRL_KINDS[key] then
                     if pending then notes[#notes + 1] = "line " .. pending.line .. ": --@" .. pending.kind .. " has no function below it"; pending = nil end
                     local isStatic = (key == "label" or key == "divider")
@@ -6547,7 +6530,6 @@ function JL:Window(opts)
         api.Input = dual(function(o) return addControl("Input", o) end)
         api.Label = dual(function(o) return addControl("Label", o) end)
         api.Divider = dual(function(o) return addControl("Divider", o) end)
-        -- Built-in addons may register compact actions beside the global search.
         api.TopbarButton = dual(function(options)
             options = type(options) == "table" and options or {}
             local button = Instance.new("TextButton")
@@ -6741,23 +6723,23 @@ function JL:Window(opts)
     end
 
     local function amOpenImport()
-        if not AM.panel or AM.importGui then return end
+        if not AM.tab or AM.importGui then return end
         local overlay = Instance.new("TextButton")
         overlay.Name = "AddonImportOverlay"; overlay.Size = UDim2.new(1,0,1,0)
         overlay.BackgroundColor3 = Color3.new(0,0,0); overlay.BackgroundTransparency = 0.35
         overlay.BorderSizePixel = 0; overlay.Text = ""; overlay.AutoButtonColor = false
-        overlay.ZIndex = 120; overlay.Parent = AM.panel
+        overlay.ZIndex = 80; overlay.Parent = AM.tab.Frame
         local panel = Instance.new("Frame")
         panel.Name = "AddonImportPanel"; panel.AnchorPoint = Vector2.new(0.5,0.5)
         panel.Position = UDim2.new(0.5,0,0.5,0); panel.Size = UDim2.new(1,-24,0,360)
-        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 121; panel.Parent = overlay
+        panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 81; panel.Parent = overlay
         corner(10,panel); stroke(C.border,1,panel)
-        newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=123})
-        newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=123})
+        newTxt({Parent=panel,Text="Install Addon",Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-56,0,24),Pos=UDim2.new(0,14,0,12),Z=83})
+        newTxt({Parent=panel,Text="Paste one complete Lua addon file below",Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-28,0,18),Pos=UDim2.new(0,14,0,38),Z=83})
         local close = Instance.new("TextButton")
         close.Size = UDim2.new(0,30,0,30); close.Position = UDim2.new(1,-40,0,8)
         close.BackgroundColor3 = C.btnBg; close.BorderSizePixel = 0; close.Text = "×"
-        close.Font = GB; close.TextSize = 20; close.TextColor3 = C.txt; close.ZIndex = 124; close.Parent = panel
+        close.Font = GB; close.TextSize = 20; close.TextColor3 = C.txt; close.ZIndex = 84; close.Parent = panel
         corner(7,close)
         local editor = Instance.new("TextBox")
         editor.Name = "AddonCode"; editor.Size = UDim2.new(1,-28,1,-112)
@@ -6767,9 +6749,9 @@ function JL:Window(opts)
         editor.TextYAlignment = Enum.TextYAlignment.Top; editor.Font = Enum.Font.Code
         editor.TextSize = 12; editor.TextColor3 = C.txt; editor.PlaceholderColor3 = C.dim
         editor.PlaceholderText = "return {\n    Info = {\n        Name = \"My Addon\",\n        Author = \"Your name\",\n        Version = \"1.0\",\n        Description = \"Addon description\"\n    },\n    Init = function(Addon)\n        Addon:Toggle({\n            Name = \"Example toggle\",\n            Default = false,\n            Callback = function(value)\n                print(value)\n            end\n        })\n    end\n}"
-        editor.Text = ""; editor.ZIndex = 123; editor.Parent = panel
+        editor.Text = ""; editor.ZIndex = 83; editor.Parent = panel
         corner(7,editor); stroke(C.border,1,editor)
-        local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=123})
+        local status = newTxt({Parent=panel,Text="Only install code from authors you trust.",Font=GM,Size=10,Color=WARN_COL,Sz=UDim2.new(1,-150,0,26),Pos=UDim2.new(0,14,1,-38),Z=83})
         local install = Instance.new("TextButton")
         install.Size = UDim2.new(0,116,0,30); install.Position = UDim2.new(1,-130,1,-42)
         install.BackgroundColor3 = ACCENTS[1]; install.BorderSizePixel = 0; install.Text = "Install"
@@ -6911,16 +6893,23 @@ function JL:Window(opts)
         card.Name = "AddonCard"
         card.Size = UDim2.new(1,-16,0,0)
         card.AutomaticSize = Enum.AutomaticSize.Y
-        card.BackgroundColor3 = C.pHdr
+        card.BackgroundColor3 = C.panel
         card.BorderSizePixel = 0
         card.LayoutOrder = order or 1
         card.Parent = parent
         corner(12,card)
         stroke(C.border,1,card)
+        local bar = Instance.new("Frame")
+        bar.Name = "Accent"
+        bar.Size = UDim2.new(1,0,0,3)
+        bar.BackgroundColor3 = accent or ACCENTS[1]
+        bar.BorderSizePixel = 0
+        bar.Parent = card
+        corner(2,bar)
         local body = Instance.new("Frame")
         body.Name = "CardContent"
-        body.Size = UDim2.new(1,-32,0,0)
-        body.Position = UDim2.new(0,16,0,10)
+        body.Size = UDim2.new(1,-20,0,0)
+        body.Position = UDim2.new(0,10,0,11)
         body.AutomaticSize = Enum.AutomaticSize.Y
         body.BackgroundTransparency = 1
         body.Parent = card
@@ -6932,11 +6921,11 @@ function JL:Window(opts)
         local padding = Instance.new("UIPadding")
         padding.PaddingBottom = UDim.new(0,10)
         padding.Parent = body
-        return card, body, nil
+        return card, body, bar
     end
 
     local function amBuildCard(a, parent, order)
-        local card, body = amUiCard(parent, order, ACCENTS[1])
+        local card, body, accent = amUiCard(parent, order, ACCENTS[1])
         a.card = card
         local head = Instance.new("Frame")
         head.Name = "AddonHeader"
@@ -6972,7 +6961,7 @@ function JL:Window(opts)
         badge.Parent = head
         corner(7,badge)
         a.cardBadge = badge
-        a.cardAccent = nil
+        a.cardAccent = accent
 
         local meta = {}
         if a.meta.author and a.meta.author ~= "" then meta[#meta+1] = "by " .. tostring(a.meta.author) end
@@ -7021,9 +7010,12 @@ function JL:Window(opts)
         settingsTitle.TextColor3 = C.dim
         settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
         settingsTitle.Parent = settingsHead
-        settingsTitle.Text = "CONTROLS & OPTIONS"
-        settingsTitle.TextColor3 = ACCENTS[1]
-        settingsTitle.TextSize = 8
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(1,0,0,1)
+        line.Position = UDim2.new(0,0,1,-1)
+        line.BackgroundColor3 = C.border
+        line.BorderSizePixel = 0
+        line.Parent = settingsHead
 
         local controlsHost = Instance.new("Frame")
         controlsHost.Name = "AddonControls"
@@ -7116,245 +7108,182 @@ function JL:Window(opts)
         return card
     end
 
-    AM.catalog = AM.catalog or {}
-    AM.catalog = {
-        {id="console",name="Console",author="JustXLibrary",version="1.0.0",category="UTILITY",icon="terminal",desc="A compact Lua console accessible from the top bar.",accent=1,url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",file="Console.lua"},
-    }
-    AM.catalogInstalled = AM.catalogInstalled or {}
-    AM.catalogDeleted = AM.catalogDeleted or {}
-    AM.activeView = AM.activeView or "Discover"
+    local function amBuildManager(parent, order)
+        local card,body = amUiCard(parent,order,ACCENTS[2] or ACCENTS[1])
+        card.Name = "AddonManagerCard"
+        local head = Instance.new("Frame")
+        head.Size = UDim2.new(1,0,0,36)
+        head.BackgroundTransparency = 1
+        head.LayoutOrder = 1
+        head.Parent = body
+        local title = Instance.new("TextLabel")
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1,-84,1,0)
+        title.Font = GB
+        title.Text = "ADDON LIBRARY"
+        title.TextSize = 13
+        title.TextColor3 = C.txt
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Parent = head
+        local tag = Instance.new("TextLabel")
+        tag.AnchorPoint = Vector2.new(1,0.5)
+        tag.Position = UDim2.new(1,0,0.5,0)
+        tag.Size = UDim2.new(0,76,0,20)
+        tag.BackgroundColor3 = C.btnBg
+        tag.BorderSizePixel = 0
+        tag.Font = GB
+        tag.Text = "MANAGER"
+        tag.TextSize = 8
+        tag.TextColor3 = C.dim
+        tag.Parent = head
+        corner(6,tag)
+        amUiText(body,"Import, manage and configure your installed Lua addons.",10,C.dim,20,2,GM)
+        amUiText(body,"⚠  Addons execute code with executor access. Only install files you trust.",9,WARN_COL,32,3,GM)
+        if AM.fsNote then amUiText(body,AM.fsNote,9,ERR_COL,30,4,GM) end
 
-    local function amShowInfo(entry)
-        if AM.infoLayer then AM.infoLayer:Destroy(); AM.infoLayer=nil end
-        local host=(AM.panel and AM.panel.Visible) and AM.panel or win
-        if not host then return end
-        local layer=Instance.new("Frame"); layer.Name="AddonInfoLayer"; layer.Size=UDim2.new(1,0,1,0); layer.BackgroundColor3=Color3.fromRGB(0,0,0); layer.BackgroundTransparency=0.35; layer.ZIndex=110; layer.Parent=host
-        local box=Instance.new("Frame"); box.Name="AddonInfo"; box.Size=UDim2.new(1,-34,0,220); box.AnchorPoint=Vector2.new(0.5,0.5); box.Position=UDim2.new(0.5,0,0.5,0); box.BackgroundColor3=C.panel; box.BorderSizePixel=0; box.ZIndex=111; box.Parent=layer; corner(12,box); stroke(C.border,1,box)
-        newTxt({Parent=box,Text="ADDON DETAILS",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-52,0,14),Pos=UDim2.new(0,16,0,14),Z=112})
-        local close=amUiButton(box,"×",1,function() layer:Destroy(); AM.infoLayer=nil end); close.Size=UDim2.new(0,28,0,26); close.Position=UDim2.new(1,-40,0,8); close.ZIndex=113
-        newTxt({Parent=box,Text=tostring(entry.name or "Addon"),Font=GB,Size=17,Color=C.txt,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,39),Z=112})
-        newTxt({Parent=box,Text="BY "..string.upper(tostring(entry.author or "COMMUNITY")).."   ·   "..amShowVer(entry.version or "1.0"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,70),Z=112})
-        local desc= newTxt({Parent=box,Text=tostring(entry.desc or "No description provided."),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-32,0,54),Pos=UDim2.new(0,16,0,96),Z=112}); desc.TextYAlignment=Enum.TextYAlignment.Top
-        newTxt({Parent=box,Text="CATEGORY   /   "..string.upper(tostring(entry.category or "ADDON")),Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,162),Z=112})
-        newTxt({Parent=box,Text="Install this addon to add it to your local Addons folder.",Font=GM,Size=8,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,181),Z=112})
-        AM.infoLayer=layer
+        local import = amUiButton(body,"＋   Import Addon",5,amOpenImport,ACCENTS[1])
+        import.Name = "ImportAddon"
+        local autosaveRow = Instance.new("Frame")
+        autosaveRow.Size = UDim2.new(1,0,0,34)
+        autosaveRow.BackgroundColor3 = C.btnBg
+        autosaveRow.BorderSizePixel = 0
+        autosaveRow.LayoutOrder = 6
+        autosaveRow.Parent = body
+        corner(8,autosaveRow)
+        local autoLabel = Instance.new("TextLabel")
+        autoLabel.BackgroundTransparency = 1
+        autoLabel.Position = UDim2.new(0,10,0,0)
+        autoLabel.Size = UDim2.new(1,-86,1,0)
+        autoLabel.Font = GB
+        autoLabel.Text = "Auto Save"
+        autoLabel.TextSize = 10
+        autoLabel.TextColor3 = C.txt
+        autoLabel.TextXAlignment = Enum.TextXAlignment.Left
+        autoLabel.Parent = autosaveRow
+        local autoButton = Instance.new("TextButton")
+        autoButton.Size = UDim2.new(0,62,0,24)
+        autoButton.Position = UDim2.new(1,-72,0.5,-12)
+        autoButton.BackgroundColor3 = C.pHdr
+        autoButton.BorderSizePixel = 0
+        autoButton.AutoButtonColor = false
+        autoButton.Font = GB
+        autoButton.TextSize = 9
+        autoButton.TextColor3 = C.dim
+        autoButton.Parent = autosaveRow
+        corner(7,autoButton)
+        local autoOn = cfgGet("_addons_autosave", false) == true
+        JL._addonAutoSave = autoOn
+        local function paintAuto()
+            autoButton.Text = autoOn and "ON" or "OFF"
+            autoButton.BackgroundColor3 = autoOn and Color3.fromRGB(35,75,58) or C.pHdr
+            autoButton.TextColor3 = autoOn and Color3.fromRGB(125,230,170) or C.dim
+        end
+        paintAuto()
+        autoButton.MouseButton1Click:Connect(function()
+            autoOn = not autoOn
+            JL._addonAutoSave = autoOn
+            cfgSet("_addons_autosave", autoOn)
+            paintAuto()
+            if autoOn then cfgFlush() end
+            JL:Notify({Title="Addons",Desc=autoOn and "Auto Save enabled." or "Auto Save disabled.",Type="Info",Duration=3})
+        end)
+
+        local managerActions = Instance.new("Frame")
+        managerActions.Size = UDim2.new(1,0,0,34)
+        managerActions.BackgroundTransparency = 1
+        managerActions.LayoutOrder = 7
+        managerActions.Parent = body
+        local managerLayout = Instance.new("UIListLayout")
+        managerLayout.FillDirection = Enum.FillDirection.Horizontal
+        managerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        managerLayout.Padding = UDim.new(0,8)
+        managerLayout.Parent = managerActions
+        local reload = amUiButton(managerActions,"↻  Reload Files",1,function() AM.refresh() end)
+        reload.Size = UDim2.new(0.5,-4,0,34)
+        local disable = amUiButton(managerActions,"Disable All",2,function() AM.disableAll() end)
+        disable.Size = UDim2.new(0.5,-4,0,34)
+        disable.BackgroundColor3 = C.pHdr
+        disable.TextColor3 = C.dim
+        return card
     end
 
-    function AM.buildPanel()
-        if AM.panel then return end
-        AM.building=true
-        local panelW=math.min(math.max(300,CWW-8),440)
-        local panel=Instance.new("Frame"); panel.Name="JLAddonLibrary"; panel.Size=UDim2.new(0,panelW,1,0); panel.Position=UDim2.new(0,SBW+GAP+CWW-panelW,0,0); panel.BackgroundColor3=C.sidebar; panel.BorderSizePixel=0; panel.ZIndex=70; panel.Parent=win; corner(13,panel); stroke(C.border,1,panel); AM.panel=panel
-        local header=Instance.new("Frame"); header.Size=UDim2.new(1,-24,0,48); header.Position=UDim2.new(0,12,0,10); header.BackgroundTransparency=1; header.ZIndex=72; header.Parent=panel
-        newTxt({Parent=header,Text="ADDON LIBRARY",Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-50,0,19),Pos=UDim2.new(0,0,0,0),Z=73})
-        newTxt({Parent=header,Text="EXPAND YOUR JUSTX EXPERIENCE",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-50,0,14),Pos=UDim2.new(0,0,0,23),Z=73})
-        local plus=amUiButton(header,"+",1,amOpenImport,ACCENTS[1]); plus.Name="AddonAddSource"; plus.Size=UDim2.new(0,32,0,30); plus.Position=UDim2.new(1,-68,0,3); plus.TextSize=17
-        local close=amUiButton(header,"×",2,function() AM.closeLibrary() end); close.Name="CloseAddonLibrary"; close.Size=UDim2.new(0,30,0,30); close.Position=UDim2.new(1,-32,0,3); close.TextSize=17
-        local tabs=Instance.new("Frame"); tabs.Name="AddonViews"; tabs.Size=UDim2.new(1,-24,0,36); tabs.Position=UDim2.new(0,12,0,66); tabs.BackgroundColor3=C.pHdr; tabs.BorderSizePixel=0; tabs.ZIndex=72; tabs.Parent=panel; corner(9,tabs)
-        local discover=amUiButton(tabs,"DISCOVER",1,function() AM.activeView="Discover"; AM.applySearch() end); discover.Size=UDim2.new(0.5,-3,1,-6); discover.Position=UDim2.new(0,3,0,3); discover.Name="DiscoverTab"
-        local installed=amUiButton(tabs,"INSTALLED",2,function() AM.activeView="Installed"; AM.applySearch() end); installed.Size=UDim2.new(0.5,-3,1,-6); installed.Position=UDim2.new(0.5,0,0,3); installed.Name="InstalledTab"
-        local searchWrap=Instance.new("Frame"); searchWrap.Size=UDim2.new(1,-24,0,32); searchWrap.Position=UDim2.new(0,12,0,110); searchWrap.BackgroundColor3=C.pHdr; searchWrap.BorderSizePixel=0; searchWrap.ZIndex=72; searchWrap.Parent=panel; corner(8,searchWrap)
-        local search=Instance.new("TextBox"); search.Name="AddonSearch"; search.Size=UDim2.new(1,-18,1,0); search.Position=UDim2.new(0,9,0,0); search.BackgroundTransparency=1; search.BorderSizePixel=0; search.ClearTextOnFocus=false; search.Text=""; search.PlaceholderText="Search addons..."; search.Font=GM; search.TextSize=10; search.TextColor3=C.txt; search.PlaceholderColor3=C.dim; search.TextXAlignment=Enum.TextXAlignment.Left; search.ZIndex=73; search.Parent=searchWrap
-        local summary=newTxt({Parent=panel,Text="",Font=GB,Size=8,Color=C.dim,Sz=UDim2.new(1,-24,0,14),Pos=UDim2.new(0,12,0,150),Z=72}); summary.Name="AddonCount"
-        local scroll=Instance.new("ScrollingFrame"); scroll.Name="AddonLibraryScroll"; scroll.Size=UDim2.new(1,-16,1,-178); scroll.Position=UDim2.new(0,8,0,170); scroll.BackgroundTransparency=1; scroll.BorderSizePixel=0; scroll.ScrollBarThickness=3; scroll.ScrollBarImageColor3=ACCENTS[1]; scroll.ScrollingDirection=Enum.ScrollingDirection.Y; scroll.Active=true; scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; scroll.CanvasSize=UDim2.new(0,0,0,0); scroll.ZIndex=72; scroll.Parent=panel
-        local layout=Instance.new("UIListLayout"); layout.FillDirection=Enum.FillDirection.Vertical; layout.SortOrder=Enum.SortOrder.LayoutOrder; layout.Padding=UDim.new(0,9); layout.Parent=scroll
-        local pad=Instance.new("UIPadding"); pad.PaddingTop=UDim.new(0,4); pad.PaddingBottom=UDim.new(0,10); pad.PaddingLeft=UDim.new(0,2); pad.PaddingRight=UDim.new(0,5); pad.Parent=scroll
-        AM.searchBox=search; AM.resultLabel=summary; AM.cardScroll=scroll; AM.discoverButton=discover; AM.installedButton=installed
-        search:GetPropertyChangedSignal("Text"):Connect(function() AM.applySearch() end)
-        AM.building=false
-        AM.applySearch()
-    end
+    function AM.buildTab()
+        if AM.tab then return end
+        AM.building = true
+        AM.tab = Win:Tab({Name = "Addons", Icon = "◈", Type = "Custom", Tooltip = "Addons"})
+        local scroll = Instance.new("ScrollingFrame")
+        scroll.Name = "AddonLibraryScroll"
+        scroll.Size = UDim2.new(1,0,1,0)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 3
+        scroll.ScrollBarImageColor3 = ACCENTS[1]
+        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        scroll.Active = true
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.new(0,0,0,0)
+        scroll.Parent = AM.tab.Frame
+        local list = Instance.new("UIListLayout")
+        list.FillDirection = Enum.FillDirection.Vertical
+        list.SortOrder = Enum.SortOrder.LayoutOrder
+        list.Padding = UDim.new(0,10)
+        list.Parent = scroll
+        local padding = Instance.new("UIPadding")
+        padding.PaddingTop = UDim.new(0,8)
+        padding.PaddingBottom = UDim.new(0,10)
+        padding.PaddingLeft = UDim.new(0,8)
+        padding.PaddingRight = UDim.new(0,8)
+        padding.Parent = scroll
 
-    function AM.applySearch()
-        if not AM.panel or not AM.cardScroll then return end
-        for _,child in ipairs(AM.cardScroll:GetChildren()) do if child:IsA("GuiObject") and child.Name~="UIListLayout" and child.Name~="UIPadding" then child:Destroy() end end
-        local query=tostring(AM.searchBox and AM.searchBox.Text or ""):lower():gsub("^%s+",""):gsub("%s+$","")
-        local isDiscover=AM.activeView~="Installed"
-        local shown=0
-        local function amImageSource(value)
-            local raw=tostring(value or ""):gsub("^%s+",""):gsub("%s+$","")
-            if raw=="" then return nil end
-            if raw:match("^%d+$") then return "rbxassetid://"..raw end
-            if raw:match("^rbxassetid://%d+$") then return raw end
-            return nil
-        end
-        local function makeCard(entry,order,isInstalled,isFile)
-            local accent=ACCENTS[((order-1)%#ACCENTS)+1]
-            local card=Instance.new("Frame"); card.Name="AddonShowcaseCard"; card.Size=UDim2.new(1,-16,0,144); card.BackgroundColor3=C.pHdr; card.BorderSizePixel=0; card.LayoutOrder=order; card.Parent=AM.cardScroll; corner(12,card); stroke(C.border,1,card)
-            local art=Instance.new("Frame"); art.Name="AddonArtwork"; art.Size=UDim2.new(0,88,0,88); art.Position=UDim2.new(0,16,0,12); art.BackgroundColor3=C.panel; art.BorderSizePixel=0; art.ClipsDescendants=true; art.Parent=card; corner(10,art)
-            local imageSource=amImageSource(entry.image)
-            if imageSource then
-                local image=Instance.new("ImageLabel"); image.Name="AddonImage"; image.Size=UDim2.new(1,0,1,0); image.BackgroundTransparency=1; image.BorderSizePixel=0; image.Image=imageSource; image.ScaleType=Enum.ScaleType.Crop; image.Parent=art
-            else
-                local glyph=mkIcon(art,entry.icon or "puzzle",30,74); glyph.AnchorPoint=Vector2.new(0.5,0.5); glyph.Position=UDim2.new(0.5,0,0.5,0); glyph.Size=UDim2.new(0,34,0,34)
-                if glyph:IsA("TextLabel") then glyph.TextColor3=accent end
-            end
-            local content=Instance.new("Frame"); content.Name="AddonCardContent"; content.Size=UDim2.new(1,-126,1,-24); content.Position=UDim2.new(0,118,0,12); content.BackgroundTransparency=1; content.Parent=card
-            local title=newTxt({Parent=content,Text=tostring(entry.name or "Addon"),Font=GB,Size=13,Color=C.txt,Sz=UDim2.new(1,-2,0,20),Pos=UDim2.new(0,0,0,0),Z=74}); title.TextTruncate=Enum.TextTruncate.AtEnd
-            local meta={}; if entry.author and entry.author~="" then meta[#meta+1]="by "..tostring(entry.author) end; if entry.version then meta[#meta+1]=amShowVer(entry.version) end
-            local metaLabel=newTxt({Parent=content,Text=table.concat(meta,"  ·  "),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-2,0,14),Pos=UDim2.new(0,0,0,22),Z=74}); metaLabel.TextTruncate=Enum.TextTruncate.AtEnd
-            local chip=newTxt({Parent=content,Text=isInstalled and "INSTALLED" or tostring(entry.category or "ADDON"),Font=GB,Size=7,Color=isInstalled and Color3.fromRGB(115,220,160) or accent,Sz=UDim2.new(0,82,0,16),Pos=UDim2.new(0,0,0,39),Z=74}); chip.BackgroundColor3=C.btnBg; chip.BackgroundTransparency=0; chip.TextXAlignment=Enum.TextXAlignment.Center; corner(5,chip)
-            local desc=newTxt({Parent=content,Text=tostring(entry.desc or "A JustX Library extension preview."),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-2,0,26),Pos=UDim2.new(0,0,0,58),Z=74}); desc.TextYAlignment=Enum.TextYAlignment.Top; desc.TextTruncate=Enum.TextTruncate.AtEnd
-            local actions=Instance.new("Frame"); actions.Name="AddonCardActions"; actions.Size=UDim2.new(1,-32,0,30); actions.Position=UDim2.new(0,16,1,-42); actions.BackgroundTransparency=1; actions.Parent=card
-            local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.30,-4,1,0); info.Name="AddonInfoButton"
-            local main
-            if isInstalled then
-                main=amUiButton(actions,"UNINSTALL",2,function()
-                    if isFile then JL:Notify({Title="Addon Manager",Desc="Imported source management will be connected to this view in a later step.",Type="Info",Duration=3})
-                    else AM.catalogInstalled[entry.id]=nil; AM.applySearch() end
-                end,C.btnBg); main.Size=UDim2.new(0.34,-4,1,0); main.Position=UDim2.new(0.33,4,0,0); main.Name="AddonUninstall"
-                local del=amUiButton(actions,"DELETE",3,function()
-                    if not isFile then AM.catalogInstalled[entry.id]=nil; AM.catalogDeleted[entry.id]=true; AM.applySearch(); JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
-                    else JL:Notify({Title="Addon Manager",Desc="Imported source deletion will be connected later.",Type="Info",Duration=3}) end
-                end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.67,8,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
-            else
-                main=amUiButton(actions,"INSTALL",2,function()
-                    if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
-                        JL:Notify({Title="Addon Install",Desc="HTTP, compiler, or file-system support is missing.",Type="Error",Duration=4})
-                        return
-                    end
-                    if type(entry.url) ~= "string" or entry.url == "" then
-                        JL:Notify({Title="Addon Install",Desc="This catalogue entry has no download URL.",Type="Error",Duration=4})
-                        return
-                    end
-                    local okFetch, source = pcall(function() return game:HttpGet(entry.url) end)
-                    if not okFetch or type(source) ~= "string" or #source == 0 then
-                        JL:Notify({Title="Addon Install",Desc="Could not download "..entry.name..".",Type="Error",Duration=4})
-                        return
-                    end
-                    local compile, compileErr = loadstring(amBuildCode(source, {}), "=Addon_Install_Check")
-                    if not compile then
-                        JL:Notify({Title="Addon Install",Desc="Invalid addon source: "..tostring(compileErr),Type="Error",Duration=5})
-                        return
-                    end
-                    local fileName = tostring(entry.file or (amSafeFileName(entry.name)..".lua"))
-                    local path = AM.dir .. "/" .. fileName
-                    local okWrite, writeErr = pcall(writefile, path, source)
-                    if not okWrite then
-                        JL:Notify({Title="Addon Install",Desc="Could not save addon: "..tostring(writeErr),Type="Error",Duration=5})
-                        return
-                    end
-                    AM.catalogInstalled[entry.id] = true
-                    AM.scan()
-                    local installedAddon
-                    for _, candidate in ipairs(AM.list) do
-                        if candidate.file:lower() == fileName:lower() then installedAddon = candidate; break end
-                    end
-                    if installedAddon then
-                        if not AM.enable(installedAddon) then
-                            JL:Notify({Title="Addon Installed",Desc="Saved, but it failed to start. Check the addon error.",Type="Warn",Duration=5})
-                        else
-                            JL:Notify({Title="Addon Installed",Desc=entry.name.." installed and enabled.",Type="Success",Duration=4})
-                        end
-                    else
-                        JL:Notify({Title="Addon Installed",Desc=entry.name.." saved. Reload Addons to load it.",Type="Success",Duration=4})
-                    end
-                    AM.activeView="Installed"
-                    AM.applySearch()
-                end,accent)
-                main.Size=UDim2.new(0.66,-8,1,0); main.Position=UDim2.new(0.34,8,0,0); main.Name="AddonInstall"
-            end
-        end
-        if isDiscover then
-            for i,entry in ipairs(AM.catalog) do
-                local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
-                if (query=="" or hay:find(query,1,true)) and not AM.catalogInstalled[entry.id] and not AM.catalogDeleted[entry.id] then shown=shown+1; makeCard(entry,shown,false,false) end
-            end
-            if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"No addons found",12,C.txt,22,1,GB); amUiText(body,"Try a different search term.",9,C.dim,18,2,GM) end
-            if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." AVAILABLE ADDONS" end
+        amBuildManager(scroll,1)
+        if #AM.list == 0 and not AM.fsNote then
+            local empty,body = amUiCard(scroll,2,C.dim)
+            amUiText(body,"No addons installed",12,C.txt,22,1,GB)
+            amUiText(body,"Press Import Addon to install your first Lua addon, or place a .lua / .txt / .luau file in the Addons folder and reload.",10,C.dim,42,2,GM)
         else
-            for i,entry in ipairs(AM.catalog) do
-                if AM.catalogInstalled[entry.id] and not AM.catalogDeleted[entry.id] then
-                    local hay=(entry.name.." "..entry.author.." "..entry.desc.." "..entry.category):lower()
-                    if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,false) end
-                end
-            end
-            for _,a in ipairs(AM.list or {}) do
-                local listedInCatalog = false
-                for _,catalogEntry in ipairs(AM.catalog or {}) do
-                    if AM.catalogInstalled[catalogEntry.id] and tostring(catalogEntry.file or ""):lower() == tostring(a.file or ""):lower() then
-                        listedInCatalog = true
-                        break
-                    end
-                end
-                if not listedInCatalog then
-                    local entry={id=a.id,name=a.meta.name or a.file,author=a.meta.author,version=a.meta.version,desc=a.meta.desc or "Imported addon source.",category="IMPORTED",icon="file-code",image=a.meta.image}
-                    local hay=(entry.name.." "..tostring(entry.author or "").." "..entry.desc):lower()
-                    if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,true) end
-                end
-            end
-            if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"Nothing installed yet",12,C.txt,22,1,GB); amUiText(body,"Explore the catalogue or use + to add an addon source.",9,C.dim,24,2,GM) end
-            if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." INSTALLED ADDONS" end
-        end
-        if win and win.GetDescendants then
-            for _,node in ipairs(win:GetDescendants()) do
-                if node:IsA("GuiObject") and node:GetAttribute("AddonCatalogId") then
-                    local id=node:GetAttribute("AddonCatalogId")
-                    node.Visible = not AM.catalogInstalled[id] and not AM.catalogDeleted[id]
-                end
+            for i,a in ipairs(AM.list) do
+                local ok,e = pcall(amBuildCard,a,scroll,i+1)
+                if not ok then warn("[JustLib] addon '"..tostring(a.file).."' UI failed: "..tostring(e)) end
             end
         end
-        if AM.discoverButton and AM.installedButton then
-            local active=AM.activeView=="Installed"
-            AM.discoverButton.BackgroundColor3=active and C.pHdr or ACCENTS[1]; AM.discoverButton.TextColor3=active and C.dim or Color3.new(1,1,1)
-            AM.installedButton.BackgroundColor3=active and ACCENTS[1] or C.pHdr; AM.installedButton.TextColor3=active and Color3.new(1,1,1) or C.dim
+        AM.building = false
+        for _,a in ipairs(AM.list) do
+            if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
+                if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
+            end
         end
     end
 
-    local function amSetMainChromeVisible(visible)
-        if not win then return end
-        for _,name in ipairs({"JLGlobalSearchButton","JLMinimizeButton","JLUnloadButton","JLGlobalSearchPanel"}) do
-            local obj=win:FindFirstChild(name)
-            if obj and obj:IsA("GuiObject") then obj.Visible=visible end
-        end
-    end
-
-    function AM.openLibrary()
-        if not AM.panel then
-            AM.scan()
-            AM.buildPanel()
-        end
-        amSetMainChromeVisible(false)
-        if AM.panel then AM.panel.Visible = true end
-        return AM.panel
-    end
-
-    function AM.closeLibrary()
+    function AM.removeTab()
         if AM.importGui then pcall(function() AM.importGui:Destroy() end); AM.importGui = nil end
-        if AM.panel then AM.panel.Visible = false end
-        amSetMainChromeVisible(true)
-    end
-
-    function AM.removePanel()
-        AM.closeLibrary()
-        if AM.panel then pcall(function() AM.panel:Destroy() end); AM.panel = nil end
-        AM.searchBox = nil
-        AM.resultLabel = nil
-        AM.cardScroll = nil
+        if AM.tab then
+            local t = AM.tab; AM.tab = nil
+            pcall(function() t:Remove() end)
+        end
     end
 
     function AM.refresh()
-        if not AM.panel then return end
+        if not AM.tab then return end
         local keep = {}
         for _, a in ipairs(AM.list) do if a.loaded then keep[a.id] = true end end
         AM.disableAll()
-        AM.removePanel()
+        AM.removeTab()
         AM.scan()
-        AM.buildPanel()
+        AM.buildTab()
         for _, a in ipairs(AM.list) do
             if keep[a.id] and not a.loaded then
                 if AM.enable(a) then pcall(function() a.enableCtl:Set(true) end) end
             end
         end
-        if AM.panel then AM.panel.Visible = true end
+        if AM.tab and AM.tab.Select then AM.tab:Select() end
     end
 
     function AM.setEnabled(on)
         if on then
-            AM.scan()
+            if not AM.tab then AM.scan(); AM.buildTab() end
         else
             AM.disableAll()
-            AM.closeLibrary()
+            AM.removeTab()
         end
     end
     function AM.boot()
@@ -7845,6 +7774,7 @@ function JL:Window(opts)
         end
     end)
     function Win:Settings()
+        if opts.Settings == false then return nil end
         local sTab = self:Tab({Icon = "settings", Type = "Custom", Name = "Settings", _SettingsTab = true})
         local root = sTab.Frame
         local ACC = ACCENTS[1]
@@ -8089,10 +8019,10 @@ function JL:Window(opts)
             if JL._preview then JL._preview:Open() else JL:Notify({Title = "Preview UI", Desc = "No Preview created. Use JL:Preview()", Type = "Warn", Duration = 3}) end
         end)
         local pD = newPage("Addons", "Extensions loaded from the Addons folder")
-        addSwitch(pD, "Enable Addons", "Allows addon files to be loaded. Open the Utility Sidebar from Home to manage them. Addons execute with full access: only use trusted code.", "_addons_on", false, function(v) AM.setEnabled(v) end)
+        addSwitch(pD, "Enable Addons", "Shows the Addons tab and lets you load addon files. Addons are code with full access: only use ones you trust", "_addons_on", false, function(v) AM.setEnabled(v) end)
         addSwitch(pD, "Version Warnings", "Warns when an addon was made for a different JustLib version", "_addons_warn", true, function() end)
         addButton(pD, "Reload Addons", "Re-reads the folder and restarts running addons", "Reload", false, function()
-            AM.scan(); if AM.panel then AM.refresh() else AM.openLibrary() end
+            if AM.tab then AM.refresh() else JL:Notify({Title = "Addons", Desc = "Turn on Enable Addons first", Type = "Warn", Duration = 3}) end
         end)
         addValue(pD, "Folder", "Put .lua / .txt files here. Mark functions with --@toggle / --@button / --@slider / --@dropdown above them", AM.dir)
         local pR = newPage("Remote", "Floating quick-access panel for toggles, buttons and keybinds")
@@ -8280,10 +8210,8 @@ function JL:Window(opts)
         end
     end)
     function Win:HomeTab(hopts)
-        if homeTabInstance and not homeTabInstance:IsRemoved() then return homeTabInstance end
         hopts = hopts or {}
         local T = self:Tab({Name = hopts.Name or "Home", Icon = hopts.Icon or "house", Tooltip = hopts.Tooltip, Type = "Custom"})
-        homeTabInstance = T
         local id = T.Id
         if tabUI[id] then tabUI[id].btn.LayoutOrder = -1000 end
         switchToTab(id)
@@ -8307,121 +8235,6 @@ function JL:Window(opts)
             ord = ord + 1
             local row = Instance.new("Frame"); row.Size = UDim2.new(1,0,0,26); row.BackgroundTransparency = 1; row.LayoutOrder = ord; row.Parent = listCon
             newTxt({Parent=row,Text="Welcome to " .. (hopts.WelcomeTitle or opts.Title or "the Hub") .. "!",Font=GB,Size=17,Sz=UDim2.new(1,0,1,0),Pos=UDim2.new(0,2,0,0)})
-        end
-        do
-            local card = newCard(50)
-            local iconButton = Instance.new("ImageButton"); iconButton.Name = "PlaceActionsButton"; iconButton.Size = UDim2.new(0,36,0,36); iconButton.Position = UDim2.new(0,8,0,7); iconButton.BackgroundColor3 = C.pHdr; iconButton.BorderSizePixel = 0; iconButton.AutoButtonColor = false; iconButton.Parent = card; corner(8,iconButton)
-            iconButton:SetAttribute("JLNoRepaint", true)
-            local icon = Instance.new("ImageLabel"); icon.Size = UDim2.new(1,0,1,0); icon.BackgroundTransparency = 1; icon.BorderSizePixel = 0; icon.Parent = iconButton; corner(8,icon)
-            icon:SetAttribute("JLNoRepaint", true)
-            local actionGlyph = mkIcon(iconButton, "ellipsis", 15, 4); actionGlyph.AnchorPoint = Vector2.new(1,1); actionGlyph.Position = UDim2.new(1,-2,1,-2); actionGlyph.Size = UDim2.new(0,16,0,16); actionGlyph.BackgroundColor3 = C.panel; actionGlyph.BackgroundTransparency = 0.1
-            local nameL = newTxt({Parent=card,Text="Loading place...",Font=GB,Size=12,Sz=UDim2.new(1,-112,0,18),Pos=UDim2.new(0,54,0,7)})
-            local byL = newTxt({Parent=card,Text="Current experience",Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-112,0,14),Pos=UDim2.new(0,54,0,27)})
-            local placeMeta = newTxt({Parent=card,Text="PLACE  " .. tostring(game.PlaceId),Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(0,110,0,14),Pos=UDim2.new(1,-118,0,18)})
-            placeMeta.TextXAlignment = Enum.TextXAlignment.Right
-            trackedSpawn(function()
-                local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
-                if ok and info then
-                    nameL.Text = info.Name or "Unknown"
-                    byL.Text = "by " .. ((info.Creator and info.Creator.Name) or "Unknown")
-                    if info.IconImageAssetId and info.IconImageAssetId ~= 0 then icon.Image = "rbxassetid://" .. info.IconImageAssetId end
-                end
-            end)
-            local actionOverlay
-            local function closePlaceActions() if actionOverlay then actionOverlay:Destroy(); actionOverlay = nil end end
-            local function openPlaceActions()
-                closePlaceActions()
-                actionOverlay = Instance.new("Frame"); actionOverlay.Name = "PlaceActionsMenu"; actionOverlay.Size = UDim2.new(1,0,1,0); actionOverlay.BackgroundColor3 = Color3.fromRGB(3,5,9); actionOverlay.BackgroundTransparency = 0.25; actionOverlay.BorderSizePixel = 0; actionOverlay.ZIndex = 90; actionOverlay.Parent = root
-                local panel = Instance.new("Frame"); panel.Size = UDim2.new(0,270,0,220); panel.AnchorPoint = Vector2.new(0.5,0.5); panel.Position = UDim2.new(0.5,0,0.5,0); panel.BackgroundColor3 = C.panel; panel.BorderSizePixel = 0; panel.ZIndex = 91; panel.Parent = actionOverlay; corner(10,panel); stroke(C.border,1,panel)
-                newTxt({Parent=panel,Text="PLACE ACTIONS",Font=GB,Size=10,Color=C.dim,Sz=UDim2.new(1,-48,0,14),Pos=UDim2.new(0,14,0,12),Z=92})
-                local close = Instance.new("TextButton"); close.Size = UDim2.new(0,26,0,24); close.Position = UDim2.new(1,-36,0,6); close.Text = "×"; close.Font = GB; close.TextSize = 17; close.TextColor3 = C.txt; close.BackgroundColor3 = C.pHdr; close.BorderSizePixel = 0; close.ZIndex = 92; close.Parent = panel; corner(6,close); close.MouseButton1Click:Connect(closePlaceActions)
-                local function action(label,iconName,y,callback)
-                    local b = Instance.new("TextButton"); b.Size = UDim2.new(1,-24,0,28); b.Position = UDim2.new(0,12,0,y); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false; b.Text = ""; b.ZIndex = 92; b.Parent = panel; corner(6,b); stroke(C.border,1,b)
-                    local glyph = mkIcon(b,iconName,15,93); glyph.Position = UDim2.new(0,9,0.5,-7); glyph.Size = UDim2.new(0,15,0,15)
-                    newTxt({Parent=b,Text=label,Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(1,-42,1,0),Pos=UDim2.new(0,32,0,0),Z=93})
-                    b.MouseButton1Click:Connect(function() closePlaceActions(); callback() end)
-                    return b
-                end
-                action("Rejoin","refresh-cw",42,function() pcall(function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId,game.JobId,LP) end) end)
-                action("Server hop","shuffle",76,function() pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId,LP) end) end)
-                action("Join Lowest Server","users",110,function() joinLowestServer(game.PlaceId,function(msg) JL:Notify({Title="Server Hop",Desc=msg,Type="Error",Duration=4}) end) end)
-                action("Open sub-places","layers",144,function() openSubPlaces(game.GameId) end)
-                action("Copy Place ID","copy",178,function() if setclipboard then setclipboard(tostring(game.PlaceId)); JL:Notify({Title="Copied",Desc="Place ID copied",Type="Success",Duration=3}) end end)
-            end
-            iconButton.MouseButton1Click:Connect(openPlaceActions)
-        end
-        do
-            pcall(function() AM.scan() end)
-            ord = ord + 1
-            local heading = Instance.new("Frame"); heading.Size = UDim2.new(1,0,0,20); heading.BackgroundTransparency = 1; heading.LayoutOrder = 9000; heading.Parent = listCon
-            newTxt({Parent=heading,Text="ADDONS",Font=GB,Size=11,Color=C.txt,Sz=UDim2.new(0.6,0,1,0),Pos=UDim2.new(0,2,0,0)})
-            local countText = newTxt({Parent=heading,Text="DISCOVER  ·  IMPORTED",Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(0.4,0,1,0),Pos=UDim2.new(0.6,0,0,0)})
-            countText.TextXAlignment = Enum.TextXAlignment.Right
-            local browse = Instance.new("TextButton")
-            browse.Name = "BrowseAllAddons"
-            browse.Size = UDim2.new(0,76,0,20)
-            browse.Position = UDim2.new(1,-78,0,0)
-            browse.BackgroundColor3 = C.btnBg
-            browse.BorderSizePixel = 0
-            browse.AutoButtonColor = false
-            browse.Text = "VIEW ALL  ›"
-            browse.Font = GB
-            browse.TextSize = 8
-            browse.TextColor3 = ACCENTS[1]
-            browse.Parent = heading
-            corner(5,browse)
-            countText.Size = UDim2.new(0.4,-82,1,0)
-            browse.MouseButton1Click:Connect(function() AM.openLibrary() end)
-
-            local gridHost = Instance.new("Frame"); gridHost.Name = "HomeAddonGrid"; gridHost.Size = UDim2.new(1,0,0,176); gridHost.BackgroundTransparency = 1; gridHost.LayoutOrder = 9001; gridHost.Parent = listCon
-            local grid = Instance.new("UIGridLayout"); grid.CellSize = UDim2.new(0.5,-5,0,76); grid.CellPadding = UDim2.new(0,6,0,6); grid.SortOrder = Enum.SortOrder.LayoutOrder; grid.Parent = gridHost
-
-            local function addonCard(data, order, isUser)
-                local card = Instance.new("Frame"); card.Name = isUser and "UserAddonCard" or "BuiltinAddonCard"; if data.id then card:SetAttribute("AddonCatalogId",data.id) end; card.BackgroundColor3 = C.panel; card.BorderSizePixel = 0; card.LayoutOrder = order; card.Parent = gridHost; corner(9,card); stroke(C.border,1,card)
-                local accent = Instance.new("Frame"); accent.Size = UDim2.new(0,3,1,-16); accent.Position = UDim2.new(0,0,0,8); accent.BackgroundColor3 = data.accent or ACCENTS[((order-1)%#ACCENTS)+1]; accent.BorderSizePixel = 0; accent.Parent = card; corner(2,accent)
-                local glyph = mkIcon(card,data.icon or "puzzle",16,3); glyph.Position = UDim2.new(0,9,0,8); glyph.Size = UDim2.new(0,16,0,16)
-                local title = newTxt({Parent=card,Text=tostring(data.name or "Addon"),Font=GB,Size=10,Color=C.txt,Sz=UDim2.new(1,-34,0,16),Pos=UDim2.new(0,31,0,8)})
-                title.TextTruncate = Enum.TextTruncate.AtEnd
-                local tag = newTxt({Parent=card,Text=isUser and (data.loaded and "ENABLED" or "USER ADDON") or "BUILT-IN PREVIEW",Font=GB,Size=6,Color=isUser and (data.loaded and Color3.fromRGB(110,220,160) or C.dim) or ACCENTS[1],Sz=UDim2.new(1,-18,0,10),Pos=UDim2.new(0,9,0,27)})
-                local desc = newTxt({Parent=card,Text=tostring(data.desc or "Addon preview"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-18,0,12),Pos=UDim2.new(0,9,0,40)})
-                desc.TextYAlignment = Enum.TextYAlignment.Top
-                if isUser then
-                    local action = Instance.new("TextButton"); action.Size = UDim2.new(1,-18,0,15); action.Position = UDim2.new(0,9,1,-18); action.BackgroundColor3 = C.btnBg; action.BorderSizePixel = 0; action.AutoButtonColor = false; action.Text = "MANAGE ADDON"; action.Font = GB; action.TextSize = 8; action.TextColor3 = C.txt; action.Parent = card; corner(5,action)
-                    action.MouseButton1Click:Connect(function() AM.openLibrary() end)
-                else
-                    local info = Instance.new("TextButton"); info.Name="HomeAddonInfo"; info.Size=UDim2.new(0.5,-11,0,15); info.Position=UDim2.new(0,9,1,-18); info.BackgroundColor3=C.btnBg; info.BorderSizePixel=0; info.AutoButtonColor=false; info.Text="INFO"; info.Font=GB; info.TextSize=8; info.TextColor3=C.txt; info.Parent=card; corner(5,info)
-                    local install = Instance.new("TextButton"); install.Name="HomeAddonInstall"; install.Size=UDim2.new(0.5,-11,0,15); install.Position=UDim2.new(0.5,2,1,-18); install.BackgroundColor3=data.accent or ACCENTS[1]; install.BorderSizePixel=0; install.AutoButtonColor=false; install.Text="INSTALL"; install.Font=GB; install.TextSize=8; install.TextColor3=Color3.new(1,1,1); install.Parent=card; corner(5,install)
-                    info.MouseButton1Click:Connect(function()
-                        local entry=data
-                        for _,catalogEntry in ipairs(AM.catalog or {}) do
-                            if catalogEntry.id==data.id then entry=catalogEntry; break end
-                        end
-                        amShowInfo(entry)
-                    end)
-                    install.MouseButton1Click:Connect(function()
-                        if not data.id or AM.catalogDeleted[data.id] then return end
-                        AM.catalogInstalled[data.id]=true
-                        card.Visible=false
-                        if AM.applySearch and AM.panel then AM.applySearch() end
-                        JL:Notify({Title="Addon Added",Desc=tostring(data.name).." moved to Installed (visual preview).",Type="Success",Duration=3})
-                    end)
-                end
-            end
-
-            local samples = {
-                {id="server-finder",name="Server Finder",icon="globe",desc="Explore available servers and find a session."},
-                {id="player-toolkit",name="Player Toolkit",icon="users",desc="Quick player lookups and useful actions."},
-                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub."},
-                {id="session-monitor",name="Session Monitor",icon="activity",desc="Keep an eye on your current session."}
-            }
-            local cardOrder = 1
-            for _,sample in ipairs(samples) do if not AM.catalogInstalled[sample.id] then addonCard(sample,cardOrder,false); cardOrder = cardOrder + 1 end end
-            for _,a in ipairs(AM.list or {}) do
-                addonCard({name=(a.meta and a.meta.name) or a.file,icon="puzzle",desc=(a.meta and a.meta.desc) or ("User addon · "..tostring(a.file)),loaded=a.loaded},cardOrder,true)
-                cardOrder = cardOrder + 1
-            end
-            gridHost.Size = UDim2.new(1,0,0,math.max(76,math.ceil((cardOrder-1)/2)*82))
-            ord = ord + 1
         end
         do
             local h = 180
@@ -9018,7 +8831,54 @@ function JL:Window(opts)
                 end)
             end
         end
-
+        do
+            local h = 164
+            local card = newCard(h)
+            local icon = Instance.new("ImageLabel"); icon.Size = UDim2.new(0,56,0,56); icon.Position = UDim2.new(0,12,0,12); icon.BackgroundColor3 = C.pHdr; icon.BorderSizePixel = 0; icon.Parent = card; corner(10,icon)
+            icon:SetAttribute("JLNoRepaint", true)
+            local nameL = newTxt({Parent=card,Text="Loading...",Font=GB,Size=14,Sz=UDim2.new(1,-84,0,18),Pos=UDim2.new(0,78,0,12)})
+            local byL = newTxt({Parent=card,Text="",Font=GM,Size=11,Color=C.dim,Sz=UDim2.new(1,-84,0,14),Pos=UDim2.new(0,78,0,32)})
+            trackedSpawn(function()
+                local ok,info = pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset) end)
+                if ok and info then
+                    nameL.Text = info.Name or "Unknown"
+                    byL.Text = "by " .. ((info.Creator and info.Creator.Name) or "Unknown")
+                    if info.IconImageAssetId and info.IconImageAssetId ~= 0 then icon.Image = "rbxassetid://" .. info.IconImageAssetId end
+                end
+            end)
+            newTxt({Parent=card,Text="Job ID  " .. game.JobId,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-84,0,14),Pos=UDim2.new(0,78,0,50)})
+            newTxt({Parent=card,Text="Place " .. game.PlaceId .. "   Universe " .. game.GameId,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-24,0,14),Pos=UDim2.new(0,12,0,74)})
+            local function mkBtnRow(y)
+                local row = Instance.new("Frame"); row.Size = UDim2.new(1,-24,0,26); row.Position = UDim2.new(0,12,0,y); row.BackgroundTransparency = 1; row.Parent = card
+                local rl = Instance.new("UIListLayout"); rl.FillDirection = Enum.FillDirection.Horizontal; rl.Padding = UDim.new(0,6); rl.SortOrder = Enum.SortOrder.LayoutOrder; rl.Parent = row
+                return row
+            end
+            local btnRow1, btnRow2 = mkBtnRow(98), mkBtnRow(130)
+            local function actBtn(parentRow,order2,label,w,cb)
+                local b = Instance.new("TextButton"); b.Size = UDim2.new(0,w,0,26); b.LayoutOrder = order2; b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
+                b.Text = label; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.txt; b.Parent = parentRow; corner(6,b); stroke(C.border,1,b)
+                b.MouseEnter:Connect(function() if touchLast() then return end tw(b,{BackgroundColor3 = C.btnHov},.1) end)
+                b.MouseLeave:Connect(function() tw(b,{BackgroundColor3 = C.btnBg},.1) end)
+                b.MouseButton1Click:Connect(cb)
+                return b
+            end
+            actBtn(btnRow1,1,"Rejoin",70,function() pcall(function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end) end)
+            actBtn(btnRow1,2,"Server Hop",90,function() pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, LP) end) end)
+            actBtn(btnRow1,3,"Copy Job ID",96,function()
+                if setclipboard then setclipboard(game.JobId); JL:Notify({Title="Copied",Desc="Job ID copied",Type="Success",Duration=3})
+                else JL:Notify({Title="Copy",Desc="Clipboard unsupported",Type="Error",Duration=3}) end
+            end)
+            actBtn(btnRow1,4,"Copy Universe",108,function()
+                if setclipboard then setclipboard(tostring(game.GameId)); JL:Notify({Title="Copied",Desc="Universe ID copied",Type="Success",Duration=3})
+                else JL:Notify({Title="Copy",Desc="Clipboard unsupported",Type="Error",Duration=3}) end
+            end)
+            actBtn(btnRow2,1,"Join Lowest Server",132,function()
+                joinLowestServer(game.PlaceId, function(msg) JL:Notify({Title="Server Hop",Desc=msg,Type="Error",Duration=4}) end)
+            end)
+            actBtn(btnRow2,2,"Sub-Places",100,function()
+                openSubPlaces(game.GameId)
+            end)
+        end
         if hopts.DiscordInvite or hopts.Website then
             local h = 60
             local card = newCard(h)
@@ -9056,6 +8916,69 @@ function JL:Window(opts)
             local card = newCard(h)
             newTxt({Parent=card,Text=hopts.Announcement,Font=GM,Size=11,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-24,1,-16),Pos=UDim2.new(0,12,0,8)})
         end
+        -- Built-in addon catalogue is presented directly on Home.
+        do
+            local entry = {
+                id = "console", name = "Console", author = "JustXLibrary", version = "1.0.0",
+                description = "A compact Lua console accessible from the top bar.",
+                url = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",
+                file = "Console.lua",
+            }
+            local card = newCard(128)
+            local iconBox = Instance.new("Frame")
+            iconBox.Size = UDim2.new(0,42,0,42); iconBox.Position = UDim2.new(0,12,0,12)
+            iconBox.BackgroundColor3 = C.pHdr; iconBox.BorderSizePixel = 0; iconBox.Parent = card
+            corner(10,iconBox)
+            mkIcon(iconBox,"terminal",22,10)
+            newTxt({Parent=card,Text="BUILT-IN ADDON",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-150,0,12),Pos=UDim2.new(0,64,0,10)})
+            newTxt({Parent=card,Text=entry.name,Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-150,0,20),Pos=UDim2.new(0,64,0,24)})
+            newTxt({Parent=card,Text="by "..entry.author.."   ·   v"..entry.version,Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-150,0,14),Pos=UDim2.new(0,64,0,46)})
+            newTxt({Parent=card,Text=entry.description,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-24,0,26),Pos=UDim2.new(0,12,0,64)})
+            local install = Instance.new("TextButton")
+            install.Name = "InstallConsoleAddon"; install.Size = UDim2.new(0,112,0,28)
+            install.Position = UDim2.new(1,-124,0,17); install.BackgroundColor3 = ACCENTS[1]
+            install.BorderSizePixel = 0; install.AutoButtonColor = false; install.Text = "Install"
+            install.Font = GB; install.TextSize = 10; install.TextColor3 = Color3.new(1,1,1)
+            install.Parent = card; corner(7,install)
+            install.MouseButton1Click:Connect(function()
+                if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
+                    JL:Notify({Title="Console",Desc="HTTP, compiler, or file-system support is missing.",Type="Error",Duration=4})
+                    return
+                end
+                local okFetch, source = pcall(function() return game:HttpGet(entry.url) end)
+                if not okFetch or type(source) ~= "string" or #source == 0 then
+                    JL:Notify({Title="Console",Desc="Could not download the addon.",Type="Error",Duration=4})
+                    return
+                end
+                local compile, compileErr = loadstring(source, "=Console_Install_Check")
+                if not compile then
+                    JL:Notify({Title="Console",Desc="Invalid addon source: "..tostring(compileErr),Type="Error",Duration=5})
+                    return
+                end
+                local okWrite, writeErr = pcall(writefile,AM.dir.."/"..entry.file,source)
+                if not okWrite then
+                    JL:Notify({Title="Console",Desc="Could not save addon: "..tostring(writeErr),Type="Error",Duration=5})
+                    return
+                end
+                AM.scan()
+                local installed
+                for _,candidate in ipairs(AM.list) do
+                    if tostring(candidate.file):lower()==entry.file:lower() then installed=candidate; break end
+                end
+                if not installed then
+                    JL:Notify({Title="Console",Desc="File saved, but addon was not detected.",Type="Warn",Duration=5})
+                    return
+                end
+                if AM.enable(installed) then
+                    install.Text = "Installed"
+                    install.BackgroundColor3 = Color3.fromRGB(35,75,58)
+                    JL:Notify({Title="Console",Desc="Installed and enabled successfully.",Type="Success",Duration=4})
+                else
+                    JL:Notify({Title="Console",Desc="Saved, but failed to start. Check the Addons tab.",Type="Error",Duration=5})
+                end
+                if AM.tab then AM.refresh() end
+            end)
+        end
         return T
     end
     hubEntry = {
@@ -9079,10 +9002,8 @@ function JL:Window(opts)
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
     end
-    -- Home and Settings are built-in tabs and are always created.
-    -- Home is created first and selected as the startup tab.
     Win:HomeTab(type(opts.HomeTab) == "table" and opts.HomeTab or nil)
-    Win:Settings()
+    if opts.Settings ~= false then Win:Settings() end
     trackedDefer(function()
         if _dead or activeTabId then return end
         local id = settingsTabId
