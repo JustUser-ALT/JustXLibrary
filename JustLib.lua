@@ -7085,7 +7085,7 @@ function JL:Window(opts)
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
-            cfgSet("_addon_enabled_"..a.id, a.loaded); if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
+            cfgSet("_addon_enabled_"..a.id, a.loaded); cfgSet("_addon_enabled_"..a.id, a.loaded); if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
             amSetCardState(a,a.loaded)
         end)
         enable.Name = "AddonEnable"
