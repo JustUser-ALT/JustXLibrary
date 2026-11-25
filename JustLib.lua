@@ -6570,6 +6570,7 @@ function JL:Window(opts)
             button.TextSize = 12
             button.TextColor3 = C.txt
             button.Parent = win
+            button.Visible = not (AM.panel and AM.panel.Visible)
             button.ZIndex = 80
             corner(8,button); stroke(C.border,1,button)
             button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3=C.btnHov},.1) end end)
@@ -7085,7 +7086,7 @@ function JL:Window(opts)
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
-            cfgSet("_addon_enabled_"..a.id, a.loaded); cfgSet("_addon_enabled_"..a.id, a.loaded); if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
+            cfgSet("_addon_enabled_"..a.id, a.loaded); if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
             amSetCardState(a,a.loaded)
         end)
         enable.Name = "AddonEnable"
@@ -7118,6 +7119,7 @@ function JL:Window(opts)
                 else
                     AM.disable(a)
                 end
+                cfgSet("_addon_enabled_"..a.id, a.loaded)
                 if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
                 amSetCardState(a,a.loaded)
             end
@@ -7550,9 +7552,10 @@ function JL:Window(opts)
             if obj and obj:IsA("GuiObject") then obj.Visible=visible end
         end
         -- Addon topbar buttons must not float above the Addon Library overlay.
-        for _,obj in ipairs(win:GetChildren()) do
-            if obj:IsA("GuiObject") and obj.Name:sub(1,14)=="JLAddonTopbar_" then
-                obj.Visible=visible
+        local prefix = "JLAddonTopbar_"
+        for _,obj in ipairs(win:GetDescendants()) do
+            if obj:IsA("GuiObject") and obj.Name:sub(1,#prefix)==prefix then
+                obj.Visible = visible
             end
         end
     end
@@ -7608,7 +7611,15 @@ function JL:Window(opts)
     function AM.boot()
         if AM.booted then return end
         AM.booted = true
-        if cfgGet("_addons_on", false) == true then AM.setEnabled(true) end
+        if cfgGet("_addons_on", false) == true then
+            AM.scan()
+            -- Build Installed cards once so every addon has its section/API before auto-restoring.
+            AM.activeView = "Installed"
+            AM.buildPanel()
+            if AM.panel then AM.panel.Visible = false end
+            AM.activeView = "Discover"
+            AM.applySearch()
+        end
     end
     table.insert(JL._unloadHooks, function() AM.disableAll(true) end)
     function Win:Addons() AM.boot(); return AM end
