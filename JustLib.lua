@@ -7187,7 +7187,7 @@ function JL:Window(opts)
         local compile, compileErr = loadstring(source, "=Addon_Catalog_" .. tostring(entry.id))
         if not compile then return false, "Invalid addon source: " .. tostring(compileErr) end
         -- Allow a leading file header comment before the returned addon package.
-        local packageSource = source:gsub("^\\239\\187\\191", "")
+        local packageSource = source:gsub("^\239\187\191", "")
         local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
         if firstCode:match("^%s*return%s*{") == nil then
             return false, "The catalogue source is not a modern addon package."
