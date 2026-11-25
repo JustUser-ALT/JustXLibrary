@@ -1145,8 +1145,58 @@ function JL:Window(opts)
         return Tab
     end
     -- ===== Addons: файлы .lua / .txt из папки. Секции и контролы создаются автоматически по пометкам в комментариях =====
-    local AM = {list = {}, tab = nil, building = false, booted = false}
+    local AM = {list = {}, tab = nil, building = false, booted = false, savedState = {ManagerEnabled = false, Addons = {}}}
     AM.dir = opts.AddonsFolder or "JustLib/Addons"
+    local AM_STATE_FILE = "JustX/AddonState.lua"
+    local function amLoadSavedState()
+        if type(readfile) ~= "function" or type(loadstring) ~= "function" then return false end
+        local ok, raw = pcall(readfile, AM_STATE_FILE)
+        if not ok or type(raw) ~= "string" or raw == "" then return false end
+        local okFn, fn = pcall(loadstring, raw)
+        if not okFn or type(fn) ~= "function" then
+            warn("[JustLib Addons] Could not compile saved addon state: " .. tostring(fn))
+            return false
+        end
+        local okData, data = pcall(fn)
+        if not okData or type(data) ~= "table" then
+            warn("[JustLib Addons] Could not read saved addon state: " .. tostring(data))
+            return false
+        end
+        AM.savedState.ManagerEnabled = data.ManagerEnabled == true
+        AM.savedState.Addons = type(data.Addons) == "table" and data.Addons or {}
+        return true
+    end
+    local function amSaveSavedState()
+        if type(writefile) ~= "function" then
+            warn("[JustLib Addons] Persistence unavailable: writefile is missing")
+            return false
+        end
+        if type(isfolder) == "function" then
+            local ok, exists = pcall(isfolder, "JustX")
+            if not ok or not exists then
+                if type(makefolder) == "function" then
+                    local made, err = pcall(makefolder, "JustX")
+                    if not made then warn("[JustLib Addons] Could not create JustX folder: " .. tostring(err)); return false end
+                else
+                    warn("[JustLib Addons] Persistence unavailable: makefolder is missing")
+                    return false
+                end
+            end
+        elseif type(makefolder) == "function" then
+            local made, err = pcall(makefolder, "JustX")
+            if not made then warn("[JustLib Addons] Could not create JustX folder: " .. tostring(err)); return false end
+        end
+        local entries = {}
+        for id, enabled in pairs(AM.savedState.Addons) do
+            if enabled == true then entries[#entries + 1] = "[" .. string.format("%q", tostring(id)) .. "]=true" end
+        end
+        table.sort(entries)
+        local source = "return {ManagerEnabled=" .. tostring(AM.savedState.ManagerEnabled == true)
+            .. ",Addons={" .. table.concat(entries, ",") .. "}}"
+        local ok, err = pcall(writefile, AM_STATE_FILE, source)
+        if not ok then warn("[JustLib Addons] Could not write " .. AM_STATE_FILE .. ": " .. tostring(err)); return false end
+        return true
+    end
     local ADDON_EXT = {lua = true, txt = true, luau = true}
     local WARN_COL = Color3.fromRGB(255,190,80)
     local ERR_COL = Color3.fromRGB(255,82,82)
@@ -1542,6 +1592,9 @@ function JL:Window(opts)
             JL:Notify({Title = a.meta.name, Desc = msg, Type = "Warn", Duration = 5})
         end
         amSetCardState(a, true)
+        AM.savedState.ManagerEnabled = true
+        AM.savedState.Addons[a.id] = true
+        amSaveSavedState()
         return true
     end
 
@@ -1980,6 +2033,8 @@ function JL:Window(opts)
         local enable = amUiButton(actions,"○  Enable Addon",1,function()
             if a.loaded then
                 AM.disable(a)
+                AM.savedState.Addons[a.id] = nil
+                amSaveSavedState()
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
@@ -2000,6 +2055,8 @@ function JL:Window(opts)
                 JL:Notify({Title="Addons",Desc="Could not delete addon: "..tostring(err),Type="Error",Duration=4})
                 return
             end
+            AM.savedState.Addons[a.id] = nil
+            amSaveSavedState()
             AM.refresh()
             JL:Notify({Title="Addon Removed",Desc=a.meta.name.." was deleted.",Type="Success",Duration=3})
         end)
@@ -2116,7 +2173,11 @@ function JL:Window(opts)
         managerLayout.Parent = managerActions
         local reload = amUiButton(managerActions,"↻  Reload Files",1,function() AM.refresh() end)
         reload.Size = UDim2.new(0.5,-4,0,34)
-        local disable = amUiButton(managerActions,"Disable All",2,function() AM.disableAll() end)
+        local disable = amUiButton(managerActions,"Disable All",2,function()
+            AM.disableAll()
+            for _, a in ipairs(AM.list) do AM.savedState.Addons[a.id] = nil end
+            amSaveSavedState()
+        end)
         disable.Size = UDim2.new(0.5,-4,0,34)
         disable.BackgroundColor3 = C.pHdr
         disable.TextColor3 = C.dim
@@ -2164,9 +2225,9 @@ function JL:Window(opts)
         end
         AM.building = false
         for _,a in ipairs(AM.list) do
-            if JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true then
-                if a.enableCtl then pcall(function() a.enableCtl:Set(true) end) end
-            end
+            local shouldEnable = AM.savedState.Addons[a.id] == true
+                or (JL._addonAutoSave and cfgGet("addon."..a.id..".enabled",false) == true)
+            if shouldEnable and not a.loaded then AM.enable(a) end
         end
     end
 
@@ -2195,6 +2256,8 @@ function JL:Window(opts)
     end
 
     function AM.setEnabled(on)
+        AM.savedState.ManagerEnabled = on == true
+        amSaveSavedState()
         if on then
             if not AM.tab then AM.scan(); AM.buildTab() end
         else
@@ -2205,7 +2268,10 @@ function JL:Window(opts)
     function AM.boot()
         if AM.booted then return end
         AM.booted = true
-        if cfgGet("_addons_on", false) == true then AM.setEnabled(true) end
+        amLoadSavedState()
+        if AM.savedState.ManagerEnabled == true or cfgGet("_addons_on", false) == true then
+            AM.setEnabled(true)
+        end
     end
     table.insert(JL._unloadHooks, function() AM.disableAll(true) end)
     function Win:Addons() AM.boot(); return AM end
