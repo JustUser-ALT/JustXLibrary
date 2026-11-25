@@ -182,18 +182,18 @@ return {
             dragStart = inputObject.Position
             startPosition = panel.Position
         end)
-        UserInputService.InputChanged:Connect(function(inputObject)
+        Addon.Keep(UserInputService.InputChanged:Connect(function(inputObject)
             if not dragging then return end
             if inputObject.UserInputType ~= Enum.UserInputType.MouseMovement
                 and inputObject.UserInputType ~= Enum.UserInputType.Touch then return end
             local delta = inputObject.Position - dragStart
             panel.Position = UDim2.new(startPosition.X.Scale, startPosition.X.Offset + delta.X,
                 startPosition.Y.Scale, startPosition.Y.Offset + delta.Y)
-        end)
-        UserInputService.InputEnded:Connect(function(inputObject)
+        end))
+        Addon.Keep(UserInputService.InputEnded:Connect(function(inputObject)
             if inputObject.UserInputType == Enum.UserInputType.MouseButton1
                 or inputObject.UserInputType == Enum.UserInputType.Touch then dragging = false end
-        end)
+        end))
 
         local topbarButton = Addon.TopbarButton({
             Text = ">_",
