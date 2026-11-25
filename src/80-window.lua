@@ -3850,6 +3850,42 @@ function JL:Window(opts)
             newTxt({Parent=card,Text=entry.name,Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-150,0,20),Pos=UDim2.new(0,64,0,24)})
             newTxt({Parent=card,Text="by "..entry.author.."   ·   v"..entry.version,Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-150,0,14),Pos=UDim2.new(0,64,0,46)})
             newTxt({Parent=card,Text=entry.description,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-24,0,26),Pos=UDim2.new(0,12,0,64)})
+            local infoButton = Instance.new("TextButton")
+            infoButton.Name = "InfoConsoleAddon"; infoButton.Size = UDim2.new(0,104,0,28)
+            infoButton.Position = UDim2.new(1,-232,0,17); infoButton.BackgroundColor3 = C.btnBg
+            infoButton.BorderSizePixel = 0; infoButton.AutoButtonColor = false
+            infoButton.Text = "Info"; infoButton.Font = GB; infoButton.TextSize = 10
+            infoButton.TextColor3 = C.txt; infoButton.Parent = card; corner(7,infoButton)
+            infoButton.MouseButton1Click:Connect(function()
+                local overlay = Instance.new("Frame")
+                overlay.Name = "ConsoleAddonInfoOverlay"
+                overlay.Size = UDim2.new(1,0,1,0)
+                overlay.BackgroundColor3 = Color3.new(0,0,0)
+                overlay.BackgroundTransparency = 0.32
+                overlay.BorderSizePixel = 0
+                overlay.ZIndex = 90
+                overlay.Parent = root
+                local panel = Instance.new("Frame")
+                panel.Size = UDim2.new(1,-36,0,190)
+                panel.AnchorPoint = Vector2.new(0.5,0.5)
+                panel.Position = UDim2.new(0.5,0,0.5,0)
+                panel.BackgroundColor3 = C.panel
+                panel.BorderSizePixel = 0
+                panel.ZIndex = 91
+                panel.Parent = overlay
+                corner(11,panel); stroke(C.border,1,panel)
+                newTxt({Parent=panel,Text="ADDON INFORMATION",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-56,0,14),Pos=UDim2.new(0,16,0,14),Z=92})
+                newTxt({Parent=panel,Text=entry.name,Font=GB,Size=17,Color=C.txt,Sz=UDim2.new(1,-32,0,24),Pos=UDim2.new(0,16,0,34),Z=92})
+                newTxt({Parent=panel,Text="Author  "..entry.author.."     Version  "..entry.version,Font=GM,Size=10,Color=C.dim,Sz=UDim2.new(1,-32,0,18),Pos=UDim2.new(0,16,0,64),Z=92})
+                newTxt({Parent=panel,Text=entry.description,Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-32,0,48),Pos=UDim2.new(0,16,0,88),Z=92})
+                local closeInfo = Instance.new("TextButton")
+                closeInfo.Size = UDim2.new(0,28,0,28); closeInfo.Position = UDim2.new(1,-38,0,8)
+                closeInfo.BackgroundColor3 = C.btnBg; closeInfo.BorderSizePixel = 0
+                closeInfo.Text = "×"; closeInfo.Font = GB; closeInfo.TextSize = 17
+                closeInfo.TextColor3 = C.txt; closeInfo.ZIndex = 93; closeInfo.Parent = panel
+                corner(7,closeInfo)
+                closeInfo.MouseButton1Click:Connect(function() overlay:Destroy() end)
+            end)
             local install = Instance.new("TextButton")
             install.Name = "InstallConsoleAddon"; install.Size = UDim2.new(0,112,0,28)
             install.Position = UDim2.new(1,-124,0,17); install.BackgroundColor3 = ACCENTS[1]
