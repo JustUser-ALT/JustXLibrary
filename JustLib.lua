@@ -7122,6 +7122,16 @@ function JL:Window(opts)
                 amSetCardState(a,a.loaded)
             end
         }
+        -- Restore the saved enabled state only after the addon section and controls exist.
+        -- Modern addons (including Console) need a valid section before Init can create UI.
+        local savedEnabled = cfgGet("addon." .. a.id .. ".enabled", false) == true
+        if savedEnabled and not a.loaded then
+            local restoreOk, restoreResult = pcall(AM.enable, a)
+            if not restoreOk or restoreResult ~= true then
+                a.loaded = false
+                amSetErr(a, "Could not restore addon after hub restart: " .. tostring(a.err or restoreResult))
+            end
+        end
         amSetCardState(a,a.loaded)
         return card
     end
