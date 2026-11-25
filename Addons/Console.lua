@@ -281,7 +281,7 @@ local gui = new("ScreenGui", {
 	Name = "JustXConsole",
 	ResetOnSpawn = false,
 	IgnoreGuiInset = true,
-	DisplayOrder = 10001,
+	DisplayOrder = 2147483647,
 	ZIndexBehavior = Enum.ZIndexBehavior.Global,
 })
 
