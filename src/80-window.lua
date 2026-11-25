@@ -3918,6 +3918,7 @@ function JL:Window(opts)
     if JL._perfEnabled then
         warn("[JustLib Perf] Window build: " .. string.format("%.3f s", os.clock() - windowBuildStarted))
     end
+    Win:HomeTab(type(opts.HomeTab) == "table" and opts.HomeTab or nil)
     if opts.Settings ~= false then Win:Settings() end
     trackedDefer(function()
         if _dead or activeTabId then return end
