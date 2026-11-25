@@ -7270,9 +7270,18 @@ function JL:Window(opts)
                 end
             end
             for _,a in ipairs(AM.list or {}) do
-                local entry={id=a.id,name=a.meta.name or a.file,author=a.meta.author,version=a.meta.version,desc=a.meta.desc or "Imported addon source.",category="IMPORTED",icon="file-code",image=a.meta.image}
-                local hay=(entry.name.." "..tostring(entry.author or "").." "..entry.desc):lower()
-                if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,true) end
+                local listedInCatalog = false
+                for _,catalogEntry in ipairs(AM.catalog or {}) do
+                    if AM.catalogInstalled[catalogEntry.id] and tostring(catalogEntry.file or ""):lower() == tostring(a.file or ""):lower() then
+                        listedInCatalog = true
+                        break
+                    end
+                end
+                if not listedInCatalog then
+                    local entry={id=a.id,name=a.meta.name or a.file,author=a.meta.author,version=a.meta.version,desc=a.meta.desc or "Imported addon source.",category="IMPORTED",icon="file-code",image=a.meta.image}
+                    local hay=(entry.name.." "..tostring(entry.author or "").." "..entry.desc):lower()
+                    if query=="" or hay:find(query,1,true) then shown=shown+1; makeCard(entry,shown,true,true) end
+                end
             end
             if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"Nothing installed yet",12,C.txt,22,1,GB); amUiText(body,"Explore the catalogue or use + to add an addon source.",9,C.dim,24,2,GM) end
             if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." INSTALLED ADDONS" end
