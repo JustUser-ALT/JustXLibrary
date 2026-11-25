@@ -1446,6 +1446,35 @@ function JL:Window(opts)
         api.Input = dual(function(o) return addControl("Input", o) end)
         api.Label = dual(function(o) return addControl("Label", o) end)
         api.Divider = dual(function(o) return addControl("Divider", o) end)
+        api.TopbarButton = dual(function(options)
+            options = type(options) == "table" and options or {}
+            local button = Instance.new("TextButton")
+            button.Name = "JLAddonTopbar_" .. tostring(a.id)
+            button.Size = UDim2.new(0,28,0,28)
+            button.Position = UDim2.new(1,-(PADIN + 102 + 132 + 34),0,5)
+            button.BackgroundColor3 = C.panel
+            button.BorderSizePixel = 0
+            button.AutoButtonColor = false
+            button.Text = tostring(options.Text or ">_")
+            button.Font = GB
+            button.TextSize = 12
+            button.TextColor3 = C.txt
+            button.Parent = win
+            button.ZIndex = 80
+            corner(8,button); stroke(C.border,1,button)
+            button.MouseEnter:Connect(function() if not touchLast() then tw(button,{BackgroundColor3=C.btnHov},.1) end end)
+            button.MouseLeave:Connect(function() tw(button,{BackgroundColor3=C.panel},.1) end)
+            local connection = button.MouseButton1Click:Connect(function()
+                if not a.loaded then return end
+                if type(options.Callback) == "function" then
+                    local ok, err = pcall(options.Callback, button)
+                    if not ok then amSetErr(a, tostring(err)) end
+                end
+            end)
+            a.keeps[#a.keeps + 1] = connection
+            a.keeps[#a.keeps + 1] = button
+            return button
+        end)
         return api
     end
 
@@ -3802,6 +3831,69 @@ function JL:Window(opts)
             local h = fitH(hopts.Announcement, 11, GM, IW - 48, 40, 16)
             local card = newCard(h)
             newTxt({Parent=card,Text=hopts.Announcement,Font=GM,Size=11,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-24,1,-16),Pos=UDim2.new(0,12,0,8)})
+        end
+        -- Built-in addon catalogue is presented directly on Home.
+        do
+            local entry = {
+                id = "console", name = "Console", author = "JustXLibrary", version = "1.0.0",
+                description = "A compact Lua console accessible from the top bar.",
+                url = "https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",
+                file = "Console.lua",
+            }
+            local card = newCard(128)
+            local iconBox = Instance.new("Frame")
+            iconBox.Size = UDim2.new(0,42,0,42); iconBox.Position = UDim2.new(0,12,0,12)
+            iconBox.BackgroundColor3 = C.pHdr; iconBox.BorderSizePixel = 0; iconBox.Parent = card
+            corner(10,iconBox)
+            mkIcon(iconBox,"terminal",22,10)
+            newTxt({Parent=card,Text="BUILT-IN ADDON",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-150,0,12),Pos=UDim2.new(0,64,0,10)})
+            newTxt({Parent=card,Text=entry.name,Font=GB,Size=14,Color=C.txt,Sz=UDim2.new(1,-150,0,20),Pos=UDim2.new(0,64,0,24)})
+            newTxt({Parent=card,Text="by "..entry.author.."   ·   v"..entry.version,Font=GM,Size=9,Color=C.dim,Sz=UDim2.new(1,-150,0,14),Pos=UDim2.new(0,64,0,46)})
+            newTxt({Parent=card,Text=entry.description,Font=GM,Size=9,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-24,0,26),Pos=UDim2.new(0,12,0,64)})
+            local install = Instance.new("TextButton")
+            install.Name = "InstallConsoleAddon"; install.Size = UDim2.new(0,112,0,28)
+            install.Position = UDim2.new(1,-124,0,17); install.BackgroundColor3 = ACCENTS[1]
+            install.BorderSizePixel = 0; install.AutoButtonColor = false; install.Text = "Install"
+            install.Font = GB; install.TextSize = 10; install.TextColor3 = Color3.new(1,1,1)
+            install.Parent = card; corner(7,install)
+            install.MouseButton1Click:Connect(function()
+                if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
+                    JL:Notify({Title="Console",Desc="HTTP, compiler, or file-system support is missing.",Type="Error",Duration=4})
+                    return
+                end
+                local okFetch, source = pcall(function() return game:HttpGet(entry.url) end)
+                if not okFetch or type(source) ~= "string" or #source == 0 then
+                    JL:Notify({Title="Console",Desc="Could not download the addon.",Type="Error",Duration=4})
+                    return
+                end
+                local compile, compileErr = loadstring(source, "=Console_Install_Check")
+                if not compile then
+                    JL:Notify({Title="Console",Desc="Invalid addon source: "..tostring(compileErr),Type="Error",Duration=5})
+                    return
+                end
+                local okWrite, writeErr = pcall(writefile,AM.dir.."/"..entry.file,source)
+                if not okWrite then
+                    JL:Notify({Title="Console",Desc="Could not save addon: "..tostring(writeErr),Type="Error",Duration=5})
+                    return
+                end
+                AM.scan()
+                local installed
+                for _,candidate in ipairs(AM.list) do
+                    if tostring(candidate.file):lower()==entry.file:lower() then installed=candidate; break end
+                end
+                if not installed then
+                    JL:Notify({Title="Console",Desc="File saved, but addon was not detected.",Type="Warn",Duration=5})
+                    return
+                end
+                if AM.enable(installed) then
+                    install.Text = "Installed"
+                    install.BackgroundColor3 = Color3.fromRGB(35,75,58)
+                    JL:Notify({Title="Console",Desc="Installed and enabled successfully.",Type="Success",Duration=4})
+                else
+                    JL:Notify({Title="Console",Desc="Saved, but failed to start. Check the Addons tab.",Type="Error",Duration=5})
+                end
+                if AM.tab then AM.refresh() end
+            end)
         end
         return T
     end
