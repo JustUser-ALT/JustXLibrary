@@ -7186,7 +7186,10 @@ function JL:Window(opts)
         end
         local compile, compileErr = loadstring(source, "=Addon_Catalog_" .. tostring(entry.id))
         if not compile then return false, "Invalid addon source: " .. tostring(compileErr) end
-        if source:match("^%s*return%s*{") == nil then
+        -- Allow a leading file header comment before the returned addon package.
+        local packageSource = source:gsub("^\\239\\187\\191", "")
+        local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
+        if firstCode:match("^%s*return%s*{") == nil then
             return false, "The catalogue source is not a modern addon package."
         end
         local path = AM.dir .. "/" .. entry.file
@@ -8517,18 +8520,19 @@ function JL:Window(opts)
                 end
             end
 
+            -- Home shows only a small featured selection. The full catalogue lives behind View All.
             local samples = {
                 {id="console",name="Console",icon="terminal",desc="A compact Lua console in the top bar.",author="JustXLibrary",version="1.0.0",category="UTILITY",file="Console.lua",url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua"},
                 {id="server-finder",name="Server Finder",icon="globe",desc="Explore available servers and find a session."},
                 {id="player-toolkit",name="Player Toolkit",icon="users",desc="Quick player lookups and useful actions."},
-                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub."},
-                {id="session-monitor",name="Session Monitor",icon="activity",desc="Keep an eye on your current session."}
+                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub."}
             }
             local cardOrder = 1
-            for _,sample in ipairs(samples) do if not amCatalogIsInstalled(sample) and not AM.catalogDeleted[sample.id] then addonCard(sample,cardOrder,false); cardOrder = cardOrder + 1 end end
-            for _,a in ipairs(AM.list or {}) do
-                addonCard({name=(a.meta and a.meta.name) or a.file,icon="puzzle",desc=(a.meta and a.meta.desc) or ("User addon · "..tostring(a.file)),loaded=a.loaded},cardOrder,true)
-                cardOrder = cardOrder + 1
+            for _,sample in ipairs(samples) do
+                if not amCatalogIsInstalled(sample) and not AM.catalogDeleted[sample.id] then
+                    addonCard(sample,cardOrder,false)
+                    cardOrder = cardOrder + 1
+                end
             end
             gridHost.Size = UDim2.new(1,0,0,math.max(76,math.ceil((cardOrder-1)/2)*82))
             ord = ord + 1
