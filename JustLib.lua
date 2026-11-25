@@ -6962,7 +6962,19 @@ function JL:Window(opts)
             if not touchLast() then tw(b,{BackgroundColor3=C.btnHov},0.1) end
         end)
         b.MouseLeave:Connect(function()
-            if b.Parent then tw(b,{BackgroundColor3=accent or C.btnBg},0.1) end
+            if not b.Parent then return end
+            local restoreColor = accent or C.btnBg
+            local restoreText = C.txt
+            if b.Name == "DiscoverTab" then
+                local active = AM.activeView == "Discover"
+                restoreColor = active and ACCENTS[1] or C.pHdr
+                restoreText = active and Color3.new(1,1,1) or C.dim
+            elseif b.Name == "InstalledTab" then
+                local active = AM.activeView == "Installed"
+                restoreColor = active and ACCENTS[1] or C.pHdr
+                restoreText = active and Color3.new(1,1,1) or C.dim
+            end
+            tw(b,{BackgroundColor3=restoreColor,TextColor3=restoreText},0.1)
         end)
         b.MouseButton1Click:Connect(function()
             if callback then callback() end
@@ -8812,13 +8824,16 @@ function JL:Window(opts)
                 {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub.",builtin=true}
             }
             local cardOrder = 1
+            -- Keep featured cards in the Home tree even while installed.
+            -- This lets amSyncHomeCatalogCards reveal them immediately after uninstall.
             for _,sample in ipairs(samples) do
-                if not amCatalogIsInstalled(sample) and not AM.catalogDeleted[sample.id] then
+                if not AM.catalogDeleted[sample.id] then
                     addonCard(sample,cardOrder,false)
                     cardOrder = cardOrder + 1
                 end
             end
             gridHost.Size = UDim2.new(1,0,0,math.max(76,math.ceil((cardOrder-1)/2)*82))
+            amSyncHomeCatalogCards()
             ord = ord + 1
         end
         do
