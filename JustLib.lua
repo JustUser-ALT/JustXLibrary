@@ -6579,6 +6579,8 @@ function JL:Window(opts)
         return api
     end
 
+    local amSetCardState
+
     function AM.enable(a)
         if a.loaded then return true end
         local fn, err = loadstring(amBuildCode(a.src, a.ctrls), "=Addon_" .. a.id)
@@ -6838,7 +6840,7 @@ function JL:Window(opts)
         AM.importGui = overlay
     end
 
-    local function amSetCardState(a, enabled)
+    amSetCardState = function(a, enabled)
         if not a then return end
         local badge = a.cardBadge
         if badge and badge.Parent then
@@ -7116,11 +7118,11 @@ function JL:Window(opts)
     end
 
     AM.catalog = AM.catalog or {
-        {id="console",name="Console",author="JustXLibrary",version="1.0.0",category="UTILITY",icon="terminal",desc="A compact Lua console in the top bar for executing commands and inspecting results.",accent=1,file="Console.lua",url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua"},
-        {id="server-finder",name="Server Finder",author="JustX Team",version="1.0.0",category="UTILITY",icon="globe",desc="Explore available servers and find a session that fits your needs.",accent=2},
-        {id="player-toolkit",name="Player Toolkit",author="JustX Team",version="1.0.0",category="PLAYER",icon="users",desc="A collection of quick player lookups and useful session actions.",accent=2},
-        {id="ui-themes",name="UI Themes",author="JustX Team",version="1.0.0",category="APPEARANCE",icon="palette",desc="Give JustX Library a different visual style with curated themes.",accent=3},
-        {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4},
+        {id="console",name="Console",author="JustXLibrary",version="1.1.0",category="UTILITY",icon="terminal",desc="A compact Lua console in the top bar for executing commands and inspecting results.",accent=1,file="Console.lua",url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",builtin=true},
+        {id="server-finder",name="Server Finder",author="JustX Team",version="1.0.0",category="UTILITY",icon="globe",desc="Explore available servers and find a session that fits your needs.",accent=2,builtin=true},
+        {id="player-toolkit",name="Player Toolkit",author="JustX Team",version="1.0.0",category="PLAYER",icon="users",desc="A collection of quick player lookups and useful session actions.",accent=2,builtin=true},
+        {id="ui-themes",name="UI Themes",author="JustX Team",version="1.0.0",category="APPEARANCE",icon="palette",desc="Give JustX Library a different visual style with curated themes.",accent=3,builtin=true},
+        {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4,builtin=true},
     }
     AM.catalogInstalled = AM.catalogInstalled or {}
     AM.catalogDeleted = AM.catalogDeleted or {}
@@ -7140,6 +7142,25 @@ function JL:Window(opts)
             or amFindCatalogAddon(entry) ~= nil
     end
 
+    local function amSyncHomeCatalogCards()
+        if not (win and win.GetDescendants) then return end
+        for _, node in ipairs(win:GetDescendants()) do
+            if node:IsA("GuiObject") and node:GetAttribute("AddonCatalogId") then
+                local id = node:GetAttribute("AddonCatalogId")
+                local installed = AM.catalogInstalled[id] == true
+                if not installed then
+                    for _, entry in ipairs(AM.catalog or {}) do
+                        if entry.id == id then
+                            installed = amCatalogIsInstalled(entry)
+                            break
+                        end
+                    end
+                end
+                node.Visible = not installed and not AM.catalogDeleted[id]
+            end
+        end
+    end
+
     local function amRegisterCatalogAddon(entry, source)
         local base = tostring(entry.file):match("([^\\/]+)%.%w+$") or tostring(entry.id or "addon")
         local id = base:lower():gsub("[^%w]+", "_")
@@ -7155,6 +7176,8 @@ function JL:Window(opts)
             id = id, file = entry.file, src = source, meta = meta,
             ctrls = {}, notes = {}, modern = true, loaded = false,
             keeps = {}, unload = {},
+            catalogId = entry.id,
+            builtin = entry.builtin == true,
         }
         if meta.lib and meta.lib ~= "" then
             local cmp = amVerCmp(JL.Version, meta.lib)
@@ -7166,16 +7189,36 @@ function JL:Window(opts)
         return addon
     end
 
+    local function amValidateCatalogSource(entry, source)
+        if type(source) ~= "string" or #source == 0 then
+            return false, "The addon source is empty."
+        end
+        local compile, compileErr = loadstring(source, "=Addon_Catalog_" .. tostring(entry.id))
+        if not compile then return false, "Invalid addon source: " .. tostring(compileErr) end
+        local packageSource = source:gsub("^\\239\\187\\191", "")
+        local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
+        if firstCode:match("^%s*return%s*{") == nil then
+            return false, "The catalogue source is not a modern addon package."
+        end
+        return true
+    end
+
     local function amInstallCatalogEntry(entry)
         if type(entry) ~= "table" or type(entry.url) ~= "string" or type(entry.file) ~= "string" then
             return false, "This catalogue item does not have an installable source."
         end
         local existing = amFindCatalogAddon(entry)
         if existing then
-            local enabled = existing.loaded or AM.enable(existing)
+            local enabled = existing.loaded
+            if not enabled then
+                local callOk, result = pcall(AM.enable, existing)
+                enabled = callOk and result == true
+                if not enabled then return false, existing.err or tostring(result or "Could not enable the installed addon.") end
+            end
             AM.activeView = "Installed"
             if AM.panel then AM.applySearch() end
-            return true, existing, enabled and "already" or "start-failed"
+            amSyncHomeCatalogCards()
+            return true, existing, "already"
         end
         if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
             return false, "HTTP, compiler, or file-system support is missing."
@@ -7184,14 +7227,9 @@ function JL:Window(opts)
         if not okFetch or type(source) ~= "string" or #source == 0 then
             return false, "Could not download the addon source."
         end
-        local compile, compileErr = loadstring(source, "=Addon_Catalog_" .. tostring(entry.id))
-        if not compile then return false, "Invalid addon source: " .. tostring(compileErr) end
-        -- Allow a leading file header comment before the returned addon package.
-        local packageSource = source:gsub("^\239\187\191", "")
-        local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
-        if firstCode:match("^%s*return%s*{") == nil then
-            return false, "The catalogue source is not a modern addon package."
-        end
+        local valid, validationErr = amValidateCatalogSource(entry, source)
+        if not valid then return false, validationErr end
+
         local path = AM.dir .. "/" .. entry.file
         if isfile then
             local checkOk, exists = pcall(isfile, path)
@@ -7201,11 +7239,77 @@ function JL:Window(opts)
         if not okWrite then return false, "Could not save addon: " .. tostring(writeErr) end
 
         local installed = amRegisterCatalogAddon(entry, source)
-        local enabled = AM.enable(installed)
+        local callOk, enabled = pcall(AM.enable, installed)
+        if not callOk or enabled ~= true then
+            if installed.loaded then pcall(AM.disable, installed, true) end
+            for index = #(AM.list or {}), 1, -1 do
+                if AM.list[index] == installed then table.remove(AM.list, index); break end
+            end
+            if delfile then pcall(delfile, path) end
+            amSyncHomeCatalogCards()
+            return false, installed.err or tostring(enabled or "Addon failed to initialize.")
+        end
+
         AM.activeView = "Installed"
         if AM.panel then AM.applySearch() end
-        if not enabled then return true, installed, "start-failed" end
+        amSyncHomeCatalogCards()
         return true, installed, "installed"
+    end
+
+    local function amUpdateCatalogEntry(entry, addon)
+        if not (entry and entry.builtin == true and entry.url and entry.file and addon and addon.builtin) then
+            return false, "Updates are only available for built-in catalogue addons."
+        end
+        if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
+            return false, "HTTP, compiler, or file-system support is missing."
+        end
+        local okFetch, source = pcall(function() return game:HttpGet(entry.url) end)
+        if not okFetch or type(source) ~= "string" or #source == 0 then
+            return false, "Could not download the latest addon source."
+        end
+        local valid, validationErr = amValidateCatalogSource(entry, source)
+        if not valid then return false, validationErr end
+
+        local path = AM.dir .. "/" .. tostring(addon.file)
+        local oldSource, oldMeta, wasLoaded = addon.src, addon.meta, addon.loaded
+        if wasLoaded then
+            local disabled, disableErr = pcall(AM.disable, addon)
+            if not disabled then return false, "Could not stop the current addon: " .. tostring(disableErr) end
+        end
+        local wrote, writeErr = pcall(writefile, path, source)
+        if not wrote then
+            if wasLoaded then pcall(AM.enable, addon) end
+            return false, "Could not replace the addon file: " .. tostring(writeErr)
+        end
+
+        addon.src = source
+        addon.meta = amModernMeta(source, entry.name)
+        addon.builtin = true
+        addon.catalogId = entry.id
+        addon.outdated, addon.needsNewer = false, false
+        if addon.meta.lib and addon.meta.lib ~= "" then
+            local cmp = amVerCmp(JL.Version, addon.meta.lib)
+            addon.outdated, addon.needsNewer = cmp > 0, cmp < 0
+        end
+
+        if wasLoaded then
+            local callOk, enabled = pcall(AM.enable, addon)
+            if not callOk or enabled ~= true then
+                pcall(writefile, path, oldSource)
+                addon.src, addon.meta = oldSource, oldMeta
+                if oldMeta and oldMeta.lib then
+                    local cmp = amVerCmp(JL.Version, oldMeta.lib)
+                    addon.outdated, addon.needsNewer = cmp > 0, cmp < 0
+                end
+                pcall(AM.enable, addon)
+                return false, "The updated addon failed to start; the previous version was restored. " .. tostring(addon.err or enabled)
+            end
+        end
+        entry.version = addon.meta.version or entry.version
+        entry.desc = addon.meta.desc or entry.desc
+        if AM.panel then AM.applySearch() end
+        amSyncHomeCatalogCards()
+        return true
     end
 
     local function amRemoveFileAddon(addon)
@@ -7214,7 +7318,13 @@ function JL:Window(opts)
             JL:Notify({Title="Addon Manager",Desc="This executor does not support deleting addon files.",Type="Error",Duration=4})
             return false
         end
-        if addon.loaded then AM.disable(addon) end
+        if addon.loaded then
+            local disabled, disableErr = pcall(AM.disable, addon)
+            if not disabled then
+                JL:Notify({Title="Addon Manager",Desc="Could not stop addon: "..tostring(disableErr),Type="Error",Duration=4})
+                return false
+            end
+        end
         local path = AM.dir .. "/" .. tostring(addon.file)
         local okDelete, deleteResult = pcall(delfile, path)
         if not okDelete or deleteResult == false then
@@ -7224,7 +7334,9 @@ function JL:Window(opts)
         for index = #(AM.list or {}), 1, -1 do
             if AM.list[index] == addon then table.remove(AM.list, index); break end
         end
+        if addon.catalogId then AM.catalogInstalled[addon.catalogId] = nil end
         if AM.panel then AM.applySearch() end
+        amSyncHomeCatalogCards()
         JL:Notify({Title="Addon Removed",Desc=tostring(addon.meta and addon.meta.name or addon.file).." was uninstalled.",Type="Success",Duration=3})
         return true
     end
@@ -7307,20 +7419,49 @@ function JL:Window(opts)
             local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.30,-4,1,0); info.Name="AddonInfoButton"
             local main
             if isInstalled then
-                main=amUiButton(actions,"UNINSTALL",2,function()
+                local canUpdate = isFile and sourceAddon and entry.builtin == true and entry.url and entry.file
+                if canUpdate then
+                    local update = amUiButton(actions,"UPDATE",2,function()
+                        local ok, err = amUpdateCatalogEntry(entry, sourceAddon)
+                        if not ok then
+                            JL:Notify({Title="Addon Update",Desc=tostring(err),Type="Error",Duration=5})
+                        else
+                            JL:Notify({Title="Addon Updated",Desc=tostring(entry.name).." was updated successfully.",Type="Success",Duration=4})
+                        end
+                    end,ACCENTS[1])
+                    update.Size=UDim2.new(0.32,-4,1,0)
+                    update.Position=UDim2.new(0.33,4,0,0)
+                    update.Name="AddonUpdate"
+                end
+                main=amUiButton(actions,"UNINSTALL",canUpdate and 3 or 2,function()
                     if isFile and sourceAddon then
                         amRemoveFileAddon(sourceAddon)
                     else
                         AM.catalogInstalled[entry.id]=nil
                         AM.applySearch()
+                        amSyncHomeCatalogCards()
                     end
-                end,C.btnBg); main.Size=UDim2.new(isFile and 0.66 or 0.34,isFile and -8 or -4,1,0); main.Position=UDim2.new(isFile and 0.34 or 0.33,isFile and 8 or 4,0,0); main.Name="AddonUninstall"
-                local del=amUiButton(actions,"DELETE",3,function()
+                end,C.btnBg)
+                if canUpdate then
+                    main.Size=UDim2.new(0.34,-4,1,0)
+                    main.Position=UDim2.new(0.66,4,0,0)
+                else
+                    main.Size=UDim2.new(isFile and 0.66 or 0.34,isFile and -8 or -4,1,0)
+                    main.Position=UDim2.new(isFile and 0.34 or 0.33,isFile and 8 or 4,0,0)
+                end
+                main.Name="AddonUninstall"
+                local del=amUiButton(actions,"DELETE",4,function()
                     AM.catalogInstalled[entry.id]=nil
                     AM.catalogDeleted[entry.id]=true
                     AM.applySearch()
+                    amSyncHomeCatalogCards()
                     JL:Notify({Title="Addon Manager",Desc=entry.name.." removed from the showcase.",Type="Success",Duration=3})
-                end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.67,8,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
+                end)
+                del.Size=UDim2.new(0.34,-4,1,0)
+                del.Position=UDim2.new(0.67,8,0,0)
+                del.BackgroundColor3=C.pHdr
+                del.TextColor3=C.dim
+                del.Name="AddonDelete"
                 if isFile then del.Visible=false end
             else
                 main=amUiButton(actions,"INSTALL",2,function()
@@ -7375,20 +7516,7 @@ function JL:Window(opts)
             if shown==0 then local _,body=amUiCard(AM.cardScroll,1,C.dim); amUiText(body,"Nothing installed yet",12,C.txt,22,1,GB); amUiText(body,"Explore the catalogue or use + to add an addon source.",9,C.dim,24,2,GM) end
             if AM.resultLabel then AM.resultLabel.Text=tostring(shown).." INSTALLED ADDONS" end
         end
-        if win and win.GetDescendants then
-            for _,node in ipairs(win:GetDescendants()) do
-                if node:IsA("GuiObject") and node:GetAttribute("AddonCatalogId") then
-                    local id=node:GetAttribute("AddonCatalogId")
-                    local installed = AM.catalogInstalled[id] == true
-                    if not installed then
-                        for _,entry in ipairs(AM.catalog or {}) do
-                            if entry.id == id and amCatalogIsInstalled(entry) then installed = true; break end
-                        end
-                    end
-                    node.Visible = not installed and not AM.catalogDeleted[id]
-                end
-            end
-        end
+        amSyncHomeCatalogCards()
         if AM.discoverButton and AM.installedButton then
             local active=AM.activeView=="Installed"
             AM.discoverButton.BackgroundColor3=active and C.pHdr or ACCENTS[1]; AM.discoverButton.TextColor3=active and C.dim or Color3.new(1,1,1)
@@ -8522,10 +8650,10 @@ function JL:Window(opts)
 
             -- Home shows only a small featured selection. The full catalogue lives behind View All.
             local samples = {
-                {id="console",name="Console",icon="terminal",desc="A compact Lua console in the top bar.",author="JustXLibrary",version="1.0.0",category="UTILITY",file="Console.lua",url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua"},
-                {id="server-finder",name="Server Finder",icon="globe",desc="Explore available servers and find a session."},
-                {id="player-toolkit",name="Player Toolkit",icon="users",desc="Quick player lookups and useful actions."},
-                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub."}
+                {id="console",name="Console",icon="terminal",desc="A compact Lua console in the top bar.",author="JustXLibrary",version="1.1.0",category="UTILITY",file="Console.lua",url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",builtin=true},
+                {id="server-finder",name="Server Finder",icon="globe",desc="Explore available servers and find a session.",builtin=true},
+                {id="player-toolkit",name="Player Toolkit",icon="users",desc="Quick player lookups and useful actions.",builtin=true},
+                {id="ui-themes",name="UI Themes",icon="palette",desc="Customize the look of your hub.",builtin=true}
             }
             local cardOrder = 1
             for _,sample in ipairs(samples) do
