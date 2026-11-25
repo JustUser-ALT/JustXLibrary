@@ -6246,6 +6246,54 @@ function JL:Window(opts)
     -- ===== Addons: файлы .lua / .txt из папки. Секции и контролы создаются автоматически по пометкам в комментариях =====
     local AM = {list = {}, tab = nil, building = false, booted = false}
     AM.dir = opts.AddonsFolder or "JustLib/Addons"
+    -- Addon activation is stored separately from the optional hub config.
+    -- This keeps restoration reliable even when Window() is called without opts.Config.
+    local AM_STATE_FILE = "JustLib/AddonState.lua"
+    AM.savedState = {ManagerEnabled = false, Addons = {}}
+    local function amLoadSavedState()
+        local state
+        if readfile and loadstring then
+            local ok, raw = pcall(readfile, AM_STATE_FILE)
+            if ok and type(raw) == "string" and raw ~= "" then
+                local okFn, fn = pcall(loadstring, raw)
+                if okFn and type(fn) == "function" then
+                    local okData, data = pcall(fn)
+                    if okData and type(data) == "table" then state = data end
+                end
+            end
+        end
+        if type(state) == "table" then
+            AM.savedState = {
+                ManagerEnabled = state.ManagerEnabled == true,
+                Addons = type(state.Addons) == "table" and state.Addons or {}
+            }
+        end
+        return AM.savedState
+    end
+    local function amSaveSavedState()
+        if not writefile then return false end
+        local ok = pcall(function()
+            if makefolder then
+                local folderOk, exists = pcall(isfolder, "JustLib")
+                if not folderOk or not exists then pcall(makefolder, "JustLib") end
+            end
+            local entries = {}
+            for id, enabled in pairs(AM.savedState.Addons or {}) do
+                if type(id) == "string" and enabled == true then
+                    entries[#entries + 1] = "[" .. string.format("%q", id) .. "]=true"
+                end
+            end
+            local source = "return {ManagerEnabled=" .. tostring(AM.savedState.ManagerEnabled == true)
+                .. ",Addons={" .. table.concat(entries, ",") .. "}}"
+            writefile(AM_STATE_FILE, source)
+        end)
+        return ok
+    end
+    local function amSetSavedAddon(id, enabled)
+        if type(id) ~= "string" or id == "" then return end
+        AM.savedState.Addons[id] = enabled == true and true or nil
+        amSaveSavedState()
+    end
     local ADDON_EXT = {lua = true, txt = true, luau = true}
     local WARN_COL = Color3.fromRGB(255,190,80)
     local ERR_COL = Color3.fromRGB(255,82,82)
@@ -6657,6 +6705,7 @@ function JL:Window(opts)
         amSetCardState(a, true)
         -- Every successfully enabled addon must survive a hub restart.
         cfgSet("_addon_enabled_" .. a.id, true)
+        amSetSavedAddon(a.id, true)
         return true
     end
 
@@ -7085,6 +7134,7 @@ function JL:Window(opts)
         local enable = amUiButton(actions,"○  Enable Addon",1,function()
             if a.loaded then
                 AM.disable(a)
+                amSetSavedAddon(a.id, false)
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
@@ -7120,6 +7170,7 @@ function JL:Window(opts)
                     if not AM.enable(a) then amSetCardState(a,false) end
                 else
                     AM.disable(a)
+                    amSetSavedAddon(a.id, false)
                 end
                 cfgSet("_addon_enabled_"..a.id, a.loaded)
                 if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
@@ -7128,7 +7179,8 @@ function JL:Window(opts)
         }
         -- Restore the saved enabled state only after the addon section and controls exist.
         -- Modern addons (including Console) need a valid section before Init can create UI.
-        local savedEnabled = cfgGet("_addon_enabled_" .. a.id, cfgGet("addon." .. a.id .. ".enabled", false)) == true
+        local savedEnabled = AM.savedState.Addons[a.id] == true
+            or cfgGet("_addon_enabled_" .. a.id, cfgGet("addon." .. a.id .. ".enabled", false)) == true
         if savedEnabled and not a.loaded then
             local restoreOk, restoreResult = pcall(AM.enable, a)
             if not restoreOk or restoreResult ~= true then
@@ -7603,6 +7655,7 @@ function JL:Window(opts)
     end
 
     local function amRestoreEnabledAddons()
+        amLoadSavedState()
         AM.scan()
         -- Build Installed cards first: modern addons need their section before Init.
         AM.activeView = "Installed"
@@ -7616,6 +7669,8 @@ function JL:Window(opts)
     end
 
     function AM.setEnabled(on)
+        AM.savedState.ManagerEnabled = on == true
+        amSaveSavedState()
         if on then
             amRestoreEnabledAddons()
         else
@@ -7626,7 +7681,10 @@ function JL:Window(opts)
     function AM.boot()
         if AM.booted then return end
         AM.booted = true
-        if cfgGet("_addons_on", false) == true then
+        amLoadSavedState()
+        if AM.savedState.ManagerEnabled == true or cfgGet("_addons_on", false) == true then
+            AM.savedState.ManagerEnabled = true
+            amSaveSavedState()
             amRestoreEnabledAddons()
         end
     end
