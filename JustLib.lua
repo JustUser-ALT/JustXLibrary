@@ -7602,9 +7602,22 @@ function JL:Window(opts)
         if AM.panel then AM.panel.Visible = true end
     end
 
+    local function amRestoreEnabledAddons()
+        AM.scan()
+        -- Build Installed cards first: modern addons need their section before Init.
+        AM.activeView = "Installed"
+        AM.buildPanel()
+        AM.applySearch()
+        if AM.panel then AM.panel.Visible = false end
+        -- Addon topbar buttons are created while this bootstrap panel is visible.
+        amSetMainChromeVisible(true)
+        AM.activeView = "Discover"
+        AM.applySearch()
+    end
+
     function AM.setEnabled(on)
         if on then
-            AM.scan()
+            amRestoreEnabledAddons()
         else
             AM.disableAll()
             AM.closeLibrary()
@@ -7614,16 +7627,7 @@ function JL:Window(opts)
         if AM.booted then return end
         AM.booted = true
         if cfgGet("_addons_on", false) == true then
-            AM.scan()
-            -- Build Installed cards once so every addon has its section/API before auto-restoring.
-            AM.activeView = "Installed"
-            AM.buildPanel()
-            if AM.panel then AM.panel.Visible = false end
-            -- Restoring addons happens while the temporary Installed view is visible.
-            -- Re-show topbar buttons after hiding that bootstrap panel.
-            amSetMainChromeVisible(true)
-            AM.activeView = "Discover"
-            AM.applySearch()
+            amRestoreEnabledAddons()
         end
     end
     table.insert(JL._unloadHooks, function() AM.disableAll(true) end)
@@ -8354,6 +8358,8 @@ function JL:Window(opts)
         end)
         local pD = newPage("Addons", "Extensions loaded from the Addons folder")
         addSwitch(pD, "Enable Addons", "Allows addon files to be loaded. Open the Utility Sidebar from Home to manage them. Addons execute with full access: only use trusted code.", "_addons_on", false, function(v) AM.setEnabled(v) end)
+        -- Run boot after the addon manager and its UI dependencies are fully defined.
+        AM.boot()
         addSwitch(pD, "Version Warnings", "Warns when an addon was made for a different JustLib version", "_addons_warn", true, function() end)
         addButton(pD, "Reload Addons", "Re-reads the folder and restarts running addons", "Reload", false, function()
             AM.scan(); if AM.panel then AM.refresh() else AM.openLibrary() end
