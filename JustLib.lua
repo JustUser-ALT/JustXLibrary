@@ -6404,7 +6404,9 @@ function JL:Window(opts)
                     while used[id] do k = k + 1; id = baseId .. k end
                     used[id] = true
                     src = src:gsub("^\239\187\191", "")
-                    local modern = src:match("^%s*return%s*{") ~= nil
+                    local packageSource = src:gsub("^\239\187\191", "")
+                    local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
+                    local modern = firstCode:match("^%s*return%s*{") ~= nil
                     local meta, ctrls, notes
                     if modern then meta, ctrls, notes = amModernMeta(src, base), {}, {}
                     else meta, ctrls, notes = amParse(src) end
@@ -7202,7 +7204,7 @@ function JL:Window(opts)
         end
         local compile, compileErr = loadstring(source, "=Addon_Catalog_" .. tostring(entry.id))
         if not compile then return false, "Invalid addon source: " .. tostring(compileErr) end
-        local packageSource = source:gsub("^\\239\\187\\191", "")
+        local packageSource = source:gsub("^\239\187\191", "")
         local firstCode = packageSource:gsub("^%s*%-%-%[%[.-%]%]%s*", "", 1)
         if firstCode:match("^%s*return%s*{") == nil then
             return false, "The catalogue source is not a modern addon package."
