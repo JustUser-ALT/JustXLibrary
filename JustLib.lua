@@ -6410,6 +6410,13 @@ function JL:Window(opts)
                     else meta, ctrls, notes = amParse(src) end
                     if not meta.name or meta.name == "" then meta.name = base end
                     local a = {id = id, file = base .. "." .. ext, src = src, meta = meta, ctrls = ctrls, notes = notes, modern = modern, loaded = false, keeps = {}, unload = {}}
+                    for _, entry in ipairs(AM.catalog or {}) do
+                        if entry.file and tostring(entry.file):lower() == tostring(a.file):lower() then
+                            a.catalogId = entry.id
+                            a.builtin = entry.builtin == true
+                            break
+                        end
+                    end
                     if meta.lib and meta.lib ~= "" then
                         local cmp = amVerCmp(JL.Version, meta.lib)
                         a.outdated = cmp > 0; a.needsNewer = cmp < 0
