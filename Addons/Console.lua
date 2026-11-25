@@ -257,6 +257,31 @@ local ICON_FALLBACK = {
 -- Console glyphs are deliberately plain TextLabels with unique names.
 -- They do not register with, or inherit assets from, JustLib's Icon Pack.
 local function icon(parent, name, size, color, fallback, props)
+	if name == "trash" then
+		local root = new("Frame", {
+			Parent = parent, Name = "JXConsoleGlyph_trash",
+			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
+		})
+		local lid = new("Frame", {
+			Parent = root, Name = "Lid", AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0.18, 0), Size = UDim2.new(0.72, 0, 0, 2),
+			BackgroundColor3 = color, BorderSizePixel = 0,
+		})
+		local handle = new("Frame", {
+			Parent = root, Name = "Handle", AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0.06, 0), Size = UDim2.new(0.28, 0, 0, 2),
+			BackgroundColor3 = color, BorderSizePixel = 0,
+		})
+		local body = new("Frame", {
+			Parent = root, Name = "Body", AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0.28, 0), Size = UDim2.new(0.58, 0, 0.62, 0),
+			BackgroundTransparency = 1, BorderSizePixel = 0,
+		})
+		new("UICorner", { Parent = body, CornerRadius = UDim.new(0, 2) })
+		new("UIStroke", { Parent = body, Color = color, Thickness = 1.5 })
+		for k, v in pairs(props or {}) do root[k] = v end
+		return root
+	end
 	local glyph = new("TextLabel", {
 		Parent = parent, Name = "JXConsoleGlyph_" .. tostring(name),
 		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
@@ -268,7 +293,15 @@ local function icon(parent, name, size, color, fallback, props)
 	return glyph
 end
 local function setIconColor(glyph, color)
-	if glyph and glyph.Parent then glyph.TextColor3 = color end
+	if not (glyph and glyph.Parent) then return end
+	if glyph:IsA("TextLabel") then
+		glyph.TextColor3 = color
+	else
+		for _, child in ipairs(glyph:GetDescendants()) do
+			if child:IsA("UIStroke") then child.Color = color
+			elseif child:IsA("GuiObject") then child.BackgroundColor3 = color end
+		end
+	end
 end
 
 ----------------------------------------------------------------------------------------------------
