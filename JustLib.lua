@@ -7539,6 +7539,12 @@ function JL:Window(opts)
             local obj=win:FindFirstChild(name)
             if obj and obj:IsA("GuiObject") then obj.Visible=visible end
         end
+        -- Addon topbar buttons must not float above the Addon Library overlay.
+        for _,obj in ipairs(win:GetChildren()) do
+            if obj:IsA("GuiObject") and obj.Name:sub(1,14)=="JLAddonTopbar_" then
+                obj.Visible=visible
+            end
+        end
     end
 
     function AM.openLibrary()
