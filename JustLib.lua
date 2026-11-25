@@ -7085,7 +7085,7 @@ function JL:Window(opts)
             else
                 if not AM.enable(a) then amSetCardState(a,false) end
             end
-            if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
+            cfgSet("_addon_enabled_"..a.id, a.loaded); if JL._addonAutoSave then cfgSet("addon."..a.id..".enabled",a.loaded); cfgFlush() end
             amSetCardState(a,a.loaded)
         end)
         enable.Name = "AddonEnable"
@@ -7124,7 +7124,7 @@ function JL:Window(opts)
         }
         -- Restore the saved enabled state only after the addon section and controls exist.
         -- Modern addons (including Console) need a valid section before Init can create UI.
-        local savedEnabled = cfgGet("addon." .. a.id .. ".enabled", false) == true
+        local savedEnabled = cfgGet("_addon_enabled_" .. a.id, cfgGet("addon." .. a.id .. ".enabled", false)) == true
         if savedEnabled and not a.loaded then
             local restoreOk, restoreResult = pcall(AM.enable, a)
             if not restoreOk or restoreResult ~= true then
