@@ -246,32 +246,29 @@ end
 -- Icons (local glyphs; isolated from the hub's icon system)
 ----------------------------------------------------------------------------------------------------
 local ICON_FALLBACK = {
-	terminal = ">_", settings = "*", minus = "−", x = "×",
+	terminal = ">_", settings = "⚙", minus = "−", x = "×",
 	search = "⌕", crown = "♛", info = "i", check = "✓",
 	["chevron-down"] = "v", ["code-xml"] = "</>",
 	["gamepad-2"] = "G", gamepad = "G",
 	["triangle-alert"] = "!", ["circle-alert"] = "!",
 	pause = "Ⅱ", play = "▶", ["arrow-left"] = "<",
-	copy = "▣", trash = "⌫", ban = "×", ["layout-grid"] = "▦",
+	copy = "▣", trash = "▤", ban = "×", ["layout-grid"] = "▦",
 }
+-- Console glyphs are deliberately plain TextLabels with unique names.
+-- They do not register with, or inherit assets from, JustLib's Icon Pack.
 local function icon(parent, name, size, color, fallback, props)
-	local img = new("ImageLabel", {
-		Parent = parent, Name = "Icon_" .. name, BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(size, size), ImageColor3 = color,
-		ImageTransparency = 1, ScaleType = Enum.ScaleType.Fit,
+	local glyph = new("TextLabel", {
+		Parent = parent, Name = "JXConsoleGlyph_" .. tostring(name),
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
+		Text = fallback or ICON_FALLBACK[name] or "•",
+		TextColor3 = color, Font = Enum.Font.GothamBold,
+		TextScaled = true, TextWrapped = false, BorderSizePixel = 0,
 	})
-	for k, v in pairs(props or {}) do img[k] = v end
-	new("TextLabel", {
-		Parent = img, Name = "Fallback", Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1, Text = fallback or ICON_FALLBACK[name] or "•",
-		TextColor3 = color, Font = Enum.Font.GothamBold, TextScaled = true, Visible = true,
-	})
-	return img
+	for k, v in pairs(props or {}) do glyph[k] = v end
+	return glyph
 end
-local function setIconColor(img, color)
-	img.ImageColor3 = color
-	local fb = img:FindFirstChild("Fallback")
-	if fb then fb.TextColor3 = color end
+local function setIconColor(glyph, color)
+	if glyph and glyph.Parent then glyph.TextColor3 = color end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -402,7 +399,6 @@ loadBlocked()
 local minimized = false
 local unread = 0
 local typeFilter = { Print = false, Warning = false, Error = false }
-local sourceFilter = { Game = false, Script = false }
 local searchText = ""
 local visibleCount = 0
 
@@ -678,17 +674,10 @@ local chipDefs = {
 	{ "Print", "info", C.chipText },
 	{ "Warning", "triangle-alert", C.amber },
 	{ "Error", "circle-alert", C.red },
-	{ "Game", "gamepad-2", C.chipText },
-	{ "Script", "code-xml", C.chipText },
 }
 
 local function filtersActive()
 	for _, v in pairs(typeFilter) do
-		if v then
-			return true
-		end
-	end
-	for _, v in pairs(sourceFilter) do
 		if v then
 			return true
 		end
@@ -703,14 +692,9 @@ local function chipIsOn(name)
 				return false
 			end
 		end
-		for _, v in pairs(sourceFilter) do
-			if v then
-				return false
-			end
-		end
 		return true
 	end
-	return typeFilter[name] == true or sourceFilter[name] == true
+	return typeFilter[name] == true
 end
 
 local function refreshChips()
@@ -751,13 +735,8 @@ for i, def in ipairs(chipDefs) do
 			for k in pairs(typeFilter) do
 				typeFilter[k] = false
 			end
-			for k in pairs(sourceFilter) do
-				sourceFilter[k] = false
-			end
-		elseif typeFilter[name] ~= nil then
-			typeFilter[name] = not typeFilter[name]
 		else
-			sourceFilter[name] = not sourceFilter[name]
+			typeFilter[name] = not typeFilter[name]
 		end
 		applyFilters()
 	end)
@@ -1029,16 +1008,7 @@ local function passes(e)
 			typeOn = true
 		end
 	end
-	local srcOn = false
-	for _, v in pairs(sourceFilter) do
-		if v then
-			srcOn = true
-		end
-	end
 	if typeOn and not typeFilter[e.kind] then
-		return false
-	end
-	if srcOn and not sourceFilter[e.source] then
 		return false
 	end
 	if searchText ~= "" and not string.find(e.lower, searchText, 1, true) then
