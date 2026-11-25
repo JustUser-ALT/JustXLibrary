@@ -7370,7 +7370,13 @@ function JL:Window(opts)
             for _,node in ipairs(win:GetDescendants()) do
                 if node:IsA("GuiObject") and node:GetAttribute("AddonCatalogId") then
                     local id=node:GetAttribute("AddonCatalogId")
-                    node.Visible = not AM.catalogInstalled[id] and not AM.catalogDeleted[id]
+                    local installed = AM.catalogInstalled[id] == true
+                    if not installed then
+                        for _,entry in ipairs(AM.catalog or {}) do
+                            if entry.id == id and amCatalogIsInstalled(entry) then installed = true; break end
+                        end
+                    end
+                    node.Visible = not installed and not AM.catalogDeleted[id]
                 end
             end
         end
@@ -7391,7 +7397,15 @@ function JL:Window(opts)
 
     function AM.openLibrary()
         if not AM.panel then
+            local keep = {}
+            for _, addon in ipairs(AM.list or {}) do
+                if addon.loaded then keep[tostring(addon.file or ""):lower()] = true end
+            end
+            AM.disableAll()
             AM.scan()
+            for _, addon in ipairs(AM.list or {}) do
+                if keep[tostring(addon.file or ""):lower()] then AM.enable(addon) end
+            end
             AM.buildPanel()
         end
         amSetMainChromeVisible(false)
