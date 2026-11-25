@@ -7659,12 +7659,57 @@ function JL:Window(opts)
     local function amRestoreEnabledAddons()
         amLoadSavedState()
         AM.scan()
-        -- Build Installed cards first: modern addons need their section before Init.
+
+        -- The current catalogue UI no longer calls amBuildCard(), so restoration
+        -- cannot live inside that legacy card builder. Start saved addons directly.
+        local found, restored, attempted = {}, 0, 0
+        for _, addon in ipairs(AM.list or {}) do
+            found[addon.id] = true
+            local savedEnabled = AM.savedState.Addons[addon.id] == true
+                or cfgGet("_addon_enabled_" .. addon.id,
+                    cfgGet("addon." .. addon.id .. ".enabled", false)) == true
+            if savedEnabled and not addon.loaded then
+                attempted = attempted + 1
+                local restoreOk, restoreResult = pcall(AM.enable, addon)
+                if restoreOk and restoreResult == true then
+                    restored = restored + 1
+                elseif warn then
+                    warn("[JustX Addons Persistence] Failed to restore '" .. tostring(addon.id)
+                        .. "': " .. tostring(addon.err or restoreResult))
+                end
+            end
+        end
+
+        local missing = {}
+        for id, enabled in pairs(AM.savedState.Addons or {}) do
+            if enabled == true and not found[id] then missing[#missing + 1] = tostring(id) end
+        end
+        table.sort(missing)
+        if #missing > 0 and warn then
+            warn("[JustX Addons Persistence] Saved addon file(s) not found in '" .. tostring(AM.dir)
+                .. "': " .. table.concat(missing, ", "))
+        end
+        if warn then
+            local saved = {}
+            for id, enabled in pairs(AM.savedState.Addons or {}) do
+                if enabled == true then saved[#saved + 1] = tostring(id) end
+            end
+            table.sort(saved)
+            warn("[JustX Addons Persistence] Startup restore: ManagerEnabled="
+                .. tostring(AM.savedState.ManagerEnabled)
+                .. ", saved={" .. table.concat(saved, ", ")
+                .. "}, scanned=" .. tostring(#(AM.list or {}))
+                .. ", restored=" .. tostring(restored) .. "/" .. tostring(attempted))
+            if AM.fsNote then
+                warn("[JustX Addons Persistence] Scan note: " .. tostring(AM.fsNote))
+            end
+        end
+
+        -- Build the catalogue overlay after addon code has started.
         AM.activeView = "Installed"
         AM.buildPanel()
         AM.applySearch()
         if AM.panel then AM.panel.Visible = false end
-        -- Addon topbar buttons are created while this bootstrap panel is visible.
         amSetMainChromeVisible(true)
         AM.activeView = "Discover"
         AM.applySearch()
@@ -7684,7 +7729,11 @@ function JL:Window(opts)
         if AM.booted then return end
         AM.booted = true
         amLoadSavedState()
-        if AM.savedState.ManagerEnabled == true or cfgGet("_addons_on", false) == true then
+        local hasSavedAddon = false
+        for _, enabled in pairs(AM.savedState.Addons or {}) do
+            if enabled == true then hasSavedAddon = true; break end
+        end
+        if AM.savedState.ManagerEnabled == true or hasSavedAddon or cfgGet("_addons_on", false) == true then
             AM.savedState.ManagerEnabled = true
             amSaveSavedState()
             amRestoreEnabledAddons()
