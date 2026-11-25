@@ -7116,11 +7116,9 @@ function JL:Window(opts)
         return card
     end
 
-    AM.catalog = AM.catalog or {
-        {id="server-finder",name="Server Finder",author="JustX Team",version="1.0.0",category="UTILITY",icon="globe",desc="Explore available servers and find a session that fits your needs.",accent=1},
-        {id="player-toolkit",name="Player Toolkit",author="JustX Team",version="1.0.0",category="PLAYER",icon="users",desc="A collection of quick player lookups and useful session actions.",accent=2},
-        {id="ui-themes",name="UI Themes",author="JustX Team",version="1.0.0",category="APPEARANCE",icon="palette",desc="Give JustX Library a different visual style with curated themes.",accent=3},
-        {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4},
+    AM.catalog = AM.catalog or {}
+    AM.catalog = {
+        {id="console",name="Console",author="JustXLibrary",version="1.0.0",category="UTILITY",icon="terminal",desc="A compact Lua console accessible from the top bar.",accent=1,url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/Console.lua",file="Console.lua"},
     }
     AM.catalogInstalled = AM.catalogInstalled or {}
     AM.catalogDeleted = AM.catalogDeleted or {}
@@ -7138,7 +7136,7 @@ function JL:Window(opts)
         newTxt({Parent=box,Text="BY "..string.upper(tostring(entry.author or "COMMUNITY")).."   ·   "..amShowVer(entry.version or "1.0"),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,70),Z=112})
         local desc= newTxt({Parent=box,Text=tostring(entry.desc or "No description provided."),Font=GM,Size=10,Color=C.txt,Wrap=true,Sz=UDim2.new(1,-32,0,54),Pos=UDim2.new(0,16,0,96),Z=112}); desc.TextYAlignment=Enum.TextYAlignment.Top
         newTxt({Parent=box,Text="CATEGORY   /   "..string.upper(tostring(entry.category or "ADDON")),Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-32,0,16),Pos=UDim2.new(0,16,0,162),Z=112})
-        newTxt({Parent=box,Text="This is a catalogue preview. Addon functionality will be connected later.",Font=GM,Size=8,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,181),Z=112})
+        newTxt({Parent=box,Text="Install this addon to add it to your local Addons folder.",Font=GM,Size=8,Color=C.dim,Wrap=true,Sz=UDim2.new(1,-32,0,28),Pos=UDim2.new(0,16,0,181),Z=112})
         AM.infoLayer=layer
     end
 
@@ -7210,7 +7208,50 @@ function JL:Window(opts)
                     else JL:Notify({Title="Addon Manager",Desc="Imported source deletion will be connected later.",Type="Info",Duration=3}) end
                 end); del.Size=UDim2.new(0.34,-4,1,0); del.Position=UDim2.new(0.67,8,0,0); del.BackgroundColor3=C.pHdr; del.TextColor3=C.dim; del.Name="AddonDelete"
             else
-                main=amUiButton(actions,"INSTALL",2,function() AM.catalogInstalled[entry.id]=true; AM.activeView="Installed"; AM.applySearch(); JL:Notify({Title="Addon Added",Desc=entry.name.." moved to Installed (visual preview).",Type="Success",Duration=3}) end,accent)
+                main=amUiButton(actions,"INSTALL",2,function()
+                    if not (game and game.HttpGet and writefile and loadstring and amFsOK() and amEnsureDir()) then
+                        JL:Notify({Title="Addon Install",Desc="HTTP, compiler, or file-system support is missing.",Type="Error",Duration=4})
+                        return
+                    end
+                    if type(entry.url) ~= "string" or entry.url == "" then
+                        JL:Notify({Title="Addon Install",Desc="This catalogue entry has no download URL.",Type="Error",Duration=4})
+                        return
+                    end
+                    local okFetch, source = pcall(function() return game:HttpGet(entry.url) end)
+                    if not okFetch or type(source) ~= "string" or #source == 0 then
+                        JL:Notify({Title="Addon Install",Desc="Could not download "..entry.name..".",Type="Error",Duration=4})
+                        return
+                    end
+                    local compile, compileErr = loadstring(amBuildCode(source, {}), "=Addon_Install_Check")
+                    if not compile then
+                        JL:Notify({Title="Addon Install",Desc="Invalid addon source: "..tostring(compileErr),Type="Error",Duration=5})
+                        return
+                    end
+                    local fileName = tostring(entry.file or (amSafeFileName(entry.name)..".lua"))
+                    local path = AM.dir .. "/" .. fileName
+                    local okWrite, writeErr = pcall(writefile, path, source)
+                    if not okWrite then
+                        JL:Notify({Title="Addon Install",Desc="Could not save addon: "..tostring(writeErr),Type="Error",Duration=5})
+                        return
+                    end
+                    AM.catalogInstalled[entry.id] = true
+                    AM.scan()
+                    local installedAddon
+                    for _, candidate in ipairs(AM.list) do
+                        if candidate.file:lower() == fileName:lower() then installedAddon = candidate; break end
+                    end
+                    if installedAddon then
+                        if not AM.enable(installedAddon) then
+                            JL:Notify({Title="Addon Installed",Desc="Saved, but it failed to start. Check the addon error.",Type="Warn",Duration=5})
+                        else
+                            JL:Notify({Title="Addon Installed",Desc=entry.name.." installed and enabled.",Type="Success",Duration=4})
+                        end
+                    else
+                        JL:Notify({Title="Addon Installed",Desc=entry.name.." saved. Reload Addons to load it.",Type="Success",Duration=4})
+                    end
+                    AM.activeView="Installed"
+                    AM.applySearch()
+                end,accent)
                 main.Size=UDim2.new(0.66,-8,1,0); main.Position=UDim2.new(0.34,8,0,0); main.Name="AddonInstall"
             end
         end
