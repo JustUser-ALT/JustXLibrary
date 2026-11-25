@@ -7156,6 +7156,11 @@ function JL:Window(opts)
             ctrls = {}, notes = {}, modern = true, loaded = false,
             keeps = {}, unload = {},
         }
+        if meta.lib and meta.lib ~= "" then
+            local cmp = amVerCmp(JL.Version, meta.lib)
+            addon.outdated = cmp > 0
+            addon.needsNewer = cmp < 0
+        end
         AM.list = AM.list or {}
         AM.list[#AM.list + 1] = addon
         return addon
@@ -7208,9 +7213,9 @@ function JL:Window(opts)
         end
         if addon.loaded then AM.disable(addon) end
         local path = AM.dir .. "/" .. tostring(addon.file)
-        local okDelete, deleteErr = pcall(delfile, path)
-        if not okDelete then
-            JL:Notify({Title="Addon Manager",Desc="Could not delete addon: "..tostring(deleteErr),Type="Error",Duration=4})
+        local okDelete, deleteResult = pcall(delfile, path)
+        if not okDelete or deleteResult == false then
+            JL:Notify({Title="Addon Manager",Desc="Could not delete addon: "..tostring(deleteResult),Type="Error",Duration=4})
             return false
         end
         for index = #(AM.list or {}), 1, -1 do
