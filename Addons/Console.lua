@@ -284,9 +284,14 @@ local gui = new("ScreenGui", {
 	DisplayOrder = 2147483647,
 	ZIndexBehavior = Enum.ZIndexBehavior.Global,
 })
-
 do
-	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	-- JustXLibrary itself is hosted in CoreGui. Keep Console in the same GUI layer
+	-- so DisplayOrder is compared against the library rather than another container.
+	local coreGui = game:GetService("CoreGui")
+	local ok = pcall(function() gui.Parent = coreGui end)
+	if not ok or not gui.Parent then
+		gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	end
 	Addon.Keep(gui)
 end
 
