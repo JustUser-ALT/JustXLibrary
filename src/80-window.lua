@@ -1173,18 +1173,12 @@ function JL:Window(opts)
         end
         if type(isfolder) == "function" then
             local ok, exists = pcall(isfolder, "JustX")
-            if not ok or not exists then
-                if type(makefolder) == "function" then
-                    local made, err = pcall(makefolder, "JustX")
-                    if not made then warn("[JustLib Addons] Could not create JustX folder: " .. tostring(err)); return false end
-                else
-                    warn("[JustLib Addons] Persistence unavailable: makefolder is missing")
-                    return false
-                end
+            if (not ok or not exists) and type(makefolder) == "function" then
+                pcall(makefolder, "JustX")
             end
         elseif type(makefolder) == "function" then
-            local made, err = pcall(makefolder, "JustX")
-            if not made then warn("[JustLib Addons] Could not create JustX folder: " .. tostring(err)); return false end
+            -- Without isfolder, makefolder may report an error simply because the folder already exists.
+            pcall(makefolder, "JustX")
         end
         local entries = {}
         for id, enabled in pairs(AM.savedState.Addons) do
