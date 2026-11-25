@@ -6655,6 +6655,8 @@ function JL:Window(opts)
             JL:Notify({Title = a.meta.name, Desc = msg, Type = "Warn", Duration = 5})
         end
         amSetCardState(a, true)
+        -- Every successfully enabled addon must survive a hub restart.
+        cfgSet("_addon_enabled_" .. a.id, true)
         return true
     end
 
@@ -7617,6 +7619,9 @@ function JL:Window(opts)
             AM.activeView = "Installed"
             AM.buildPanel()
             if AM.panel then AM.panel.Visible = false end
+            -- Restoring addons happens while the temporary Installed view is visible.
+            -- Re-show topbar buttons after hiding that bootstrap panel.
+            amSetMainChromeVisible(true)
             AM.activeView = "Discover"
             AM.applySearch()
         end
