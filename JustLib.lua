@@ -414,8 +414,25 @@ local function createBackgroundsModule(deps)
         if cfg then BG.attach(face, cfg, radius) end
     end
     function BG.face(row)
-        for _,c in ipairs(row:GetChildren()) do
-            if c:IsA("GuiObject") and c.BackgroundTransparency < 1 and c.Size == UDim2.new(1,0,1,0) then return c end
+        -- Background decoration is optional. Some restricted executor threads
+        -- cannot inspect a GuiObject's children; fall back to the row itself
+        -- instead of aborting the control constructor.
+        local ok, children = pcall(function()
+            return row:GetChildren()
+        end)
+        if not ok or type(children) ~= "table" then
+            return row
+        end
+
+        for _,c in ipairs(children) do
+            local childOk, matches = pcall(function()
+                return c:IsA("GuiObject")
+                    and c.BackgroundTransparency < 1
+                    and c.Size == UDim2.new(1,0,1,0)
+            end)
+            if childOk and matches then
+                return c
+            end
         end
         return row
     end
