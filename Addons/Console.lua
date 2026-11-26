@@ -419,10 +419,15 @@ local logs = {}
 local nextId = 0
 local paused = false
 local held = {}
-local blocked = {}
+local blocked = {} -- persistent blocks
+local sessionBlocked = {} -- cleared automatically when this addon/session is restarted
 local blockedCount = 0
 local blockedGroups = {} -- transient groups linked to a selected error and its stack
 local blockKey = tostring((game.GameId ~= 0) and game.GameId or game.PlaceId)
+
+local function isBlockedText(text)
+	return blocked[text] == true or sessionBlocked[text] == true
+end
 
 local function loadBlocked()
 	if not (isfile and readfile) then
@@ -1372,7 +1377,7 @@ end
 
 local scrollTicks = 0
 local function commit(item)
-	if blocked[item.text] or (item.groupId and blockedGroups[item.groupId]) then
+	if isBlockedText(item.text) or (item.groupId and blockedGroups[item.groupId]) then
 		return
 	end
 	nextId += 1
@@ -1494,7 +1499,7 @@ bind(LogService.MessageOut, function(message, messageType)
 	if kind == "Error" then
 		nextGroupId += 1
 		activeErrorGroup = nextGroupId
-		if blocked[message] then
+		if isBlockedText(message) then
 			swallowStack = true
 			return
 		end
@@ -1621,7 +1626,7 @@ end
 local blockedLabelRefresh = function() end
 
 local function isBlockedItem(item)
-	return item and (blocked[item.text] or (item.groupId and blockedGroups[item.groupId]))
+	return item and (isBlockedText(item.text) or (item.groupId and blockedGroups[item.groupId]))
 end
 
 local function purgeBlockedQueues()
@@ -1637,14 +1642,16 @@ local function purgeBlockedQueues()
 	end
 end
 
-local function blockSelected()
-	local texts, n = {}, 0
+local function blockSelected(mode)
+	local target = mode == "forever" and blocked or sessionBlocked
+	local n = 0
 	for _, e in ipairs(logs) do
-		if e.selected and not blocked[e.text] then
-			blocked[e.text] = true
-			blockedCount += 1
+		if e.selected and not isBlockedText(e.text) then
+			target[e.text] = true
+			if mode == "forever" then
+				blockedCount += 1
+			end
 			n += 1
-			texts[e.text] = true
 			if e.kind == "Error" and e.groupId then
 				blockedGroups[e.groupId] = true
 			end
@@ -1659,15 +1666,19 @@ local function blockSelected()
 		return
 	end
 	removeWhere(function(e)
-		return blocked[e.text] == true or (e.groupId and blockedGroups[e.groupId])
+		return isBlockedText(e.text) or (e.groupId and blockedGroups[e.groupId])
 	end)
 	purgeBlockedQueues()
 	blockedLabelRefresh()
-	local saved = saveBlocked()
-	toast(
-		string.format("Blocked %d message%s%s", n, n == 1 and "" or "s", saved and "" or " (not saved to file)"),
-		saved and nil or "warn"
-	)
+	if mode == "forever" then
+		local saved = saveBlocked()
+		toast(
+			string.format("Blocked forever: %d message%s%s", n, n == 1 and "" or "s", saved and "" or " (file save failed)"),
+			saved and nil or "warn"
+		)
+	else
+		toast(string.format("Blocked for this session: %d message%s", n, n == 1 and "" or "s"))
+	end
 end
 
 local function setPaused(value)
@@ -1711,7 +1722,7 @@ end
 bind(pauseBtn.Activated, function()
 	setPaused(not paused)
 end)
-bind(blockBtn.Activated, blockSelected)
+
 bind(selectVisibleBtn.Activated, function()
 	for _, e in ipairs(logs) do
 		if e.visible then
@@ -1877,6 +1888,13 @@ local clearMenu = makeMenu(clearBtn, clearChev, {
 	{ text = "Clear Warnings", icon = "triangle-alert", color = C.amber, fn = function() clearWhere(kindIs("Warning"), "warnings") end },
 	{ text = "Clear Errors", icon = "circle-alert", color = C.red, fn = function() clearWhere(kindIs("Error"), "errors") end },
 })
+local blockMenu = makeMenu(blockBtn, nil, {
+	{ text = "Block in Current Session", icon = "ban", color = C.amber, fn = function() blockSelected("session") end },
+	{ text = "Block Forever", icon = "ban", color = C.red, fn = function() blockSelected("forever") end },
+})
+bind(blockBtn.Activated, function()
+	openMenu(blockMenu)
+end)
 bind(copyBtn.Activated, function()
 	openMenu(copyMenu)
 end)
@@ -2217,18 +2235,24 @@ local function refreshBlockedList()
 			child:Destroy()
 		end
 	end
-	local texts = {}
+	local entries = {}
 	for text in pairs(blocked) do
-		texts[#texts + 1] = text
+		entries[#entries + 1] = { text = text, mode = "forever" }
 	end
-	table.sort(texts)
-	blockedEmpty.Visible = #texts == 0
-	blockedSub.Text = string.format(
-		"%d blocked in this game — %s",
-		#texts,
-		writefile and "kept after rejoin until you unblock" or "this executor has no writefile, so not kept after rejoin"
-	)
-	for i, text in ipairs(texts) do
+	for text in pairs(sessionBlocked) do
+		if not blocked[text] then
+			entries[#entries + 1] = { text = text, mode = "session" }
+		end
+	end
+	table.sort(entries, function(a, b) return a.text < b.text end)
+	blockedEmpty.Visible = #entries == 0
+	local foreverCount, sessionCount = 0, 0
+	for _, entry in ipairs(entries) do
+		if entry.mode == "forever" then foreverCount += 1 else sessionCount += 1 end
+	end
+	blockedSub.Text = string.format("%d total — %d forever, %d this session", #entries, foreverCount, sessionCount)
+	for i, entry in ipairs(entries) do
+		local text = entry.text
 		local row = new("Frame", {
 			Parent = blockedList,
 			LayoutOrder = i,
@@ -2239,12 +2263,22 @@ local function refreshBlockedList()
 		stroke(row, C.panelStroke, 1)
 		label(row, {
 			Position = UDim2.fromOffset(12, 0),
-			Size = UDim2.new(1, -112, 1, 0),
+			Size = UDim2.new(1, -190, 1, 0),
 			Text = (string.gsub(text, "%s+", " ")),
 			Font = Enum.Font.Code,
 			TextSize = 13,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			TextColor3 = C.chipText,
+		})
+		label(row, {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -100, 0.5, 0),
+			Size = UDim2.fromOffset(82, 20),
+			Text = entry.mode == "forever" and "FOREVER" or "SESSION",
+			TextColor3 = entry.mode == "forever" and C.red or C.amber,
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextXAlignment = Enum.TextXAlignment.Right,
 		})
 		local ub = makeButton(row, UDim2.fromOffset(84, 28), C.purpleBg, C.purpleBgHover, C.purple, 8)
 		ub.AnchorPoint = Vector2.new(1, 0.5)
@@ -2261,12 +2295,13 @@ local function refreshBlockedList()
 		bind(ub.Activated, function()
 			if blocked[text] then
 				blocked[text] = nil
-				blockedCount -= 1
+				blockedCount = math.max(0, blockedCount - 1)
 			end
+			sessionBlocked[text] = nil
 			local saved = saveBlocked()
 			blockedLabelRefresh()
 			refreshBlockedList()
-			toast(saved and "Unblocked" or "Unblocked (not saved to file)", saved and nil or "warn")
+			toast(saved and "Unblocked" or "Unblocked (session entry cleared; file save failed)", saved and nil or "warn")
 		end)
 	end
 end
@@ -2296,6 +2331,7 @@ bind(blockedBack.Activated, function()
 end)
 bind(unblockAllBtn.Activated, function()
 	blocked = {}
+	sessionBlocked = {}
 	blockedCount = 0
 	local saved = saveBlocked()
 	blockedLabelRefresh()
@@ -2313,7 +2349,10 @@ do
 	end
 	blockedLabelRefresh = function()
 		if desc then
-			desc.Text = string.format("%d blocked in this game (exact text match)", blockedCount)
+			local total = 0
+			for _ in pairs(blocked) do total += 1 end
+			for text in pairs(sessionBlocked) do if not blocked[text] then total += 1 end end
+			desc.Text = string.format("%d blocked in this game (exact text match)", total)
 		end
 	end
 	blockedLabelRefresh()
