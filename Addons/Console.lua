@@ -650,7 +650,7 @@ local function headerIconButton(order, iconName, fallback)
 end
 
 separator(2)
-local gearBtn = headerIconButton(3, "settings", "*")
+local gearBtn = headerIconButton(3, "settings", "⚙")
 separator(4)
 local minBtn = headerIconButton(5, "minus", "-")
 
@@ -916,7 +916,7 @@ local _, _, copyChev = buttonContent(copyBtn, "copy", "c", "Copy", WHITE, true)
 
 local clearBtn = makeButton(actionsLeft, UDim2.fromOffset(142, 34), C.purpleBg, C.purpleBgHover, C.purple, 10)
 clearBtn.LayoutOrder = 2
-local _, _, clearChev = buttonContent(clearBtn, "trash", "t", "Clear", WHITE, true)
+local _, _, clearChev = buttonContent(clearBtn, "trash", "▤", "Clear", WHITE, true)
 
 local pauseBtn = makeButton(actionsLeft, UDim2.fromOffset(112, 34), C.purpleBg, C.purpleBgHover, C.purple, 10)
 pauseBtn.LayoutOrder = 3
