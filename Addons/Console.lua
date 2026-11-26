@@ -818,8 +818,8 @@ for i, def in ipairs(chipDefs) do
 	})
 	chips[name] = { btn = btn, icon = ic, label = txt, accent = accent }
 	bind(btn.MouseEnter, function()
-		local selected = chipIsOn(name)
-		tween(btn, 0.12, { BackgroundColor3 = selected and C.btnHover or C.btnHover })
+		local base = chipBackground(name, chipIsOn(name))
+		tween(btn, 0.12, { BackgroundColor3 = base:Lerp(WHITE, 0.12) })
 	end)
 	bind(btn.MouseLeave, function()
 		tween(btn, 0.15, { BackgroundColor3 = chipBackground(name, chipIsOn(name)) })
