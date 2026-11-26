@@ -482,7 +482,7 @@ local updateStatus, applyFilters, toast, closeMenus, setSelected, updateTopbarBa
 ----------------------------------------------------------------------------------------------------
 -- Buttons
 ----------------------------------------------------------------------------------------------------
-local function makeButton(parent, size, bg, bgHover, strokeColor, radius)
+local function makeButton(parent, size, bg, bgHover, strokeColor, radius, preserveBackground)
 	local b = new("TextButton", {
 		Parent = parent,
 		Size = size,
@@ -494,13 +494,19 @@ local function makeButton(parent, size, bg, bgHover, strokeColor, radius)
 	corner(b, radius or 10)
 	local st = strokeColor and stroke(b, strokeColor, 1.2) or nil
 	local sc = new("UIScale", { Parent = b })
-	bind(b.MouseEnter, function()
-		tween(b, 0.15, { BackgroundColor3 = bgHover })
-	end)
-	bind(b.MouseLeave, function()
-		tween(b, 0.15, { BackgroundColor3 = bg })
-		tween(sc, 0.12, { Scale = 1 })
-	end)
+	if not preserveBackground then
+		bind(b.MouseEnter, function()
+			tween(b, 0.15, { BackgroundColor3 = bgHover })
+		end)
+		bind(b.MouseLeave, function()
+			tween(b, 0.15, { BackgroundColor3 = bg })
+			tween(sc, 0.12, { Scale = 1 })
+		end)
+	else
+		bind(b.MouseLeave, function()
+			tween(sc, 0.12, { Scale = 1 })
+		end)
+	end
 	bind(b.MouseButton1Down, function()
 		tween(sc, 0.08, { Scale = 0.95 })
 	end)
@@ -771,10 +777,17 @@ local function chipIsOn(name)
 	return typeFilter[name] == true
 end
 
+local function chipBackground(name, selected)
+	if selected then
+		return CHIP_ON[name] or C.purple
+	end
+	return name == "Error" and C.chipRed or C.chip
+end
+
 local function refreshChips()
 	for name, chip in pairs(chips) do
 		local on = chipIsOn(name)
-		tween(chip.btn, 0.18, { BackgroundColor3 = on and (CHIP_ON[name] or C.purple) or (name == "Error" and C.chipRed or C.chip) })
+		tween(chip.btn, 0.18, { BackgroundColor3 = chipBackground(name, on) })
 		tween(chip.label, 0.18, { TextColor3 = on and WHITE or C.chipText })
 		setIconColor(chip.icon, on and WHITE or chip.accent)
 	end
@@ -782,7 +795,7 @@ end
 
 for i, def in ipairs(chipDefs) do
 	local name, iconName, accent = def[1], def[2], def[3]
-	local btn = makeButton(chipScroll, UDim2.fromOffset(0, 32), C.chip, C.btnHover, nil, 16)
+	local btn = makeButton(chipScroll, UDim2.fromOffset(0, 32), C.chip, C.btnHover, nil, 16, true)
 	btn.LayoutOrder = i
 	btn.AutomaticSize = Enum.AutomaticSize.X
 	padding(btn, 12, 0, 14, 0)
@@ -804,6 +817,13 @@ for i, def in ipairs(chipDefs) do
 		TextSize = 14,
 	})
 	chips[name] = { btn = btn, icon = ic, label = txt, accent = accent }
+	bind(btn.MouseEnter, function()
+		local selected = chipIsOn(name)
+		tween(btn, 0.12, { BackgroundColor3 = selected and C.btnHover or C.btnHover })
+	end)
+	bind(btn.MouseLeave, function()
+		tween(btn, 0.15, { BackgroundColor3 = chipBackground(name, chipIsOn(name)) })
+	end)
 	bind(btn.Activated, function()
 		if name == "All" then
 			for k in pairs(typeFilter) do
