@@ -243,64 +243,105 @@ local function label(parent, props)
 end
 
 ----------------------------------------------------------------------------------------------------
--- Icons (local glyphs; isolated from the hub's icon system)
+-- Icons (private Lucide pack instance; rendered as ImageLabels)
 ----------------------------------------------------------------------------------------------------
 local ICON_FALLBACK = {
-	terminal = ">_", settings = "⚙", minus = "−", x = "×",
+	terminal = ">_", settings = "*", minus = "-", x = "×",
 	search = "⌕", crown = "♛", info = "i", check = "✓",
 	["chevron-down"] = "v", ["code-xml"] = "</>",
 	["gamepad-2"] = "G", gamepad = "G",
 	["triangle-alert"] = "!", ["circle-alert"] = "!",
 	pause = "Ⅱ", play = "▶", ["arrow-left"] = "<",
-	copy = "▣", trash = "▤", ban = "×", ["layout-grid"] = "▦",
+	copy = "▣", ["copy-check"] = "✓", trash = "▤", ban = "×",
+	["layout-grid"] = "▦",
 }
--- Console glyphs are deliberately plain TextLabels with unique names.
--- They do not register with, or inherit assets from, JustLib's Icon Pack.
-local function icon(parent, name, size, color, fallback, props)
-	if name == "trash" then
-		local root = new("Frame", {
-			Parent = parent, Name = "JXConsoleGlyph_trash",
-			BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
-		})
-		local lid = new("Frame", {
-			Parent = root, Name = "Lid", AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.18, 0), Size = UDim2.new(0.72, 0, 0, 2),
-			BackgroundColor3 = color, BorderSizePixel = 0,
-		})
-		local handle = new("Frame", {
-			Parent = root, Name = "Handle", AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.06, 0), Size = UDim2.new(0.28, 0, 0, 2),
-			BackgroundColor3 = color, BorderSizePixel = 0,
-		})
-		local body = new("Frame", {
-			Parent = root, Name = "Body", AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0.28, 0), Size = UDim2.new(0.58, 0, 0.62, 0),
-			BackgroundTransparency = 1, BorderSizePixel = 0,
-		})
-		new("UICorner", { Parent = body, CornerRadius = UDim.new(0, 2) })
-		new("UIStroke", { Parent = body, Color = color, Thickness = 1.5 })
-		for k, v in pairs(props or {}) do root[k] = v end
-		return root
+
+-- Load a private copy of the same Lucide provider used by JustLib.
+-- It never registers Console labels in JustLib's icon-node registry.
+local CONSOLE_ICON_PACK_URL = "https://molto.pages.dev/source.lua"
+local consoleIconPack
+pcall(function()
+	local body = game:HttpGet(CONSOLE_ICON_PACK_URL)
+	if type(body) ~= "string" or body == "" then return end
+	local factory = loadstring(body)
+	if type(factory) ~= "function" then return end
+	local pack = factory()
+	if type(pack) ~= "table" then return end
+	if type(pack.SetProvider) == "function" then
+		local ok = pcall(pack.SetProvider, "lucide")
+		if not ok then return end
 	end
-	local glyph = new("TextLabel", {
-		Parent = parent, Name = "JXConsoleGlyph_" .. tostring(name),
-		BackgroundTransparency = 1, Size = UDim2.fromOffset(size, size),
-		Text = fallback or ICON_FALLBACK[name] or "•",
-		TextColor3 = color, Font = Enum.Font.GothamBold,
-		TextScaled = true, TextWrapped = false, BorderSizePixel = 0,
-	})
+	consoleIconPack = pack
+end)
+
+local function resolveConsoleIcon(name)
+	local pack = consoleIconPack
+	if not pack then return nil end
+	local asset
+	if type(pack.GetAsset) == "function" then
+		local ok, value = pcall(pack.GetAsset, name)
+		if ok then asset = value end
+	end
+	if asset == nil and type(pack.GetIcon) == "function" then
+		local ok, value = pcall(pack.GetIcon, name)
+		if ok then asset = value end
+	end
+	if type(asset) == "string" or type(asset) == "number" then
+		asset = { Url = tostring(asset) }
+	end
+	if type(asset) ~= "table" then return nil end
+	local value = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
+		or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
+	if value == nil or tostring(value) == "" then return nil end
+	value = tostring(value)
+	if value:match("^%d+$") then
+		value = "rbxassetid://" .. value
+	elseif not (value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://")) then
+		return nil
+	end
+	return value, asset.ImageRectOffset, asset.ImageRectSize
+end
+
+local function icon(parent, name, size, color, fallback, props)
+	local imageUrl, rectOffset, rectSize = resolveConsoleIcon(name)
+	local glyph
+	if imageUrl then
+		glyph = new("ImageLabel", {
+			Parent = parent,
+			Name = "JXConsoleIcon_" .. tostring(name),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(size, size),
+			Image = imageUrl,
+			ImageColor3 = color,
+			ScaleType = Enum.ScaleType.Fit,
+			ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero,
+			ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero,
+		})
+	else
+		glyph = new("TextLabel", {
+			Parent = parent,
+			Name = "JXConsoleFallback_" .. tostring(name),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.fromOffset(size, size),
+			Text = fallback or ICON_FALLBACK[name] or "•",
+			TextColor3 = color,
+			Font = Enum.Font.GothamBold,
+			TextScaled = true,
+			TextWrapped = false,
+		})
+	end
 	for k, v in pairs(props or {}) do glyph[k] = v end
 	return glyph
 end
+
 local function setIconColor(glyph, color)
 	if not (glyph and glyph.Parent) then return end
-	if glyph:IsA("TextLabel") then
+	if glyph:IsA("ImageLabel") or glyph:IsA("ImageButton") then
+		glyph.ImageColor3 = color
+	elseif glyph:IsA("TextLabel") or glyph:IsA("TextButton") then
 		glyph.TextColor3 = color
-	else
-		for _, child in ipairs(glyph:GetDescendants()) do
-			if child:IsA("UIStroke") then child.Color = color
-			elseif child:IsA("GuiObject") then child.BackgroundColor3 = color end
-		end
 	end
 end
 
