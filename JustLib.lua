@@ -242,8 +242,10 @@ local function createIconsModule(deps)
             end
         end
     end
-    function JL:LoadIconPack(url)
+    function JL:LoadIconPack(url, provider)
         url = url or ICON_PACK_URL
+        provider = tostring(provider or "lucide")
+        if provider == "" then provider = "lucide" end
         local lastStage = "not started"
         local lastDetail = ""
         for attempt = 1, 3 do
@@ -271,37 +273,31 @@ local function createIconsModule(deps)
                         lastDetail = "GetAsset is " .. type(mod.GetAsset)
                     else
                         lastStage = "SetProvider"
-                        local providerOk,providerResult = true,nil
-                        if type(mod.SetProvider) == "function" then
-                            providerOk,providerResult = pcall(mod.SetProvider, "lucide")
-                        end
-                        if not providerOk then
-                            lastDetail = tostring(providerResult)
+                        local setProvider = mod.SetProvider or mod.SetIconsType
+                        if type(setProvider) ~= "function" then
+                            lastDetail = "provider API is missing"
                         else
-                            lastStage = "GetAsset(settings)"
-                            local probeOk,probe = pcall(mod.GetAsset, "settings")
-                            local probeType = probeOk and type(probe) or "error"
-                            local probeDetail = ""
-                            if not probeOk then
-                                probeDetail = tostring(probe)
-                            elseif type(probe) == "table" then
-                                local keys = {}
-                                for k in pairs(probe) do
-                                    keys[#keys + 1] = tostring(k)
-                                    if #keys >= 12 then break end
-                                end
-                                probeDetail = "keys={" .. table.concat(keys, ",") .. "}, Url=" .. tostring(probe.Url ~= nil)
-                            elseif typeof(probe) == "Instance" then
-                                probeDetail = "Instance"
+                            local providerOk,providerResult = pcall(setProvider, provider)
+                            if not providerOk or providerResult == false then
+                                lastDetail = tostring(providerResult or "provider rejected: " .. provider)
                             else
-                                probeDetail = tostring(probe)
+                                lastStage = "GetAsset(settings)"
+                                local probeOk,probe = pcall(mod.GetAsset, "settings")
+                                local previousPack = JL._iconPack
+                                JL._iconPack = mod
+                                local resolved = probeOk and iconAsset("settings") or nil
+                                local imageUrl = resolved and iconImageId(resolved.Url or resolved.Image or resolved.Id)
+                                if not imageUrl then
+                                    JL._iconPack = previousPack
+                                    lastDetail = probeOk
+                                        and ("provider '" .. provider .. "' did not return an image asset for 'settings' (raw=" .. type(probe) .. ")")
+                                        or ("GetAsset(settings) failed: " .. tostring(probe))
+                                else
+                                    refreshIconTextNodes()
+                                    warn("[JustLib Icons] Loaded provider=" .. provider .. "; settings image validated")
+                                    return true
+                                end
                             end
-                            JL._iconPack = mod
-                            refreshIconTextNodes()
-                            local resolved = iconAsset("settings")
-                            local resolvedDetail = resolved and ("normalized=" .. tostring(resolved.Url ~= nil and "image" or resolved.Text ~= nil and "text" or "unknown")) or "normalized=nil"
-                            warn("[JustLib Icons] Loaded provider=lucide; probe=" .. probeType .. "; " .. probeDetail .. "; " .. resolvedDetail)
-                            return true
                         end
                     end
                 end
@@ -314,11 +310,21 @@ local function createIconsModule(deps)
         return false
     end
     function JL:SetIconType(iconType)
-        if JL._iconPack then
-            if JL._iconPack.SetProvider then pcall(JL._iconPack.SetProvider, iconType)
-            elseif JL._iconPack.SetIconsType then pcall(JL._iconPack.SetIconsType, iconType) end
-            refreshIconTextNodes()
+        if type(iconType) ~= "string" or iconType == "" then
+            return false, "Icon provider must be a non-empty string"
         end
+        local pack = JL._iconPack
+        if not pack then return false, "Icon pack is not loaded" end
+        local setProvider = pack.SetProvider or pack.SetIconsType
+        if type(setProvider) ~= "function" then
+            return false, "Icon pack does not support provider switching"
+        end
+        local ok,result = pcall(setProvider, iconType)
+        if not ok or result == false then
+            return false, tostring(result or "provider rejected: " .. iconType)
+        end
+        refreshIconTextNodes()
+        return true
     end
     function JL:SetIcons(tbl)
         for k,v in pairs(tbl or {}) do JL._iconOverrides[k] = v end
@@ -5166,6 +5172,10 @@ refreshWorkspaceTabs = function()
 end
 function JL:Window(opts)
     opts = opts or {}
+    warn("[JustLib Icons] Window initialization entered")
+    if opts.LoadIcons ~= nil then
+        warn("[JustLib] Window option 'LoadIcons' is unsupported and ignored; icon loading is always enabled")
+    end
     local hubConfig = Config.Fork()
     local _cfgData = hubConfig.Data
     local _memData = hubConfig.MemoryData
@@ -5187,11 +5197,12 @@ function JL:Window(opts)
     local windowBuildStarted = os.clock()
     local iconLoadStarted = os.clock()
     if not JL._iconPack then
-        warn("[JustLib Icons] Startup: scheduling icon loader")
+        local iconProvider = tostring(opts.IconProvider or "lucide")
+        warn("[JustLib Icons] Startup: scheduling provider=" .. iconProvider)
         local iconThread = trackedSpawn(function()
             warn("[JustLib Icons] Startup: loader task entered")
             local ok, result = pcall(function()
-                return self:LoadIconPack(opts.IconPackURL)
+                return self:LoadIconPack(opts.IconPackURL, iconProvider)
             end)
             if not ok then
                 warn("[JustLib Icons] Loader crashed: " .. tostring(result))
