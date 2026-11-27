@@ -7356,6 +7356,27 @@ function JL:Window(opts)
         {id="ui-themes",name="UI Themes",author="JustX Team",version="1.0.0",category="APPEARANCE",icon="palette",desc="Give JustX Library a different visual style with curated themes.",accent=3,builtin=true},
         {id="session-monitor",name="Session Monitor",author="JustX Team",version="1.0.0",category="UTILITY",icon="activity",desc="Keep important session information visible while you play.",accent=4,builtin=true},
     }
+    -- Keep repository-hosted addon packages discoverable even when AM.catalog
+    -- was retained from an earlier library initialization in this executor.
+    do
+        local foundFreeCam = false
+        for _, entry in ipairs(AM.catalog) do
+            if entry.id == "freecam" then
+                foundFreeCam = true
+                break
+            end
+        end
+        if not foundFreeCam then
+            table.insert(AM.catalog, {
+                id="freecam", name="FreeCam", author="JustXLibrary", version="1.0.0",
+                category="PLAYER", icon="camera",
+                desc="Universal free camera with keyboard, mouse and touch controls.",
+                accent=2, file="FreeCam.lua",
+                url="https://raw.githubusercontent.com/JustUser-ALT/JustXLibrary/main/Addons/FreeCam.lua",
+                builtin=true,
+            })
+        end
+    end
     AM.catalogInstalled = AM.catalogInstalled or {}
     AM.catalogDeleted = AM.catalogDeleted or {}
     AM.activeView = AM.activeView or "Discover"
