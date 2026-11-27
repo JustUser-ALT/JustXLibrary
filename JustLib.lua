@@ -5187,12 +5187,28 @@ function JL:Window(opts)
     local windowBuildStarted = os.clock()
     local iconLoadStarted = os.clock()
     if not JL._iconPack then
-        trackedSpawn(function()
-            local ok = self:LoadIconPack(opts.IconPackURL)
+        warn("[JustLib Icons] Startup: scheduling icon loader")
+        local iconThread = trackedSpawn(function()
+            warn("[JustLib Icons] Startup: loader task entered")
+            local ok, result = pcall(function()
+                return self:LoadIconPack(opts.IconPackURL)
+            end)
+            if not ok then
+                warn("[JustLib Icons] Loader crashed: " .. tostring(result))
+            elseif not result then
+                warn("[JustLib Icons] Loader returned false")
+            else
+                warn("[JustLib Icons] Loader returned true")
+            end
             if JL._perfEnabled then
-                warn("[JustLib Perf] Molto icon pack: " .. string.format("%.3f s", os.clock() - iconLoadStarted) .. " (loaded=" .. tostring(ok) .. ")")
+                warn("[JustLib Perf] Molto icon pack: " .. string.format("%.3f s", os.clock() - iconLoadStarted) .. " (loaded=" .. tostring(ok and result == true) .. ")")
             end
         end)
+        if not iconThread then
+            warn("[JustLib Icons] Startup: trackedSpawn returned nil")
+        end
+    else
+        warn("[JustLib Icons] Startup: icon pack already present; skipping loader")
     end
     -- Resolve reloads by HubId. Different hubs coexist only while Multi-Hub Tabs is enabled.
     local sameHub = _workspace.Hubs[hubId]
