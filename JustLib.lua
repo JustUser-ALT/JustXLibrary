@@ -244,23 +244,63 @@ local function createIconsModule(deps)
     end
     function JL:LoadIconPack(url)
         url = url or ICON_PACK_URL
+        local lastStage = "not started"
+        local lastDetail = ""
         for attempt = 1, 3 do
+            lastStage = "HttpGet"
             local ok,body = pcall(function() return game:HttpGet(url) end)
-            if ok and type(body) == "string" and body ~= "" then
+            if not ok then
+                lastDetail = tostring(body)
+            elseif type(body) ~= "string" or body == "" then
+                lastDetail = "empty or non-string response (" .. type(body) .. ")"
+            else
+                lastStage = "loadstring"
                 local ok2,fn = pcall(loadstring, body)
-                if ok2 and type(fn) == "function" then
+                if not ok2 then
+                    lastDetail = tostring(fn)
+                elseif type(fn) ~= "function" then
+                    lastDetail = "loadstring returned " .. type(fn)
+                else
+                    lastStage = "factory"
                     local ok3,mod = pcall(fn)
-                    if ok3 and type(mod) == "table" and type(mod.GetAsset) == "function" then
-                        local providerOk = true
+                    if not ok3 then
+                        lastDetail = tostring(mod)
+                    elseif type(mod) ~= "table" then
+                        lastDetail = "factory returned " .. type(mod)
+                    elseif type(mod.GetAsset) ~= "function" then
+                        lastDetail = "GetAsset is " .. type(mod.GetAsset)
+                    else
+                        lastStage = "SetProvider"
+                        local providerOk,providerResult = true,nil
                         if type(mod.SetProvider) == "function" then
-                            providerOk = pcall(mod.SetProvider, "lucide")
+                            providerOk,providerResult = pcall(mod.SetProvider, "lucide")
                         end
-                        if providerOk then
-                            -- Some icon providers return a lazy/variant asset shape for the probe
-                            -- name. Validate the public API itself, then resolve each requested icon
-                            -- through iconAsset() instead of rejecting an otherwise valid pack.
+                        if not providerOk then
+                            lastDetail = tostring(providerResult)
+                        else
+                            lastStage = "GetAsset(settings)"
+                            local probeOk,probe = pcall(mod.GetAsset, "settings")
+                            local probeType = probeOk and type(probe) or "error"
+                            local probeDetail = ""
+                            if not probeOk then
+                                probeDetail = tostring(probe)
+                            elseif type(probe) == "table" then
+                                local keys = {}
+                                for k in pairs(probe) do
+                                    keys[#keys + 1] = tostring(k)
+                                    if #keys >= 12 then break end
+                                end
+                                probeDetail = "keys={" .. table.concat(keys, ",") .. "}, Url=" .. tostring(probe.Url ~= nil)
+                            elseif typeof(probe) == "Instance" then
+                                probeDetail = "Instance"
+                            else
+                                probeDetail = tostring(probe)
+                            end
                             JL._iconPack = mod
                             refreshIconTextNodes()
+                            local resolved = iconAsset("settings")
+                            local resolvedDetail = resolved and ("normalized=" .. tostring(resolved.Url ~= nil and "image" or resolved.Text ~= nil and "text" or "unknown")) or "normalized=nil"
+                            warn("[JustLib Icons] Loaded provider=lucide; probe=" .. probeType .. "; " .. probeDetail .. "; " .. resolvedDetail)
                             return true
                         end
                     end
@@ -270,7 +310,7 @@ local function createIconsModule(deps)
                 pcall(deps.Task.wait, 1)
             end
         end
-        warn("[JustLib Icons] Lucide icon pack failed to load or failed validation")
+        warn("[JustLib Icons] Load failed at " .. lastStage .. " after 3 attempts: " .. lastDetail)
         return false
     end
     function JL:SetIconType(iconType)
