@@ -395,6 +395,10 @@ local function setIconColor(glyph, color)
 		glyph.ImageColor3 = color
 	elseif glyph:IsA("TextLabel") or glyph:IsA("TextButton") then
 		glyph.TextColor3 = color
+		local overlay = glyph:FindFirstChild("JXConsoleIconAsset")
+		if overlay and (overlay:IsA("ImageLabel") or overlay:IsA("ImageButton")) then
+			overlay.ImageColor3 = color
+		end
 	end
 end
 
