@@ -6696,11 +6696,16 @@ function JL:Window(opts)
             if c then
                 c.o = options
                 c.name = tostring(options.Name or options.Title or kind)
-                return c.ui
+                if c.ui then return c.ui end
+            else
+                local name = tostring(options.Name or options.Title or kind)
+                c = {kind = kind:lower(), name = name, o = options, state = options.Default}
+                a.ctrls[index] = c
             end
-            local name = tostring(options.Name or options.Title or kind)
-            c = {kind = kind:lower(), name = name, o = options, state = options.Default}
-            a.ctrls[index] = c
+            -- Init may run before the addon details panel creates its widget section.
+            -- Keep the control definition and build its UI when that section becomes available.
+            if not a.sec then return nil end
+            local name = c.name
             local b = {
                 Name = name, Tooltip = options.Tooltip, Flag = "addon." .. a.id .. "." .. tostring(index),
                 Default = options.Default, NoSave = true, Locked = not a.loaded,
@@ -6789,6 +6794,7 @@ function JL:Window(opts)
         amClearErr(a)
         a.keeps = {}; a.unload = {}; a.store = {fn = {}}
         local api = amApi(a)
+        a.api = api
         if a.modern then
             local ok, definition = pcall(fn, api, a.store)
             if not ok then amClean(a); a.store = nil; amSetErr(a, tostring(definition)); return false end
@@ -7264,6 +7270,17 @@ function JL:Window(opts)
         local innerWidth = math.max(180,parent.AbsoluteSize.X-52)
         local sec = attachWidgets(controlsHost,innerWidth,ACCENTS[1],uiScale,sg,attachTip,hubConfig)
         a.sec = sec
+        -- Modern addons can initialize before this details panel exists. Re-run their
+        -- registered control declarations now that the section is available.
+        if a.modern and a.api then
+            a.modernControlIndex = 0
+            for _, c in ipairs(a.ctrls) do
+                local method = ({toggle="Toggle", slider="Slider", button="Button", dropdown="Dropdown", input="Input", label="Label", divider="Divider"})[c.kind]
+                if method and type(a.api[method]) == "function" then
+                    pcall(a.api[method], c.o)
+                end
+            end
+        end
         local hasControls = #a.ctrls > 0
         if not hasControls then
             amUiText(controlsHost,"This addon does not expose any controls.",9,C.dim,20,1,GM)
