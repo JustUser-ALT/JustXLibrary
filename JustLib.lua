@@ -1751,8 +1751,7 @@ local function mkPopup(backdrop,w,h,hero)
     group.ClipsDescendants = true
     group.GroupTransparency = 1; group.Parent = shell; corner(16,group)
     BG.register("Popup", group, 16)
-    local outline = Instance.new("Frame"); outline.Size = UDim2.new(1,0,1,0); outline.BackgroundTransparency = 1; outline.BorderSizePixel = 0; outline.ZIndex = 50; outline.Parent = shell; corner(16,outline)
-    local ol = stroke(C.border,1,outline); ol.Transparency = 1
+    local ol = stroke(C.border,1,group); ol.Transparency = 1
     local heroH = 0
     local shineTw
     if hero then
