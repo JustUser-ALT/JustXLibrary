@@ -25,8 +25,8 @@ return {
 
         local Config = {
             ToggleKeys = { Enum.KeyCode.LeftShift, Enum.KeyCode.P },
-            TogglePosition = UDim2.new(0, 12, 0.32, 0),
-            ButtonSize = 34,
+            TogglePosition = UDim2.new(0, 12, 0.18, 0),
+            ButtonSize = 44,
             BaseSpeed = 64,
             SlowMultiplier = 0.25,
             PinchNotchesPerPixel = 0.02,
@@ -145,7 +145,7 @@ return {
         local disabledGuis = {}
         local savedCore = {}
         local freeze = nil
-        local jumpButton, jumpOrigPos, jumpOrigVisible, downButton
+        local jumpButton, jumpOrigPos, jumpOrigVisible, downButton, upButton
         local buttonConns = {}
         local touchConns = {}
         local gui, toggleButton
@@ -387,25 +387,49 @@ return {
                 toggleButton.BackgroundColor3 = active
                     and Color3.fromRGB(125, 82, 205)
                     or Color3.fromRGB(34, 34, 42)
-                local glyph = toggleButton:FindFirstChild("CameraGlyph")
-                if glyph then glyph.TextColor3 = active and Color3.fromRGB(255,255,255) or Color3.fromRGB(220,220,232) end
+                local glyph = toggleButton:FindFirstChild("CameraIcon")
+                if glyph then glyph.ImageColor3 = active and Color3.fromRGB(255,255,255) or Color3.fromRGB(220,220,232) end
             end
         end
 
+        local function setJumpButtonPressed(button, pressed)
+            if not button or not button.Parent then return end
+            local baseColor = Color3.fromRGB(255, 255, 255)
+            if button:IsA("ImageButton") or button:IsA("ImageLabel") then
+                button.ImageColor3 = pressed and Color3.fromRGB(205, 205, 215) or baseColor
+            end
+        end
         local function holdKey(button, key)
+            local function finish()
+                held[key] = false
+                setJumpButtonPressed(button, false)
+            end
             buttonConns[#buttonConns + 1] = button.InputBegan:Connect(function(input)
                 local inputType = input.UserInputType
                 if inputType ~= Enum.UserInputType.Touch and inputType ~= Enum.UserInputType.MouseButton1 then return end
                 held[key] = true
+                setJumpButtonPressed(button, true)
                 local connection
                 connection = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End or input.UserInputState == Enum.UserInputState.Cancel then
-                        held[key] = false
+                        finish()
                         connection:Disconnect()
                     end
                 end)
                 buttonConns[#buttonConns + 1] = connection
             end)
+            buttonConns[#buttonConns + 1] = button.InputEnded:Connect(finish)
+        end
+        local function cloneFreecamTouchButton(original, name)
+            local clone = original:Clone()
+            for _, descendant in ipairs(clone:GetDescendants()) do
+                if descendant:IsA("LuaSourceContainer") then descendant:Destroy() end
+            end
+            clone.Name = name
+            clone.AutoButtonColor = false
+            clone.Visible = true
+            clone.Parent = original.Parent
+            return clone
         end
         local function setupJumpButtons()
             local playerGui = player:FindFirstChildOfClass("PlayerGui")
@@ -417,27 +441,26 @@ return {
                 return
             end
             jumpButton, jumpOrigPos, jumpOrigVisible = original, original.Position, original.Visible
-            local down = original:Clone()
-            for _, descendant in ipairs(down:GetDescendants()) do
-                if descendant:IsA("LuaSourceContainer") then descendant:Destroy() end
-            end
-            down.Name = "UFCDownButton"
-            down.Position = jumpOrigPos
-            down.Rotation = 180
-            down.Visible = true
-            down.Parent = original.Parent
-            downButton = down
-            original.Visible = true
-            original.Position = jumpOrigPos - UDim2.fromOffset(0, original.AbsoluteSize.Y + Config.JumpButtonGap)
-            holdKey(original, "up")
-            holdKey(down, "down")
+            upButton = cloneFreecamTouchButton(original, "UFCUpButton")
+            downButton = cloneFreecamTouchButton(original, "UFCDownButton")
+            upButton.Position = jumpOrigPos - UDim2.fromOffset(0, original.AbsoluteSize.Y + Config.JumpButtonGap)
+            downButton.Position = jumpOrigPos
+            downButton.Rotation = 180
+            original.Visible = false
+            holdKey(upButton, "up")
+            holdKey(downButton, "down")
         end
         local function teardownJumpButtons()
             safeDisconnectAll(buttonConns)
+            held.up, held.down = false, false
+            if upButton then upButton:Destroy(); upButton = nil end
             if downButton then downButton:Destroy(); downButton = nil end
             if jumpButton and jumpButton.Parent then
                 jumpButton.Position = jumpOrigPos
                 jumpButton.Visible = jumpOrigVisible
+                if jumpButton:IsA("ImageButton") or jumpButton:IsA("ImageLabel") then
+                    jumpButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                end
             end
             jumpButton = nil
         end
@@ -572,17 +595,43 @@ return {
         buttonStroke.Thickness = 1
         buttonStroke.Parent = toggleButton
 
-        local cameraGlyph = Instance.new("TextLabel")
-        cameraGlyph.Name = "CameraGlyph"
-        cameraGlyph.BackgroundTransparency = 1
-        cameraGlyph.Size = UDim2.fromScale(1, 1)
-        cameraGlyph.Position = UDim2.fromScale(0, 0)
-        cameraGlyph.Font = Enum.Font.GothamBold
-        cameraGlyph.Text = "📷"
-        cameraGlyph.TextSize = 18
-        cameraGlyph.TextColor3 = Color3.fromRGB(220, 220, 232)
-        cameraGlyph.ZIndex = 21
-        cameraGlyph.Parent = toggleButton
+        local cameraIcon = Instance.new("ImageLabel")
+        cameraIcon.Name = "CameraIcon"
+        cameraIcon.BackgroundTransparency = 1
+        cameraIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+        cameraIcon.Position = UDim2.fromScale(0.5, 0.5)
+        cameraIcon.Size = UDim2.fromOffset(23, 23)
+        cameraIcon.ImageColor3 = Color3.fromRGB(220, 220, 232)
+        cameraIcon.ScaleType = Enum.ScaleType.Fit
+        cameraIcon.ZIndex = 21
+        cameraIcon.Parent = toggleButton
+
+        local function loadCameraIcon()
+            local library = Addon.Library
+            local bridge = library and library._bridge
+            if not bridge or type(bridge.icon) ~= "function" then return false end
+            local ok, asset = pcall(bridge.icon, "camera")
+            if not ok or type(asset) ~= "table" then return false end
+            local image = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
+                or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
+            if image == nil then return false end
+            image = tostring(image)
+            if image:match("^%d+$") then image = "rbxassetid://" .. image end
+            if not (image:match("^rbxassetid://") or image:match("^rbxasset://") or image:match("^https?://")) then
+                return false
+            end
+            cameraIcon.Image = image
+            if typeof(asset.ImageRectOffset) == "Vector2" then cameraIcon.ImageRectOffset = asset.ImageRectOffset end
+            if typeof(asset.ImageRectSize) == "Vector2" then cameraIcon.ImageRectSize = asset.ImageRectSize end
+            return true
+        end
+        task.spawn(function()
+            for _ = 1, 24 do
+                if not gui or not gui.Parent then break end
+                if loadCameraIcon() then break end
+                task.wait(0.25)
+            end
+        end)
 
         bind(toggleButton.Activated, toggle)
         local parentOk = false
