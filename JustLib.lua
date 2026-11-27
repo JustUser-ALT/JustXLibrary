@@ -7630,6 +7630,79 @@ function JL:Window(opts)
         AM.infoLayer=layer
     end
 
+    local function amShowAddonSettings(a)
+        if AM.settingsLayer then pcall(function() AM.settingsLayer:Destroy() end); AM.settingsLayer=nil end
+        local host=(AM.panel and AM.panel.Visible) and AM.panel or win
+        if not host or not a then return end
+
+        local layer=Instance.new("Frame")
+        layer.Name="AddonSettingsLayer"
+        layer.Size=UDim2.new(1,0,1,0)
+        layer.BackgroundColor3=Color3.fromRGB(0,0,0)
+        layer.BackgroundTransparency=0.35
+        layer.ZIndex=120
+        layer.Parent=host
+
+        local box=Instance.new("Frame")
+        box.Name="AddonSettings"
+        box.Size=UDim2.new(1,-28,0,260)
+        box.AnchorPoint=Vector2.new(0.5,0.5)
+        box.Position=UDim2.new(0.5,0,0.5,0)
+        box.BackgroundColor3=C.panel
+        box.BorderSizePixel=0
+        box.ZIndex=121
+        box.Parent=layer
+        corner(12,box)
+        stroke(C.border,1,box)
+
+        newTxt({Parent=box,Text="ADDON SETTINGS",Font=GB,Size=8,Color=ACCENTS[1],Sz=UDim2.new(1,-58,0,14),Pos=UDim2.new(0,16,0,12),Z=122})
+        newTxt({Parent=box,Text=tostring(a.meta.name or a.file),Font=GB,Size=15,Color=C.txt,Sz=UDim2.new(1,-58,0,24),Pos=UDim2.new(0,16,0,29),Z=122})
+        local close=amUiButton(box,"×",1,function()
+            if AM.settingsLayer then AM.settingsLayer:Destroy(); AM.settingsLayer=nil end
+            a.sec=nil
+            for _,control in ipairs(a.ctrls or {}) do control.ui=nil end
+        end)
+        close.Size=UDim2.new(0,28,0,26)
+        close.Position=UDim2.new(1,-40,0,8)
+        close.ZIndex=123
+
+        local controlsHost=Instance.new("Frame")
+        controlsHost.Name="AddonSettingsControls"
+        controlsHost.Size=UDim2.new(1,-28,0,0)
+        controlsHost.Position=UDim2.new(0,14,0,62)
+        controlsHost.AutomaticSize=Enum.AutomaticSize.Y
+        controlsHost.BackgroundTransparency=1
+        controlsHost.ZIndex=122
+        controlsHost.Parent=box
+        local layout=Instance.new("UIListLayout")
+        layout.FillDirection=Enum.FillDirection.Vertical
+        layout.SortOrder=Enum.SortOrder.LayoutOrder
+        layout.Padding=UDim.new(0,8)
+        layout.Parent=controlsHost
+
+        if not a.loaded then
+            amUiText(controlsHost,"Enable this addon to access its settings.",10,C.dim,30,1,GM)
+        elseif not a.modern or not a.api or #a.ctrls==0 then
+            amUiText(controlsHost,"This addon does not expose configurable settings.",10,C.dim,30,1,GM)
+        else
+            local innerWidth=math.max(180,box.AbsoluteSize.X-56)
+            local sec=attachWidgets(controlsHost,innerWidth,ACCENTS[1],uiScale,sg,attachTip,hubConfig)
+            a.sec=sec
+            a.modernControlIndex=0
+            for _,control in ipairs(a.ctrls) do control.ui=nil end
+            for _,control in ipairs(a.ctrls) do
+                local method=({toggle="Toggle",slider="Slider",button="Button",dropdown="Dropdown",input="Input",label="Label",divider="Divider"})[control.kind]
+                if method and type(a.api[method])=="function" then
+                    local ok,err=pcall(a.api[method],control.o)
+                    if not ok then
+                        amUiText(controlsHost,"Could not create "..tostring(control.name)..": "..tostring(err),9,ERR_COL,28,999,GM)
+                    end
+                end
+            end
+        end
+        AM.settingsLayer=layer
+    end
+
     function AM.buildPanel()
         if AM.panel then return end
         AM.building=true
@@ -7687,6 +7760,13 @@ function JL:Window(opts)
             local desc=newTxt({Parent=content,Text=tostring(entry.desc or "A JustX Library extension preview."),Font=GM,Size=8,Color=C.dim,Sz=UDim2.new(1,-2,0,26),Pos=UDim2.new(0,0,0,58),Z=74}); desc.TextYAlignment=Enum.TextYAlignment.Top; desc.TextTruncate=Enum.TextTruncate.AtEnd
             local actions=Instance.new("Frame"); actions.Name="AddonCardActions"; actions.Size=UDim2.new(1,-32,0,30); actions.Position=UDim2.new(0,16,1,-42); actions.BackgroundTransparency=1; actions.Parent=card
             local info=amUiButton(actions,"INFO",1,function() amShowInfo(entry) end); info.Size=UDim2.new(0.30,-4,1,0); info.Name="AddonInfoButton"
+            if isInstalled and isFile and sourceAddon then
+                local settings=amUiButton(actions,"SETTINGS",2,function() amShowAddonSettings(sourceAddon) end,ACCENTS[1])
+                settings.Name="AddonSettingsButton"
+                settings.Size=UDim2.new(0.24,-4,1,0)
+                settings.Position=UDim2.new(0.24,4,0,0)
+                info.Size=UDim2.new(0.22,-4,1,0)
+            end
             local main
             if isInstalled then
                 local canUpdate = isFile and sourceAddon and entry.builtin == true and entry.url and entry.file
@@ -7733,6 +7813,16 @@ function JL:Window(opts)
                 del.TextColor3=C.dim
                 del.Name="AddonDelete"
                 if isFile then del.Visible=false end
+                if isFile and sourceAddon then
+                    local infoButton=actions:FindFirstChild("AddonInfoButton")
+                    local settingsButton=actions:FindFirstChild("AddonSettingsButton")
+                    local updateButton=actions:FindFirstChild("AddonUpdate")
+                    local uninstallButton=actions:FindFirstChild("AddonUninstall")
+                    if infoButton then infoButton.Size=UDim2.new(0.22,-5,1,0); infoButton.Position=UDim2.new(0,0,0,0) end
+                    if settingsButton then settingsButton.Size=UDim2.new(0.24,-5,1,0); settingsButton.Position=UDim2.new(0.24,3,0,0) end
+                    if updateButton then updateButton.Size=UDim2.new(0.24,-5,1,0); updateButton.Position=UDim2.new(0.48,6,0,0) end
+                    if uninstallButton then uninstallButton.Size=UDim2.new(0.28,-5,1,0); uninstallButton.Position=UDim2.new(0.72,9,0,0) end
+                end
             else
                 main=amUiButton(actions,"INSTALL",2,function()
                     if entry.url and entry.file then
