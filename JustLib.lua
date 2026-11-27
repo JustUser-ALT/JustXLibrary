@@ -121,7 +121,7 @@ local function createIconsModule(deps)
         ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
         copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
     }
-    local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
+    local ICON_PACK_URL = "https://raw.githubusercontent.com/notpoiu/lucide-roblox-direct/main/source.lua"
     local function iconAsset(name)
         local pack = JL._iconPack
         if not pack then return nil end
