@@ -7284,7 +7284,7 @@ function JL:Window(opts)
         local hasControls = #a.ctrls > 0
         if not hasControls then
             amUiText(controlsHost,"This addon does not expose any controls.",9,C.dim,20,1,GM)
-        else
+        elseif not a.modern then
             for _,c in ipairs(a.ctrls) do
                 local ok,e = pcall(amBuildControl,a,sec,c)
                 if not ok then
