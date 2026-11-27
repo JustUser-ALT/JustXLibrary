@@ -603,8 +603,61 @@ return {
         cameraIcon.Size = UDim2.fromOffset(23, 23)
         cameraIcon.ImageColor3 = Color3.fromRGB(220, 220, 232)
         cameraIcon.ScaleType = Enum.ScaleType.Fit
-        cameraIcon.ZIndex = 21
+        cameraIcon.ZIndex = 22
         cameraIcon.Parent = toggleButton
+        cameraIcon.Visible = false
+
+        -- Guaranteed non-emoji camera glyph while the Lucide image pack is loading
+        -- or when the executor cannot render remote image assets.
+        local cameraFallback = Instance.new("Frame")
+        cameraFallback.Name = "CameraFallback"
+        cameraFallback.BackgroundTransparency = 1
+        cameraFallback.Size = UDim2.fromOffset(25, 22)
+        cameraFallback.AnchorPoint = Vector2.new(0.5, 0.5)
+        cameraFallback.Position = UDim2.fromScale(0.5, 0.5)
+        cameraFallback.ZIndex = 21
+        cameraFallback.Parent = toggleButton
+        local cameraBody = Instance.new("Frame")
+        cameraBody.Name = "CameraBody"
+        cameraBody.Size = UDim2.fromOffset(22, 15)
+        cameraBody.Position = UDim2.fromOffset(1, 6)
+        cameraBody.BackgroundTransparency = 1
+        cameraBody.BorderSizePixel = 0
+        cameraBody.ZIndex = 21
+        cameraBody.Parent = cameraFallback
+        local cameraBodyCorner = Instance.new("UICorner")
+        cameraBodyCorner.CornerRadius = UDim.new(0, 3)
+        cameraBodyCorner.Parent = cameraBody
+        local cameraBodyStroke = Instance.new("UIStroke")
+        cameraBodyStroke.Color = Color3.fromRGB(220, 220, 232)
+        cameraBodyStroke.Thickness = 1.8
+        cameraBodyStroke.Parent = cameraBody
+        local cameraLens = Instance.new("Frame")
+        cameraLens.Name = "CameraLens"
+        cameraLens.Size = UDim2.fromOffset(7, 7)
+        cameraLens.Position = UDim2.fromOffset(8, 10)
+        cameraLens.BackgroundTransparency = 1
+        cameraLens.BorderSizePixel = 0
+        cameraLens.ZIndex = 22
+        cameraLens.Parent = cameraFallback
+        local cameraLensCorner = Instance.new("UICorner")
+        cameraLensCorner.CornerRadius = UDim.new(1, 0)
+        cameraLensCorner.Parent = cameraLens
+        local cameraLensStroke = Instance.new("UIStroke")
+        cameraLensStroke.Color = Color3.fromRGB(220, 220, 232)
+        cameraLensStroke.Thickness = 1.5
+        cameraLensStroke.Parent = cameraLens
+        local cameraTop = Instance.new("Frame")
+        cameraTop.Name = "CameraTop"
+        cameraTop.Size = UDim2.fromOffset(8, 4)
+        cameraTop.Position = UDim2.fromOffset(5, 2)
+        cameraTop.BackgroundColor3 = Color3.fromRGB(220, 220, 232)
+        cameraTop.BorderSizePixel = 0
+        cameraTop.ZIndex = 21
+        cameraTop.Parent = cameraFallback
+        local cameraTopCorner = Instance.new("UICorner")
+        cameraTopCorner.CornerRadius = UDim.new(0, 2)
+        cameraTopCorner.Parent = cameraTop
 
         local function loadCameraIcon()
             local library = Addon.Library
@@ -623,6 +676,7 @@ return {
             cameraIcon.Image = image
             if typeof(asset.ImageRectOffset) == "Vector2" then cameraIcon.ImageRectOffset = asset.ImageRectOffset end
             if typeof(asset.ImageRectSize) == "Vector2" then cameraIcon.ImageRectSize = asset.ImageRectSize end
+            cameraIcon.Visible = true
             return true
         end
         task.spawn(function()
