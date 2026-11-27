@@ -627,7 +627,7 @@ return {
         end
         task.spawn(function()
             for _ = 1, 24 do
-                if not gui or not gui.Parent then break end
+                if destroyed or not cameraIcon.Parent then break end
                 if loadCameraIcon() then break end
                 task.wait(0.25)
             end
