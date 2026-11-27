@@ -511,6 +511,7 @@ return {
             if active then disable() else enable() end
         end
 
+        local api
         local function destroy()
             if destroyed then return end
             disable()
@@ -577,8 +578,8 @@ return {
         cameraGlyph.Size = UDim2.fromScale(1, 1)
         cameraGlyph.Position = UDim2.fromScale(0, 0)
         cameraGlyph.Font = Enum.Font.GothamBold
-        cameraGlyph.Text = "◉"
-        cameraGlyph.TextSize = 21
+        cameraGlyph.Text = "📷"
+        cameraGlyph.TextSize = 18
         cameraGlyph.TextColor3 = Color3.fromRGB(220, 220, 232)
         cameraGlyph.ZIndex = 21
         cameraGlyph.Parent = toggleButton
@@ -604,7 +605,7 @@ return {
             toggle()
         end)
 
-        local api = {
+        api = {
             Enable = enable,
             Disable = disable,
             Toggle = toggle,
