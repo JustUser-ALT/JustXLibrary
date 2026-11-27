@@ -113,14 +113,6 @@ local function createIconsModule(deps)
 
     JL._iconOverrides = {}
     JL._iconTextNodes = {}
-    local ICON_GLYPHS = {
-        house = "⌂", settings = "⚙", search = "⌕", ellipsis = "⋯", ["message-circle"] = "✉",
-        ["key-round"] = "⚿", key = "⚿", ["log-out"] = "↗", gem = "◆", user = "●",
-        home = "⌂", plus = "+", x = "×", close = "×", menu = "☰", ["chevron-right"] = "›",
-        ["refresh-cw"] = "↻", shuffle = "⇄", layers = "▱", users = "♟", puzzle = "◇", palette = "◉", activity = "⌁",
-        ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
-        copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
-    }
     local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
     local function iconAsset(name)
         local pack = JL._iconPack
@@ -1143,7 +1135,8 @@ local Icons = createIconsModule({
     Vector2 = Vector2,
     Typeof = typeof,
     Game = game,
-    LoadString = loadstring
+    LoadString = loadstring,
+    Task = task
 })
 local mkIcon = Icons.Make
 local Backgrounds = createBackgroundsModule({
