@@ -1730,12 +1730,12 @@ do
     local MARGIN = 14
     local GAP = 72.5
     local function notifySide() return tostring(cfgGet("_notify_side","TopRight")) end
-    local function edgeXY(side)
+    local function edgeXY(side, width)
         local camObj = workspace.CurrentCamera
         local vp = camObj and camObj.ViewportSize or Vector2.new(1280,720)
         local top = (side == "TopLeft" or side == "TopRight")
         local left = (side == "TopLeft" or side == "BottomLeft")
-        local x = left and MARGIN or (vp.X - W - MARGIN)
+        local x = left and MARGIN or (vp.X - (width or W) - MARGIN)
         local yBase = top and MARGIN or (vp.Y - H - MARGIN)
         return x, yBase, top, left
     end
@@ -1749,7 +1749,8 @@ do
             local nd = active[k]
             if nd and nd.f then
                 local y = top and (MARGIN + off) or (vpY - MARGIN - nd.h - off)
-                tw(nd.f,{Position = UDim2.new(0,x,0,y)},.35,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut)
+                local nx = edgeXY(notifySide(), nd.w or W)
+                tw(nd.f,{Position = UDim2.new(0,nx,0,y)},.35,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut)
                 off = off + nd.h + 17.5
             end
         end
@@ -1767,6 +1768,12 @@ do
         if not typeAllowed(typ) then return end
         local title = cfg2.Title or "JustLib"; local desc = cfg2.Desc or ""
         local dur = cfg2.Duration or tonumber(cfgGet("_notify_duration",5)) or 5
+        local screen = cfg2.Screen
+        local hasScreen = screen ~= nil and screen ~= false
+        local noteW = hasScreen and 260 or W
+        local textX = hasScreen and 56 or 22
+        local textW = hasScreen and 194 or 116
+        local descW = hasScreen and 194 or 180
         local col=Color3.fromRGB(158,198,255); local ico="rbxassetid://70718918423383"
         if typ=="Error" then col=Color3.fromRGB(255,82,82); ico="rbxassetid://113114601887005"
         elseif typ=="Success" then col=Color3.fromRGB(145,255,128); ico="rbxassetid://18567015051"
@@ -1782,31 +1789,52 @@ do
             end
         end
         local side = notifySide()
-        local x, yBase, top, left = edgeXY(side)
-        local startX = left and (x - 260) or (x + 260)
-        local titleH = math.max(20, math.min(TextService:GetTextSize(title, 14, GB, Vector2.new(116,200)).Y, 56))
-        local descH = (desc == "") and 2 or math.max(14, math.min(TextService:GetTextSize(desc, 10, G, Vector2.new(180,2000)).Y + 2, 240))
+        local x, yBase, top, left = edgeXY(side, noteW)
+        local startX = left and (x - noteW - 60) or (x + noteW + 60)
+        local titleMeasureW = hasScreen and 150 or 116
+        local titleH = math.max(20, math.min(TextService:GetTextSize(title, 14, GB, Vector2.new(titleMeasureW,200)).Y, 56))
+        local descH = (desc == "") and 2 or math.max(14, math.min(TextService:GetTextSize(desc, 10, G, Vector2.new(descW,2000)).Y + 2, 240))
         local barY = 2 + titleH + descH
         local h = barY + 5
         local camObj = workspace.CurrentCamera
         local vpY = camObj and camObj.ViewportSize.Y or 720
         local startY = top and MARGIN or (vpY - MARGIN - h)
-        local sg2=registerHubGui(Instance.new("ScreenGui"), "Notif"); sg2.Parent=CoreGui; sg2.ClipToDeviceSafeArea=false; sg2.ResetOnSpawn=false
-        local f=Instance.new("Frame"); f.BorderSizePixel=0; f.BackgroundColor3=Color3.fromRGB(0,0,0); f.Size=UDim2.new(0,W,0,h); f.Position=UDim2.new(0,startX,0,startY); f.Parent=sg2; corner(8,f)
+        local sg2=registerHubGui(Instance.new("ScreenGui"), "Notif"); sg2.ResetOnSpawn=false; sg2.IgnoreGuiInset=true; sg2.ClipToDeviceSafeArea=false; sg2.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; sg2.DisplayOrder=10001
+        local parentOk=pcall(function() sg2.Parent=CoreGui end); if not parentOk or not sg2.Parent then sg2.Parent=PG end
+        local f=Instance.new("Frame"); f.BorderSizePixel=0; f.BackgroundColor3=Color3.fromRGB(0,0,0); f.Size=UDim2.new(0,noteW,0,h); f.Position=UDim2.new(0,startX,0,startY); f.Parent=sg2; corner(8,f)
         f:SetAttribute("JLNoRepaint", true)
         local te=Instance.new("Frame"); te.ZIndex=0; te.BorderSizePixel=0; te.BackgroundColor3=col; te.Size=UDim2.new(0,20,0,h); te.Position=UDim2.new(0,-3,0,0); te.Parent=f; corner(8,te)
-        local ti=Instance.new("ImageLabel"); ti.BorderSizePixel=0; ti.BackgroundTransparency=1; ti.ImageColor3=col; ti.Image=ico; ti.Size=UDim2.new(0,15,0,15); ti.Position=UDim2.new(0,3,0,3); ti.Parent=f
-        local titleLbl = newTxt({Parent=f,Text=title,Font=GB,Size=14,Color=Color3.new(1,1,1),Wrap=true,Sz=UDim2.new(0,116,0,titleH),Pos=UDim2.new(0,22,0,2),Z=5})
+        if hasScreen then
+            local image = Instance.new("ImageLabel"); image.Name="NotificationScreen"; image.BorderSizePixel=0; image.BackgroundTransparency=1; image.Size=UDim2.new(0,40,0,40); image.Position=UDim2.new(0,8,0,8); image.ScaleType=(type(screen)=="table" and screen.ScaleType) or Enum.ScaleType.Fit; image.Parent=f
+            local screenPlayer = type(screen)=="table" and screen.Player or nil
+            local screenAsset = type(screen)=="table" and (screen.Image or screen.Asset or screen.Id) or screen
+            if screenPlayer ~= nil then
+                trackedSpawn(function()
+                    local userId = (typeof(screenPlayer)=="Instance" and screenPlayer:IsA("Player")) and screenPlayer.UserId or tonumber(screenPlayer)
+                    if userId then
+                        local okThumb,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, (type(screen)=="table" and screen.ThumbSize) or Enum.ThumbnailSize.Size180x180) end)
+                        if okThumb and image.Parent then image.Image=content end
+                    end
+                end)
+            elseif screenAsset ~= nil then
+                local value=tostring(screenAsset)
+                image.Image=value:match("^%d+$") and ("rbxassetid://"..value) or value
+            end
+            if type(screen)=="table" and screen.ImageColor3 then image.ImageColor3=screen.ImageColor3 end
+        else
+            local ti=Instance.new("ImageLabel"); ti.BorderSizePixel=0; ti.BackgroundTransparency=1; ti.ImageColor3=col; ti.Image=ico; ti.Size=UDim2.new(0,15,0,15); ti.Position=UDim2.new(0,3,0,3); ti.Parent=f
+        end
+        local titleLbl = newTxt({Parent=f,Text=title,Font=GB,Size=14,Color=Color3.new(1,1,1),Wrap=true,Sz=UDim2.new(0,textW,0,titleH),Pos=UDim2.new(0,textX,0,2),Z=5})
         titleLbl:SetAttribute("JLNoRepaint", true)
         local countLbl = newTxt({Parent=f,Text="",Font=GB,Size=12,Color=col,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,24,0,20),Pos=UDim2.new(1,-52,0,2),Z=5})
         countLbl.Visible = false
-        local td=newTxt({Parent=f,Text=desc,Size=10,Color=Color3.new(1,1,1),Sz=UDim2.new(0,180,0,descH),Pos=UDim2.new(0,10,0,2 + titleH),Z=5,Wrap=true}); td.TextTransparency=0.25
+        local td=newTxt({Parent=f,Text=desc,Size=10,Color=Color3.new(1,1,1),Sz=UDim2.new(0,descW,0,descH),Pos=UDim2.new(0,hasScreen and textX or 10,0,2 + titleH),Z=5,Wrap=true}); td.TextTransparency=0.25
         td.TextYAlignment = Enum.TextYAlignment.Top
         td:SetAttribute("JLNoRepaint", true)
         local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,180,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
         local cb=Instance.new("TextButton"); cb.BorderSizePixel=0; cb.BackgroundTransparency=1; cb.TextSize=14; cb.Font=GB; cb.TextColor3=Color3.new(1,1,1); cb.ZIndex=6; cb.Size=UDim2.new(0,20,0,20); cb.Position=UDim2.new(1,-22,0,2); cb.Text="x"; cb.Parent=f
         cb:SetAttribute("JLNoRepaint", true)
-        local nd = {f=f, g=sg2, HubId=Workspace.GetCurrentHubId(), title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
+        local nd = {f=f, g=sg2, w=noteW, HubId=Workspace.GetCurrentHubId(), title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
         table.insert(active,nd)
         local function close()
             if nd.closing then return end; nd.closing=true
@@ -1832,6 +1860,10 @@ do
             tween:Play()
         end
         cb.MouseButton1Click:Connect(close)
+        if cfgGet("_notify_hide_on_click", false) then
+            local clickSurface=Instance.new("TextButton"); clickSurface.Name="HideOnClick"; clickSurface.BackgroundTransparency=1; clickSurface.BorderSizePixel=0; clickSurface.Text=""; clickSurface.AutoButtonColor=false; clickSurface.Active=true; clickSurface.Size=UDim2.new(1,0,1,0); clickSurface.ZIndex=4; clickSurface.Parent=f
+            clickSurface.MouseButton1Click:Connect(close)
+        end
         updPos()
         trackedDelay(.35, function() if not nd.closing and nd.gen == 0 then nd.restart(dur) end end)
     end
@@ -8734,6 +8766,7 @@ function JL:Window(opts)
             JL._noSave["_notify_side"] = nil
             resetters[#resetters + 1] = function() seg.Set("TopRight", true); applyNotifySide("TopRight") end
         end
+        addSwitch(pN, "Hide On Click", "Close a notification when its body is clicked", "_notify_hide_on_click", false, function() end)
         addSwitch(pN, "Notify Stack", "Repeated notifications with the same text pile into one, shown as x1, x2...", "_notify_stack", false, function() end)
         addButton(pN, "Test Notification", "Sends a sample notification with your current settings", "Send", false, function()
             JL:Notify({Title = "Test Notification", Desc = "This is what your notifications look like.", Type = "Info"})
