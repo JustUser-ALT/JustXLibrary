@@ -246,68 +246,106 @@ local function createIconsModule(deps)
         url = url or ICON_PACK_URL
         provider = tostring(provider or "lucide")
         if provider == "" then provider = "lucide" end
-        local lastStage = "not started"
-        local lastDetail = ""
-        for attempt = 1, 3 do
-            lastStage = "HttpGet"
-            local ok,body = pcall(function() return game:HttpGet(url) end)
-            if not ok then
-                lastDetail = tostring(body)
-            elseif type(body) ~= "string" or body == "" then
-                lastDetail = "empty or non-string response (" .. type(body) .. ")"
-            else
-                lastStage = "loadstring"
-                local ok2,fn = pcall(loadstring, body)
-                if not ok2 then
-                    lastDetail = tostring(fn)
-                elseif type(fn) ~= "function" then
-                    lastDetail = "loadstring returned " .. type(fn)
-                else
-                    lastStage = "factory"
-                    local ok3,mod = pcall(fn)
-                    if not ok3 then
-                        lastDetail = tostring(mod)
-                    elseif type(mod) ~= "table" then
-                        lastDetail = "factory returned " .. type(mod)
-                    elseif type(mod.GetAsset) ~= "function" then
-                        lastDetail = "GetAsset is " .. type(mod.GetAsset)
-                    else
-                        lastStage = "SetProvider"
-                        local setProvider = mod.SetProvider or mod.SetIconsType
-                        if type(setProvider) ~= "function" then
-                            lastDetail = "provider API is missing"
-                        else
-                            local providerOk,providerResult = pcall(setProvider, provider)
-                            if not providerOk or providerResult == false then
-                                lastDetail = tostring(providerResult or "provider rejected: " .. provider)
-                            else
-                                lastStage = "GetAsset(settings)"
-                                local probeOk,probe = pcall(mod.GetAsset, "settings")
-                                local previousPack = JL._iconPack
-                                JL._iconPack = mod
-                                local resolved = probeOk and iconAsset("settings") or nil
-                                local imageUrl = resolved and iconImageId(resolved.Url or resolved.Image or resolved.Id)
-                                if not imageUrl then
-                                    JL._iconPack = previousPack
-                                    lastDetail = probeOk
-                                        and ("provider '" .. provider .. "' did not return an image asset for 'settings' (raw=" .. type(probe) .. ")")
-                                        or ("GetAsset(settings) failed: " .. tostring(probe))
-                                else
-                                    refreshIconTextNodes()
-                                    warn("[JustLib Icons] Loaded provider=" .. provider .. "; settings image validated")
-                                    return true
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            if attempt < 3 and deps.Task and type(deps.Task.wait) == "function" then
+
+        if JL._iconPack then
+            if JL._iconProvider == provider then return true end
+            local switched, switchError = self:SetIconType(provider)
+            if switched then return true end
+            warn("[JustLib Icons] Provider switch failed: " .. tostring(switchError))
+            return false
+        end
+
+        if JL._iconLoadState == "loading" then
+            return false, "Icon pack is already loading"
+        end
+        JL._iconLoadState = "loading"
+
+        local lastStage = "HttpGet"
+        local lastDetail = "unknown error"
+        local function waitBeforeRetry()
+            if deps.Task and type(deps.Task.wait) == "function" then
                 pcall(deps.Task.wait, 1)
             end
         end
+
+        for attempt = 1, 3 do
+            local ok, result = pcall(function()
+                lastStage = "HttpGet"
+                local body = game:HttpGet(url)
+                if type(body) ~= "string" or body == "" then
+                    error("HTTP returned an empty or non-string body")
+                end
+
+                lastStage = "compile"
+                local compiler = loadstring
+                if type(compiler) ~= "function" then
+                    error("loadstring is unavailable")
+                end
+                local chunk = compiler(body)
+                if type(chunk) ~= "function" then
+                    error("compiler did not return a function")
+                end
+
+                lastStage = "execute"
+                local mod = chunk()
+                if type(mod) ~= "table" then
+                    error("icon source must return a table, got " .. type(mod))
+                end
+                if type(mod.GetAsset) ~= "function" then
+                    error("icon module does not expose GetAsset(name)")
+                end
+
+                lastStage = "provider"
+                local providerSetter = mod.SetProvider or mod.SetIconsType
+                if type(providerSetter) == "function" then
+                    local setOk, setResult = pcall(providerSetter, provider)
+                    if not setOk then
+                        setOk, setResult = pcall(providerSetter, mod, provider)
+                    end
+                    if not setOk or setResult == false then
+                        error("provider '" .. provider .. "' rejected: " .. tostring(setResult))
+                    end
+                elseif provider ~= "lucide" then
+                    error("this icon module has no provider selector; only its built-in 'lucide' provider is available")
+                end
+
+                lastStage = "validate"
+                local probeOk, probe = pcall(mod.GetAsset, "settings")
+                if not probeOk then
+                    error("GetAsset('settings') threw: " .. tostring(probe))
+                end
+                if probe == nil then
+                    error("GetAsset('settings') returned nil")
+                end
+
+                local previousPack = JL._iconPack
+                JL._iconPack = mod
+                local normalized = iconAsset("settings")
+                local imageUrl = normalized and iconImageId(normalized.Url or normalized.Image or normalized.Id)
+                if not imageUrl then
+                    JL._iconPack = previousPack
+                    error("settings did not resolve to a usable image asset (returned " .. type(probe) .. ")")
+                end
+
+                JL._iconProvider = provider
+                JL._iconLoadState = "loaded"
+                refreshIconTextNodes()
+                warn("[JustLib Icons] Loaded " .. provider .. " provider; settings image verified")
+                return true
+            end)
+
+            if ok and result == true then
+                return true
+            end
+            lastDetail = tostring(result)
+            if attempt < 3 then
+                waitBeforeRetry()
+            end
+        end
+
+        JL._iconLoadState = "failed"
         warn("[JustLib Icons] Load failed at " .. lastStage .. " after 3 attempts: " .. lastDetail)
-        return false
+        return false, lastDetail
     end
     function JL:SetIconType(iconType)
         if type(iconType) ~= "string" or iconType == "" then
@@ -320,9 +358,13 @@ local function createIconsModule(deps)
             return false, "Icon pack does not support provider switching"
         end
         local ok,result = pcall(setProvider, iconType)
+        if not ok then
+            ok,result = pcall(setProvider, pack, iconType)
+        end
         if not ok or result == false then
             return false, tostring(result or "provider rejected: " .. iconType)
         end
+        JL._iconProvider = iconType
         refreshIconTextNodes()
         return true
     end
