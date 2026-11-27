@@ -113,6 +113,14 @@ local function createIconsModule(deps)
 
     JL._iconOverrides = {}
     JL._iconTextNodes = {}
+    local ICON_GLYPHS = {
+        house = "⌂", settings = "⚙", search = "⌕", ellipsis = "⋯", ["message-circle"] = "✉",
+        ["key-round"] = "⚿", key = "⚿", ["log-out"] = "↗", gem = "◆", user = "●",
+        home = "⌂", plus = "+", x = "×", close = "×", menu = "☰", ["chevron-right"] = "›",
+        ["refresh-cw"] = "↻", shuffle = "⇄", layers = "▱", users = "♟", puzzle = "◇", palette = "◉", activity = "⌁",
+        ["chevron-left"] = "‹", ["arrow-left"] = "←", ["arrow-right"] = "→", refresh = "↻",
+        copy = "▣", info = "ⓘ", help = "?", shield = "⬟", globe = "◎", gamepad = "⌘",
+    }
     local ICON_PACK_URL = "https://molto.pages.dev/source.lua"
     local function iconAsset(name)
         local pack = JL._iconPack
@@ -218,10 +226,9 @@ local function createIconsModule(deps)
             end
             return true
         end
-        -- Do not substitute Unicode glyphs or raw icon names for Lucide assets.
-        -- A missing icon should remain visually empty rather than showing a misleading symbol.
-        label.Text = ""
-        label.TextTransparency = 1
+        -- Keep a readable fallback if the remote icon pack is unavailable.
+        label.Text = ICON_GLYPHS[entry.name] or entry.name
+        label.TextTransparency = 0
         label.Font = GB
         return false
     end
@@ -327,9 +334,8 @@ local function createIconsModule(deps)
                 label.Text = ""
                 label.TextTransparency = 1
             else
-                -- Keep missing pack entries blank; never render fallback Unicode or icon-name text.
-                label.Text = ""
-                label.TextTransparency = 1
+                label.Text = ICON_GLYPHS[resolved] or resolved
+                label.TextTransparency = 0
             end
         end
         return label
