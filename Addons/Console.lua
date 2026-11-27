@@ -276,26 +276,41 @@ local function resolveConsoleIcon(name)
 		local ok, value = pcall(pack.GetIcon, name)
 		if ok then asset = value end
 	end
+	if typeof(asset) == "Instance" then
+		if asset:IsA("ImageLabel") or asset:IsA("ImageButton") then
+			asset = { Url = asset.Image, ImageRectOffset = asset.ImageRectOffset, ImageRectSize = asset.ImageRectSize }
+		elseif asset:IsA("TextLabel") or asset:IsA("TextButton") then
+			asset = { Text = asset.Text, Font = asset.Font, FontFace = asset.FontFace }
+		else
+			return nil
+		end
+	end
 	if type(asset) == "string" or type(asset) == "number" then
 		asset = { Url = tostring(asset) }
 	end
 	if type(asset) ~= "table" then return nil end
 	local value = asset.Url or asset.Image or asset.ImageUrl or asset.Texture
 		or asset.Asset or asset.AssetId or asset.ImageId or asset.Id
-	if value == nil or tostring(value) == "" then return nil end
-	value = tostring(value)
-	if value:match("^%d+$") then
-		value = "rbxassetid://" .. value
-	elseif not (value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://")) then
-		return nil
+	local textValue = asset.Text or asset.Glyph
+	if value ~= nil and tostring(value) ~= "" then
+		value = tostring(value)
+		if value:match("^%d+$") then
+			value = "rbxassetid://" .. value
+		elseif not (value:match("^rbxassetid://") or value:match("^rbxasset://") or value:match("^https?://")) then
+			return nil
+		end
+		return value, asset.ImageRectOffset, asset.ImageRectSize, textValue, asset.Font, asset.FontFace
 	end
-	return value, asset.ImageRectOffset, asset.ImageRectSize
+	if textValue ~= nil and tostring(textValue) ~= "" then
+		return nil, nil, nil, tostring(textValue), asset.Font, asset.FontFace
+	end
+	return nil
 end
 
 local function applyIcon(glyph, name)
 	if not (glyph and glyph.Parent) then return end
 	iconRegistry[glyph] = name
-	local imageUrl, rectOffset, rectSize = resolveConsoleIcon(name)
+	local imageUrl, rectOffset, rectSize, assetText, assetFont, assetFontFace = resolveConsoleIcon(name)
 	if glyph:IsA("ImageLabel") or glyph:IsA("ImageButton") then
 		if imageUrl then
 			glyph.Image = imageUrl
@@ -316,17 +331,28 @@ local function applyIcon(glyph, name)
 				overlay.Size = UDim2.fromScale(1, 1)
 				overlay.Position = UDim2.fromScale(0, 0)
 				overlay.ScaleType = Enum.ScaleType.Fit
-				overlay.ZIndex = glyph.ZIndex + 1
+				overlay.ZIndex = glyph.ZIndex
 				overlay.Parent = glyph
 			end
 			overlay.Image = imageUrl
 			overlay.ImageColor3 = glyph.TextColor3
 			overlay.ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero
 			overlay.ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero
+			glyph.Text = ""
 			glyph.TextTransparency = 1
 		else
-			if overlay then overlay:Destroy() end
-			glyph.Text = ICON_FALLBACK[name] or "•"
+			if overlay then overlay.Visible = false end
+			if assetText then
+				glyph.Text = tostring(assetText)
+				if assetFontFace then
+					pcall(function() glyph.FontFace = assetFontFace end)
+				elseif assetFont then
+					pcall(function() glyph.Font = assetFont end)
+				end
+			else
+				glyph.Text = ICON_FALLBACK[name] or "•"
+				glyph.Font = Enum.Font.GothamBold
+			end
 			glyph.TextTransparency = 0
 		end
 	end
