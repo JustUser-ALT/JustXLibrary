@@ -1774,6 +1774,7 @@ do
         local textX = hasScreen and 56 or 22
         local textW = hasScreen and 194 or 116
         local descW = hasScreen and 194 or 180
+        local barW = noteW - 20
         local col=Color3.fromRGB(158,198,255); local ico="rbxassetid://70718918423383"
         if typ=="Error" then col=Color3.fromRGB(255,82,82); ico="rbxassetid://113114601887005"
         elseif typ=="Success" then col=Color3.fromRGB(145,255,128); ico="rbxassetid://18567015051"
@@ -1831,7 +1832,7 @@ do
         local td=newTxt({Parent=f,Text=desc,Size=10,Color=Color3.new(1,1,1),Sz=UDim2.new(0,descW,0,descH),Pos=UDim2.new(0,hasScreen and textX or 10,0,2 + titleH),Z=5,Wrap=true}); td.TextTransparency=0.25
         td.TextYAlignment = Enum.TextYAlignment.Top
         td:SetAttribute("JLNoRepaint", true)
-        local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,180,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
+        local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,barW,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
         local cb=Instance.new("TextButton"); cb.BorderSizePixel=0; cb.BackgroundTransparency=1; cb.TextSize=14; cb.Font=GB; cb.TextColor3=Color3.new(1,1,1); cb.ZIndex=6; cb.Size=UDim2.new(0,20,0,20); cb.Position=UDim2.new(1,-22,0,2); cb.Text="x"; cb.Parent=f
         cb:SetAttribute("JLNoRepaint", true)
         local nd = {f=f, g=sg2, w=noteW, HubId=Workspace.GetCurrentHubId(), title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
@@ -1842,7 +1843,7 @@ do
             for i,v in ipairs(active) do if v==nd then table.remove(active,i); break end end
             updPos()
             if f and f.Parent then
-                local exitX = left and (x - 260) or (x + 260)
+                local exitX = left and (x - noteW - 60) or (x + noteW + 60)
                 local t2=createTween(f,TweenInfo.new(0.4,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),{Position=UDim2.new(0,exitX,0,f.Position.Y.Offset)}); t2:Play(); t2.Completed:Connect(function() sg2:Destroy() end)
             end
         end
@@ -1851,7 +1852,7 @@ do
             nd.gen = nd.gen + 1
             local gen = nd.gen
             if nd.barTw then nd.barTw:Cancel() end
-            db.Size = UDim2.new(0,180,0,3)
+            db.Size = UDim2.new(0,barW,0,3)
             local tween = createTween(db, TweenInfo.new(d,Enum.EasingStyle.Linear), {Size = UDim2.new(0,0,0,3)})
             nd.barTw = tween
             tween.Completed:Connect(function(state)
