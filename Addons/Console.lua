@@ -257,22 +257,12 @@ local ICON_FALLBACK = {
 }
 
 -- Load a private copy of the same Lucide provider used by JustLib.
--- It never registers Console labels in JustLib's icon-node registry.
+-- The UI is built immediately with glyph fallbacks; the pack loads in the background.
+-- Once ready, existing icons are upgraded in-place (no race with JustLib startup).
 local CONSOLE_ICON_PACK_URL = "https://molto.pages.dev/source.lua"
 local consoleIconPack
-pcall(function()
-	local body = game:HttpGet(CONSOLE_ICON_PACK_URL)
-	if type(body) ~= "string" or body == "" then return end
-	local factory = loadstring(body)
-	if type(factory) ~= "function" then return end
-	local pack = factory()
-	if type(pack) ~= "table" then return end
-	if type(pack.SetProvider) == "function" then
-		local ok = pcall(pack.SetProvider, "lucide")
-		if not ok then return end
-	end
-	consoleIconPack = pack
-end)
+local iconRegistry = setmetatable({}, { __mode = "k" })
+local iconNodes = {}
 
 local function resolveConsoleIcon(name)
 	local pack = consoleIconPack
@@ -302,37 +292,100 @@ local function resolveConsoleIcon(name)
 	return value, asset.ImageRectOffset, asset.ImageRectSize
 end
 
-local function icon(parent, name, size, color, fallback, props)
+local function applyIcon(glyph, name)
+	if not (glyph and glyph.Parent) then return end
+	iconRegistry[glyph] = name
 	local imageUrl, rectOffset, rectSize = resolveConsoleIcon(name)
-	local glyph
-	if imageUrl then
-		glyph = new("ImageLabel", {
-			Parent = parent,
-			Name = "JXConsoleIcon_" .. tostring(name),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Size = UDim2.fromOffset(size, size),
-			Image = imageUrl,
-			ImageColor3 = color,
-			ScaleType = Enum.ScaleType.Fit,
-			ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero,
-			ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero,
-		})
-	else
-		glyph = new("TextLabel", {
-			Parent = parent,
-			Name = "JXConsoleFallback_" .. tostring(name),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Size = UDim2.fromOffset(size, size),
-			Text = fallback or ICON_FALLBACK[name] or "•",
-			TextColor3 = color,
-			Font = Enum.Font.GothamBold,
-			TextScaled = true,
-			TextWrapped = false,
-		})
+	if glyph:IsA("ImageLabel") or glyph:IsA("ImageButton") then
+		if imageUrl then
+			glyph.Image = imageUrl
+			glyph.ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero
+			glyph.ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero
+			glyph.ImageTransparency = 0
+		else
+			glyph.Image = ""
+		end
+	elseif glyph:IsA("TextLabel") or glyph:IsA("TextButton") then
+		local overlay = glyph:FindFirstChild("JXConsoleIconAsset")
+		if imageUrl then
+			if not overlay then
+				overlay = Instance.new("ImageLabel")
+				overlay.Name = "JXConsoleIconAsset"
+				overlay.BackgroundTransparency = 1
+				overlay.BorderSizePixel = 0
+				overlay.Size = UDim2.fromScale(1, 1)
+				overlay.Position = UDim2.fromScale(0, 0)
+				overlay.ScaleType = Enum.ScaleType.Fit
+				overlay.ZIndex = glyph.ZIndex + 1
+				overlay.Parent = glyph
+			end
+			overlay.Image = imageUrl
+			overlay.ImageColor3 = glyph.TextColor3
+			overlay.ImageRectOffset = typeof(rectOffset) == "Vector2" and rectOffset or Vector2.zero
+			overlay.ImageRectSize = typeof(rectSize) == "Vector2" and rectSize or Vector2.zero
+			glyph.TextTransparency = 1
+		else
+			if overlay then overlay:Destroy() end
+			glyph.Text = ICON_FALLBACK[name] or "•"
+			glyph.TextTransparency = 0
+		end
 	end
+end
+
+local function refreshConsoleIcons()
+	for i = #iconNodes, 1, -1 do
+		local glyph = iconNodes[i]
+		if not (glyph and glyph.Parent) then
+			table.remove(iconNodes, i)
+		else
+			local name = iconRegistry[glyph]
+			if name then applyIcon(glyph, name) end
+		end
+	end
+end
+
+task.spawn(function()
+	for attempt = 1, 3 do
+		local ok, pack = pcall(function()
+			local body = game:HttpGet(CONSOLE_ICON_PACK_URL)
+			assert(type(body) == "string" and body ~= "", "empty icon pack response")
+			local compiler = loadstring
+			assert(type(compiler) == "function", "loadstring unavailable")
+			local factory = compiler(body)
+			assert(type(factory) == "function", "icon pack did not compile")
+			local result = factory()
+			assert(type(result) == "table", "icon pack did not return a table")
+			if type(result.SetProvider) == "function" then
+				result.SetProvider("lucide")
+			end
+			return result
+		end)
+		if ok and pack then
+			consoleIconPack = pack
+			refreshConsoleIcons()
+			break
+		end
+		if attempt < 3 then task.wait(attempt * 0.75) end
+	end
+end)
+
+local function icon(parent, name, size, color, fallback, props)
+	local glyph = new("TextLabel", {
+		Parent = parent,
+		Name = "JXConsoleIcon_" .. tostring(name),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromOffset(size, size),
+		Text = fallback or ICON_FALLBACK[name] or "•",
+		TextColor3 = color,
+		Font = Enum.Font.GothamBold,
+		TextScaled = true,
+		TextWrapped = false,
+	})
 	for k, v in pairs(props or {}) do glyph[k] = v end
+	iconRegistry[glyph] = name
+	iconNodes[#iconNodes + 1] = glyph
+	applyIcon(glyph, name)
 	return glyph
 end
 
