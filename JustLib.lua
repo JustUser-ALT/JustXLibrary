@@ -226,8 +226,10 @@ local function createIconsModule(deps)
             end
             return true
         end
-        label.Text = ICON_GLYPHS[entry.name] or entry.name
-        label.TextTransparency = 0
+        -- Do not substitute Unicode glyphs or raw icon names for Lucide assets.
+        -- A missing icon should remain visually empty rather than showing a misleading symbol.
+        label.Text = ""
+        label.TextTransparency = 1
         label.Font = GB
         return false
     end
@@ -243,19 +245,35 @@ local function createIconsModule(deps)
     end
     function JL:LoadIconPack(url)
         url = url or ICON_PACK_URL
-        local ok,body = pcall(function() return game:HttpGet(url) end)
-        if not ok or not body or body == "" then return false end
-        local ok2,fn = pcall(loadstring, body)
-        if not ok2 or type(fn) ~= "function" then return false end
-        local ok3,mod = pcall(fn)
-        if not ok3 or type(mod) ~= "table" then return false end
-        if type(mod.SetProvider) == "function" then
-            local providerOk = pcall(mod.SetProvider, "lucide")
-            if not providerOk then return false end
+        for attempt = 1, 3 do
+            local ok,body = pcall(function() return game:HttpGet(url) end)
+            if ok and type(body) == "string" and body ~= "" then
+                local ok2,fn = pcall(loadstring, body)
+                if ok2 and type(fn) == "function" then
+                    local ok3,mod = pcall(fn)
+                    if ok3 and type(mod) == "table" and type(mod.GetAsset) == "function" then
+                        local providerOk = true
+                        if type(mod.SetProvider) == "function" then
+                            providerOk = pcall(mod.SetProvider, "lucide")
+                        end
+                        if providerOk then
+                            local probeOk,probe = pcall(mod.GetAsset, "settings")
+                            if probeOk and type(probe) == "table"
+                                and (probe.Url or probe.Image or probe.ImageUrl or probe.Texture) then
+                                JL._iconPack = mod
+                                refreshIconTextNodes()
+                                return true
+                            end
+                        end
+                    end
+                end
+            end
+            if attempt < 3 and deps.Task and type(deps.Task.wait) == "function" then
+                pcall(deps.Task.wait, 1)
+            end
         end
-        JL._iconPack = mod
-        refreshIconTextNodes()
-        return true
+        warn("[JustLib Icons] Lucide icon pack failed to load or failed validation")
+        return false
     end
     function JL:SetIconType(iconType)
         if JL._iconPack then
@@ -317,7 +335,9 @@ local function createIconsModule(deps)
                 label.Text = ""
                 label.TextTransparency = 1
             else
-                label.Text = ICON_GLYPHS[resolved] or resolved
+                -- Keep missing pack entries blank; never render fallback Unicode or icon-name text.
+                label.Text = ""
+                label.TextTransparency = 1
             end
         end
         return label
