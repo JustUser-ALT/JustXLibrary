@@ -256,13 +256,12 @@ local function createIconsModule(deps)
                             providerOk = pcall(mod.SetProvider, "lucide")
                         end
                         if providerOk then
-                            local probeOk,probe = pcall(mod.GetAsset, "settings")
-                            if probeOk and type(probe) == "table"
-                                and (probe.Url or probe.Image or probe.ImageUrl or probe.Texture) then
-                                JL._iconPack = mod
-                                refreshIconTextNodes()
-                                return true
-                            end
+                            -- Some icon providers return a lazy/variant asset shape for the probe
+                            -- name. Validate the public API itself, then resolve each requested icon
+                            -- through iconAsset() instead of rejecting an otherwise valid pack.
+                            JL._iconPack = mod
+                            refreshIconTextNodes()
+                            return true
                         end
                     end
                 end
