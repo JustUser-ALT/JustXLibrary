@@ -1089,7 +1089,7 @@ local function createControlHelpersModule(deps)
         Snap = snap
     }
 end
-local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "4.4.15"
+local JL = {}; JL.Flags = {}; JL._winOpen = false; JL._listening = false; JL.Version = "5.0.0"
 JL._registry = {}; JL._noSave = {}
 
 local Workspace = createWorkspaceModule({
