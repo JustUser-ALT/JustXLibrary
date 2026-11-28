@@ -6557,7 +6557,9 @@ function JL:Window(opts)
 
             local groups, currentGroup = {}, nil
             local groupGap = 12
-            local pageW = VIS * colW + math.max(VIS - 1, 0) * COLGAP
+            -- Page geometry follows the real scroll viewport, not the nominal window width.
+            local pageW = math.max(1, unscaleWin(scroll.AbsoluteSize.X) - 6)
+            local colW = math.max(1, math.floor((pageW - 8 - math.max(VIS - 1, 0) * COLGAP) / VIS))
             local currentPage, pageTweening, relayoutQueued = 1, false, false
             local activePageTween
             local chips, pageStatus = {}, nil
@@ -6643,14 +6645,24 @@ function JL:Window(opts)
                 paintPager()
             end
             local function relayout()
+                local viewportW = unscaleWin(scroll.AbsoluteSize.X)
+                local nextPageW = math.max(1, viewportW - 6)
+                local nextColW = math.max(1, math.floor((nextPageW - 8 - math.max(VIS - 1, 0) * COLGAP) / VIS))
+                local widthChanged = math.abs(nextPageW - pageW) > 1 or math.abs(nextColW - colW) > 1
+                pageW, colW = nextPageW, nextColW
                 local totalH = 0
                 for index,g in ipairs(groups) do
                     local maxH = 0
                     for ci=1,VIS do
                         local col = g.cols[ci]
+                        col.F.Size = UDim2.new(0,colW,0,col.F.Size.Y.Offset)
+                        col.F.Position = UDim2.new(0,(ci-1)*(colW+COLGAP),0,0)
                         local h = unscaleWin(col.L.AbsoluteContentSize.Y)
                         col.F.Size = UDim2.new(0,colW,0,h)
                         if h > maxH then maxH = h end
+                    end
+                    if g.divider then
+                        g.divider.Size = UDim2.new(1,0,0,g.divider.Size.Y.Offset)
                     end
                     g.row.Size = UDim2.new(1,0,0,maxH)
                     local headerH = g.divider and g.divider.Size.Y.Offset or 0
@@ -6660,9 +6672,8 @@ function JL:Window(opts)
                     totalH = math.max(totalH,groupH)
                 end
                 colCon.Size = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap) or 0,0,totalH)
-                local lastPageOffset = pageOffset(numPages())
-                local canvasWidth = #groups > 0 and (lastPageOffset + scroll.AbsoluteSize.X + 4) or 0
-                scroll.CanvasSize = UDim2.new(0,canvasWidth,0,totalH+14)
+                local contentWidth = #groups > 0 and (#groups * pageW + (#groups - 1) * groupGap + 6) or 0
+                scroll.CanvasSize = UDim2.new(0,contentWidth,0,totalH+14)
                 rebuildPager()
                 currentPage = math.clamp(currentPage,1,numPages())
                 if not pageTweening then
@@ -6719,6 +6730,7 @@ function JL:Window(opts)
                 requestRelayout()
                 return g
             end
+            scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(requestRelayout)
             local function ensureGroup()
                 if not currentGroup then return newGroup(nil) end
                 return currentGroup
