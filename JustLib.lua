@@ -4853,12 +4853,11 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     local title = tostring(options.Title or options.Name or "")
     local alignment = tostring(options.Alignment or options.Align or "Left"):lower()
     if alignment ~= "center" and alignment ~= "right" then alignment = "left" end
-
     local accent = options.LineColor or nxAc()
     local textSize = tonumber(options.TextSize) or 13
     local titleHeight = title ~= "" and math.max(19, textSize + 6) or 0
     local lineY = title ~= "" and (titleHeight + 7) or 5
-    local height = math.max(lineY + 6, tonumber(options.Height) or 38)
+    local height = math.max(lineY + 7, tonumber(options.Height) or 38)
 
     local wrap = Instance.new("Frame")
     wrap.Name = "JLSectionDivider"
@@ -4868,40 +4867,30 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     wrap.LayoutOrder = layoutOrder or 1
     wrap.Parent = parentFrame
 
+    -- Independent of the panel fill: remains visible with opaque custom backgrounds.
     local track = Instance.new("Frame")
     track.Name = "Track"
-    track.Size = UDim2.new(1, 0, 0, 1)
+    track.Size = UDim2.new(1, 0, 0, 2)
     track.Position = UDim2.new(0, 0, 0, lineY + 2)
-    track.BackgroundColor3 = C.border
-    track.BackgroundTransparency = 0.08
+    track.BackgroundColor3 = C.dim
+    track.BackgroundTransparency = 0.12
     track.BorderSizePixel = 0
     track.Parent = wrap
+    corner(1, track)
 
     if title ~= "" then
         local maxWidth = math.max(40, (width or 300) - 8)
-        local bounds = TextService:GetTextSize(title, textSize, Enum.Font.GothamBold, Vector2.new(maxWidth - 14, titleHeight))
-        local labelW = math.min(maxWidth - 14, math.max(24, bounds.X + 3))
-        local groupW = labelW + 12
-
+        local bounds = TextService:GetTextSize(title, textSize, Enum.Font.GothamBold, Vector2.new(maxWidth - 8, titleHeight))
+        local labelW = math.min(maxWidth - 8, math.max(24, bounds.X + 2))
         local titleGroup = Instance.new("Frame")
         titleGroup.Name = "TitleGroup"
-        titleGroup.Size = UDim2.new(0, groupW, 0, titleHeight)
+        titleGroup.Size = UDim2.new(0, labelW, 0, titleHeight)
         titleGroup.BackgroundTransparency = 1
         titleGroup.Parent = wrap
 
-        local marker = Instance.new("Frame")
-        marker.Name = "Marker"
-        marker.Size = UDim2.new(0, 3, 0, math.max(12, textSize))
-        marker.Position = UDim2.new(0, 0, 0.5, -math.max(12, textSize) / 2)
-        marker.BackgroundColor3 = accent
-        marker.BorderSizePixel = 0
-        marker.Parent = titleGroup
-        corner(2, marker)
-
         local label = Instance.new("TextLabel")
         label.Name = "Title"
-        label.Size = UDim2.new(1, -11, 1, 0)
-        label.Position = UDim2.new(0, 11, 0, 0)
+        label.Size = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
         label.BorderSizePixel = 0
         label.Text = title
@@ -4915,7 +4904,7 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
 
         local accentBar = Instance.new("Frame")
         accentBar.Name = "Accent"
-        accentBar.Size = UDim2.new(0, math.min(46, groupW), 0, 3)
+        accentBar.Size = UDim2.new(0, math.min(48, labelW), 0, 3)
         accentBar.Position = UDim2.new(0, 0, 0, lineY)
         accentBar.BackgroundColor3 = accent
         accentBar.BorderSizePixel = 0
@@ -6567,9 +6556,6 @@ function JL:Window(opts)
 
             local function numPages() return math.max(1,#groups) end
             local function paintPager()
-                if pageStatus then
-                    pageStatus.Text = string.format("PAGE %02d  /  %02d",currentPage,numPages())
-                end
                 for i,ch in ipairs(chips) do
                     local on = i == currentPage
                     ch.BackgroundColor3 = on and ACCENTS[1] or C.btnBg
@@ -6611,19 +6597,10 @@ function JL:Window(opts)
                     return
                 end
                 mkPagerButton("‹",0,function() goPage(currentPage-1) end,25)
-                pageStatus = Instance.new("TextLabel")
-                pageStatus.Name = "PageStatus"
-                pageStatus.Size = UDim2.new(0,86,0,20)
-                pageStatus.BackgroundTransparency = 1
-                pageStatus.Font = GB
-                pageStatus.TextSize = 10
-                pageStatus.TextColor3 = C.dim
-                pageStatus.LayoutOrder = 1
-                pageStatus.Parent = pager
                 for i=1,np do
-                    chips[i] = mkPagerButton(tostring(i),i+1,function() goPage(i) end,22)
+                    chips[i] = mkPagerButton(tostring(i),i,function() goPage(i) end,22)
                 end
-                mkPagerButton("›",np+2,function() goPage(currentPage+1) end,25)
+                mkPagerButton("›",np+1,function() goPage(currentPage+1) end,25)
                 paintPager()
             end
             local function requestRelayout()
