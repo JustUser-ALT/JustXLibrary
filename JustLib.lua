@@ -6559,6 +6559,7 @@ function JL:Window(opts)
             local groupGap = 12
             local pageW = VIS * colW + math.max(VIS - 1, 0) * COLGAP
             local currentPage, pageTweening, relayoutQueued = 1, false, false
+            local activePageTween
             local chips, pageStatus = {}, nil
 
             local function numPages() return math.max(1, #groups) end
@@ -6578,14 +6579,18 @@ function JL:Window(opts)
                 p = math.clamp(math.floor(tonumber(p) or 1), 1, numPages())
                 currentPage = p
                 paintPager()
+                if activePageTween then pcall(function() activePageTween:Cancel() end) end
                 pageTweening = true
                 local tween = createTween(scroll, TweenInfo.new(.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
                     CanvasPosition = Vector2.new(pageOffset(p), scroll.CanvasPosition.Y)
                 })
+                activePageTween = tween
                 tween.Completed:Connect(function()
+                    if activePageTween ~= tween then return end
                     if scroll and scroll.Parent then
                         scroll.CanvasPosition = Vector2.new(pageOffset(currentPage), scroll.CanvasPosition.Y)
                     end
+                    activePageTween = nil
                     pageTweening = false
                     paintPager()
                 end)
@@ -6655,7 +6660,9 @@ function JL:Window(opts)
                     totalH = math.max(totalH,groupH)
                 end
                 colCon.Size = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap) or 0,0,totalH)
-                scroll.CanvasSize = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap + 8) or 0,0,totalH+14)
+                local lastPageOffset = pageOffset(numPages())
+                local canvasWidth = #groups > 0 and (lastPageOffset + scroll.AbsoluteSize.X + 4) or 0
+                scroll.CanvasSize = UDim2.new(0,canvasWidth,0,totalH+14)
                 rebuildPager()
                 currentPage = math.clamp(currentPage,1,numPages())
                 if not pageTweening then
