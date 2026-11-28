@@ -4847,6 +4847,56 @@ local function attachWidgets(content,INNER,ac,uiScale,parentSg,attachTip,config)
     end
     return Sec
 end
+local function makeSectionDivider(parentFrame, options, layoutOrder, width)
+    options = options or {}
+    if type(options) == "string" then options = {Title = options} end
+    local title = tostring(options.Title or options.Name or "")
+    local alignment = tostring(options.Alignment or options.Align or "Left"):lower()
+    if alignment ~= "center" and alignment ~= "right" then alignment = "left" end
+    local height = math.max(22, tonumber(options.Height) or 24)
+    local wrap = Instance.new("Frame")
+    wrap.Name = "JLSectionDivider"
+    wrap.Size = UDim2.new(1, 0, 0, height)
+    wrap.BackgroundTransparency = 1
+    wrap.BorderSizePixel = 0
+    wrap.LayoutOrder = layoutOrder or 1
+    wrap.Parent = parentFrame
+    local line = Instance.new("Frame")
+    line.Name = "Line"
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 0.5, 0)
+    line.BackgroundColor3 = C.border
+    line.BorderSizePixel = 0
+    line.Parent = wrap
+    if title ~= "" then
+        local textSize = tonumber(options.TextSize) or 11
+        local bounds = TextService:GetTextSize(title, textSize, GB, Vector2.new(math.max(40, (width or 300) - 24), height))
+        local labelW = math.min((width or 300) - 12, math.max(36, bounds.X + 14))
+        local label = Instance.new("TextLabel")
+        label.Name = "Title"
+        label.Size = UDim2.new(0, labelW, 1, 0)
+        label.BackgroundColor3 = C.panel
+        label.BorderSizePixel = 0
+        label.Text = title
+        label.Font = GB
+        label.TextSize = textSize
+        label.TextColor3 = options.Color or C.dim
+        label.TextXAlignment = alignment == "center" and Enum.TextXAlignment.Center or (alignment == "right" and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left)
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.TextTruncate = Enum.TextTruncate.AtEnd
+        label.Parent = wrap
+        if alignment == "center" then
+            label.AnchorPoint = Vector2.new(0.5, 0.5)
+            label.Position = UDim2.new(0.5, 0, 0.5, 0)
+        elseif alignment == "right" then
+            label.AnchorPoint = Vector2.new(1, 0.5)
+            label.Position = UDim2.new(1, 0, 0.5, 0)
+        else
+            label.Position = UDim2.new(0, 0, 0, 0)
+        end
+    end
+    return wrap
+end
 local function makeSection(parentFrame,title,parentSg,layoutOrder,colW,so,uiScale,attachTip,config)
     so = so or {}
     local ac = nxAc()
@@ -6439,7 +6489,9 @@ function JL:Window(opts)
             return sc
         end
         if typ == "Grid" then
-            local scroll = mkScroll(Enum.ScrollingDirection.XY)
+            -- Horizontal movement is page-controlled; users can still scroll vertically.
+            local scroll = mkScroll(Enum.ScrollingDirection.Y)
+            scroll.ElasticBehavior = Enum.ElasticBehavior.Never
             local colCon = Instance.new("Frame"); colCon.Size = UDim2.new(0,0,0,0); colCon.Position = UDim2.new(0,3,0,3); colCon.BackgroundTransparency = 1; colCon.Parent = scroll
             local cols = {}; local ncols = 0; local secCount = {}
             local pager = Instance.new("Frame"); pager.Size = UDim2.new(1,0,0,24); pager.Position = UDim2.new(0,0,1,-24); pager.BackgroundTransparency = 1; pager.Visible = false; pager.Parent = tabFrame
@@ -6526,6 +6578,12 @@ function JL:Window(opts)
                 secCount[ci] = (secCount[ci] or 0) + 1
                 return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig)
             end
+            function Tab:SectionDivider(options)
+                options = options or {}
+                local ci = resolveCol(type(options) == "table" and options.Column or nil)
+                secCount[ci] = (secCount[ci] or 0) + 1
+                return makeSectionDivider(getCol(ci).F, options, secCount[ci], colW)
+            end
             for i = 1,VIS do getCol(i) end
         elseif typ == "Custom" then
         else
@@ -6544,6 +6602,10 @@ function JL:Window(opts)
             function Tab:MultiSection(sopts)
                 sopts = sopts or {}; _sOrd = _sOrd + 1
                 return makeMultiSection(listCon, sopts, sg, _sOrd, listW, uiScale, attachTip, hubConfig)
+            end
+            function Tab:SectionDivider(options)
+                options = options or {}; _sOrd = _sOrd + 1
+                return makeSectionDivider(listCon, options, _sOrd, listW)
             end
         end
         return Tab
