@@ -268,13 +268,40 @@ Background configurations support image presentation and optional sprite-sheet a
 
 ## 7. Preview UI
 
+Create the Preview interface with the library method:
+
 ```lua
 local Preview = JustLib:Preview({
-    -- Preview configuration is supplied here.
+    Title = "My Preview",
+    Subtitle = "Asset browser",
+    Icon = "box",
+    TabName = "Preview",
+    Key = Enum.KeyCode.P,
+    OnOpen = function() end,
+    OnClose = function() end
 })
 ```
 
-The Preview module is loaded from `PreviewUI.lua`. Use `JustLib:GetPreview()` to retrieve the current Preview object. Preview controls can be added to sections with `PreviewButton`, `PreviewToggle`, and `PreviewDropdown`.
+Implemented Preview options include `Title`, `Subtitle`, `Icon`, `TabName`, `Key`, `OnOpen`, `OnClose`, and `PluginBase`.
+
+### Preview methods
+
+- `Open(target)`, `Close()`, `Toggle(target)`, `IsOpen()`, `SetTitle(title)`, `OnClosed(callback)`, `CloseDrawer()`, `Destroy()`
+- `Tab(options)`, `Page(options)`, `RemovePage(page)`, `GetTab(name)`, `GetTabs()`
+- `QuickAction(options)`
+- `GetPlugins()`, `GetPlugin(id)`, `InstallPlugin(id)`, `EnablePlugin(id)`, `DisablePlugin(id)`, `UninstallPlugin(id)`, `SetPluginOpen(id, callback)`, `GetPluginUI()`
+- `CreateIcon(parent, name, size, color)`, `CreateViewport(parent, asset, options)`, `RegisterPreviewExtension(id, build)`
+
+A tab is created with `Preview:Tab({Name, Icon, ShowAll, Filter})`. Add assets with `Tab:Asset(assetDefinition)` or `Tab:Assets(list)`. Asset definitions support fields such as `Name`, `Type`, `Creator`, `Created`, `Size`, `Version`, `Description`, `Tags`, `Info`, `Model`, `Build`, `Image`, `Callback`, and `Actions` (up to five actions).
+
+Tab methods include `Select()`, `Open()`, `Clear()`, and `Remove()`. Asset handles provide `Select()`, `Action(action)`, `Update(patch)`, and `Remove()`.
+
+Add detail pages with `Preview:Page({Name, Icon, Visible, Build})`. `Build(parent, asset, preview)` can return a cleanup function. Remove pages with `Preview:RemovePage(page)`.
+
+Preview controls can be attached to the Preview itself, a tab, or an asset:
+`Button`, `Toggle`, `Dropdown`, `ColorPicker`, `Slider`, `Textbox`, `Label`, and `Divider`. Control handles provide `Get()`, `Set(value, silent)`, and `Remove()`.
+
+The Preview module is loaded from `PreviewUI.lua`. Use `JustLib:GetPreview()` to retrieve the current Preview object. In the main library's Sections, `PreviewButton`, `PreviewToggle`, and `PreviewDropdown` provide links into Preview UI.
 
 ## 8. Confirmation and utility methods
 
