@@ -6664,7 +6664,6 @@ function JL:Window(opts)
             end
             scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(paintChips)
             tabScrollers[id] = {cur=curPage,go=goPage}
-            newGroup(nil)
                 elseif typ == "Custom" then
         else
             local scroll = mkScroll(Enum.ScrollingDirection.Y)
