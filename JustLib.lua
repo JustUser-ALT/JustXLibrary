@@ -4855,10 +4855,10 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     if alignment ~= "center" and alignment ~= "right" then alignment = "left" end
 
     local accent = options.LineColor or nxAc()
-    local textSize = tonumber(options.TextSize) or 12
-    local titleHeight = title ~= "" and math.max(18, textSize + 5) or 0
-    local lineY = title ~= "" and (titleHeight + 5) or 4
-    local height = math.max(lineY + 5, tonumber(options.Height) or 34)
+    local textSize = tonumber(options.TextSize) or 13
+    local titleHeight = title ~= "" and math.max(19, textSize + 6) or 0
+    local lineY = title ~= "" and (titleHeight + 7) or 5
+    local height = math.max(lineY + 6, tonumber(options.Height) or 38)
 
     local wrap = Instance.new("Frame")
     wrap.Name = "JLSectionDivider"
@@ -4868,54 +4868,72 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     wrap.LayoutOrder = layoutOrder or 1
     wrap.Parent = parentFrame
 
-    local line = Instance.new("Frame")
-    line.Name = "Track"
-    line.Size = UDim2.new(1, 0, 0, 1)
-    line.Position = UDim2.new(0, 0, 0, lineY + 1)
-    line.BackgroundColor3 = C.border
-    line.BackgroundTransparency = 0.12
-    line.BorderSizePixel = 0
-    line.Parent = wrap
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Size = UDim2.new(1, 0, 0, 1)
+    track.Position = UDim2.new(0, 0, 0, lineY + 2)
+    track.BackgroundColor3 = C.border
+    track.BackgroundTransparency = 0.08
+    track.BorderSizePixel = 0
+    track.Parent = wrap
 
     if title ~= "" then
-        local maxWidth = math.max(40, (width or 300) - 4)
-        local bounds = TextService:GetTextSize(title, textSize, Enum.Font.GothamBold, Vector2.new(maxWidth, titleHeight))
-        local labelW = math.min(maxWidth, math.max(24, bounds.X + 3))
+        local maxWidth = math.max(40, (width or 300) - 8)
+        local bounds = TextService:GetTextSize(title, textSize, Enum.Font.GothamBold, Vector2.new(maxWidth - 14, titleHeight))
+        local labelW = math.min(maxWidth - 14, math.max(24, bounds.X + 3))
+        local groupW = labelW + 12
+
+        local titleGroup = Instance.new("Frame")
+        titleGroup.Name = "TitleGroup"
+        titleGroup.Size = UDim2.new(0, groupW, 0, titleHeight)
+        titleGroup.BackgroundTransparency = 1
+        titleGroup.Parent = wrap
+
+        local marker = Instance.new("Frame")
+        marker.Name = "Marker"
+        marker.Size = UDim2.new(0, 3, 0, math.max(12, textSize))
+        marker.Position = UDim2.new(0, 0, 0.5, -math.max(12, textSize) / 2)
+        marker.BackgroundColor3 = accent
+        marker.BorderSizePixel = 0
+        marker.Parent = titleGroup
+        corner(2, marker)
+
         local label = Instance.new("TextLabel")
         label.Name = "Title"
-        label.Size = UDim2.new(0, labelW, 0, titleHeight)
+        label.Size = UDim2.new(1, -11, 1, 0)
+        label.Position = UDim2.new(0, 11, 0, 0)
         label.BackgroundTransparency = 1
         label.BorderSizePixel = 0
         label.Text = title
         label.Font = Enum.Font.GothamBold
         label.TextSize = textSize
-        label.TextColor3 = options.Color or accent
-        label.TextXAlignment = alignment == "center" and Enum.TextXAlignment.Center or (alignment == "right" and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left)
+        label.TextColor3 = options.Color or C.txt
+        label.TextXAlignment = Enum.TextXAlignment.Left
         label.TextYAlignment = Enum.TextYAlignment.Center
         label.TextTruncate = Enum.TextTruncate.AtEnd
-        label.Parent = wrap
+        label.Parent = titleGroup
 
-        local accentLine = Instance.new("Frame")
-        accentLine.Name = "Accent"
-        accentLine.Size = UDim2.new(0, math.min(38, labelW), 0, 3)
-        accentLine.Position = UDim2.new(0, 0, 0, lineY)
-        accentLine.BackgroundColor3 = accent
-        accentLine.BorderSizePixel = 0
-        accentLine.Parent = wrap
-        corner(2, accentLine)
+        local accentBar = Instance.new("Frame")
+        accentBar.Name = "Accent"
+        accentBar.Size = UDim2.new(0, math.min(46, groupW), 0, 3)
+        accentBar.Position = UDim2.new(0, 0, 0, lineY)
+        accentBar.BackgroundColor3 = accent
+        accentBar.BorderSizePixel = 0
+        accentBar.Parent = wrap
+        corner(2, accentBar)
 
         if alignment == "center" then
-            label.AnchorPoint = Vector2.new(0.5, 0)
-            label.Position = UDim2.new(0.5, 0, 0, 0)
-            accentLine.AnchorPoint = Vector2.new(0.5, 0)
-            accentLine.Position = UDim2.new(0.5, 0, 0, lineY)
+            titleGroup.AnchorPoint = Vector2.new(0.5, 0)
+            titleGroup.Position = UDim2.new(0.5, 0, 0, 0)
+            accentBar.AnchorPoint = Vector2.new(0.5, 0)
+            accentBar.Position = UDim2.new(0.5, 0, 0, lineY)
         elseif alignment == "right" then
-            label.AnchorPoint = Vector2.new(1, 0)
-            label.Position = UDim2.new(1, 0, 0, 0)
-            accentLine.AnchorPoint = Vector2.new(1, 0)
-            accentLine.Position = UDim2.new(1, 0, 0, lineY)
+            titleGroup.AnchorPoint = Vector2.new(1, 0)
+            titleGroup.Position = UDim2.new(1, 0, 0, 0)
+            accentBar.AnchorPoint = Vector2.new(1, 0)
+            accentBar.Position = UDim2.new(1, 0, 0, lineY)
         else
-            label.Position = UDim2.new(0, 0, 0, 0)
+            titleGroup.Position = UDim2.new(0, 0, 0, 0)
         end
     end
     return wrap
@@ -6512,10 +6530,10 @@ function JL:Window(opts)
             return sc
         end
         if typ == "Grid" then
-            -- Grid content is organized into full-width groups. Each divider starts a new group;
-            -- sections inside that group share one horizontal row of columns.
-            local scroll = mkScroll(Enum.ScrollingDirection.Y)
+            -- Each SectionDivider starts a full-width page. Sections are laid out in fixed columns.
+            local scroll = mkScroll(Enum.ScrollingDirection.XY)
             scroll.ElasticBehavior = Enum.ElasticBehavior.Never
+            scroll.ScrollingEnabled = true
             local colCon = Instance.new("Frame")
             colCon.Size = UDim2.new(0,0,0,0)
             colCon.Position = UDim2.new(0,3,0,3)
@@ -6523,8 +6541,9 @@ function JL:Window(opts)
             colCon.Parent = scroll
 
             local pager = Instance.new("Frame")
-            pager.Size = UDim2.new(1,0,0,24)
-            pager.Position = UDim2.new(0,0,1,-24)
+            pager.Name = "GridPager"
+            pager.Size = UDim2.new(1,0,0,26)
+            pager.Position = UDim2.new(0,0,1,-26)
             pager.BackgroundTransparency = 1
             pager.Visible = false
             pager.Parent = tabFrame
@@ -6532,41 +6551,55 @@ function JL:Window(opts)
             pl.FillDirection = Enum.FillDirection.Horizontal
             pl.HorizontalAlignment = Enum.HorizontalAlignment.Center
             pl.VerticalAlignment = Enum.VerticalAlignment.Center
-            pl.Padding = UDim.new(0,4)
+            pl.Padding = UDim.new(0,5)
             pl.SortOrder = Enum.SortOrder.LayoutOrder
             pl.Parent = pager
 
             local groups, currentGroup = {}, nil
             local groupGap = 12
             local pageW = VIS * colW + math.max(VIS - 1, 0) * COLGAP
-            local function curPage()
-                return math.floor(scroll.CanvasPosition.X / (pageW + groupGap) + 0.5) + 1
-            end
+            local currentPage, pageTweening, relayoutQueued = 1, false, false
+            local chips, pageStatus = {}, nil
+
             local function numPages() return math.max(1, #groups) end
-            local function paintChips()
-                local p = curPage()
-                for i,ch in ipairs(chips or {}) do
+            local function pageOffset(p) return (p - 1) * (pageW + groupGap) end
+            local function paintPager()
+                local p, total = math.clamp(currentPage, 1, numPages()), numPages()
+                if pageStatus then
+                    pageStatus.Text = string.format("PAGE %02d  /  %02d", p, total)
+                end
+                for i,ch in ipairs(chips) do
                     local on = (i == p)
                     ch.BackgroundColor3 = on and ACCENTS[1] or C.btnBg
                     ch.TextColor3 = on and Color3.new(1,1,1) or C.dim
                 end
             end
-            local chips = {}
             local function goPage(p)
-                p = math.clamp(p, 1, numPages())
-                createTween(scroll, TweenInfo.new(.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                    CanvasPosition = Vector2.new((p - 1) * (pageW + groupGap), scroll.CanvasPosition.Y)
-                }):Play()
+                p = math.clamp(math.floor(tonumber(p) or 1), 1, numPages())
+                currentPage = p
+                paintPager()
+                pageTweening = true
+                local tween = createTween(scroll, TweenInfo.new(.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                    CanvasPosition = Vector2.new(pageOffset(p), scroll.CanvasPosition.Y)
+                })
+                tween.Completed:Connect(function()
+                    if scroll and scroll.Parent then
+                        scroll.CanvasPosition = Vector2.new(pageOffset(currentPage), scroll.CanvasPosition.Y)
+                    end
+                    pageTweening = false
+                    paintPager()
+                end)
+                tween:Play()
             end
-            local function mkChip(txt,order,fn)
+            local function mkPagerButton(txt, order, fn, wide)
                 local b = Instance.new("TextButton")
-                b.Size = UDim2.new(0,24,0,18)
+                b.Size = UDim2.new(0,wide or 24,0,20)
                 b.BackgroundColor3 = C.btnBg
                 b.BorderSizePixel = 0
                 b.AutoButtonColor = false
                 b.Text = txt
                 b.Font = GB
-                b.TextSize = 11
+                b.TextSize = 12
                 b.TextColor3 = C.dim
                 b.LayoutOrder = order
                 b.Parent = pager
@@ -6576,19 +6609,33 @@ function JL:Window(opts)
             end
             local function rebuildPager()
                 for _,c in ipairs(pager:GetChildren()) do
-                    if c:IsA("TextButton") then c:Destroy() end
+                    if c:IsA("GuiObject") and c ~= pl then c:Destroy() end
                 end
                 chips = {}
                 local np = numPages()
-                pager.Visible = #groups > 1
-                scroll.Size = pager.Visible and UDim2.new(1,0,1,-28) or UDim2.new(1,0,1,0)
-                if not pager.Visible then return end
-                mkChip("‹",0,function() goPage(curPage()-1) end)
-                for i=1,np do
-                    chips[i] = mkChip(tostring(i),i,function() goPage(i) end)
+                pager.Visible = #groups > 0
+                scroll.Size = pager.Visible and UDim2.new(1,0,1,-30) or UDim2.new(1,0,1,0)
+                if not pager.Visible then
+                    pageStatus = nil
+                    return
                 end
-                mkChip("›",np+1,function() goPage(curPage()+1) end)
-                paintChips()
+                mkPagerButton("‹",0,function() goPage(currentPage-1) end,25)
+                pageStatus = Instance.new("TextLabel")
+                pageStatus.Name = "PageStatus"
+                pageStatus.Size = UDim2.new(0,86,0,20)
+                pageStatus.BackgroundTransparency = 1
+                pageStatus.Font = GB
+                pageStatus.TextSize = 10
+                pageStatus.TextColor3 = C.dim
+                pageStatus.Text = ""
+                pageStatus.LayoutOrder = 1
+                pageStatus.Parent = pager
+                for i=1,np do
+                    local b = mkPagerButton(tostring(i),i+1,function() goPage(i) end,22)
+                    chips[i] = b
+                end
+                mkPagerButton("›",np+2,function() goPage(currentPage+1) end,25)
+                paintPager()
             end
             local function relayout()
                 local totalH = 0
@@ -6602,19 +6649,32 @@ function JL:Window(opts)
                     end
                     g.row.Size = UDim2.new(1,0,0,maxH)
                     local headerH = g.divider and g.divider.Size.Y.Offset or 0
-                    local groupH = headerH + (g.divider and 8 or 0) + maxH
+                    local groupH = headerH + (g.divider and 9 or 0) + maxH
                     g.frame.Size = UDim2.new(0,pageW,0,groupH)
                     g.frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
                     totalH = math.max(totalH,groupH)
                 end
                 colCon.Size = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap) or 0,0,totalH)
-                scroll.CanvasSize = UDim2.new(0,#groups > 1 and ( #groups*pageW + (#groups-1)*groupGap + 8) or 0,0,totalH+14)
+                scroll.CanvasSize = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap + 8) or 0,0,totalH+14)
                 rebuildPager()
+                currentPage = math.clamp(currentPage,1,numPages())
+                if not pageTweening then
+                    scroll.CanvasPosition = Vector2.new(pageOffset(currentPage),scroll.CanvasPosition.Y)
+                end
+                paintPager()
+            end
+            local function requestRelayout()
+                if relayoutQueued then return end
+                relayoutQueued = true
+                task.defer(function()
+                    relayoutQueued = false
+                    if tabFrame and tabFrame.Parent then relayout() end
+                end)
             end
             local function newGroup(options)
                 local index = #groups + 1
                 local frame = Instance.new("Frame")
-                frame.Name = "JLGridGroup"
+                frame.Name = "JLGridPage"
                 frame.Size = UDim2.new(0,pageW,0,0)
                 frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
                 frame.BackgroundTransparency = 1
@@ -6628,7 +6688,7 @@ function JL:Window(opts)
                 local row = Instance.new("Frame")
                 row.Name = "Sections"
                 row.Size = UDim2.new(1,0,0,0)
-                row.Position = UDim2.new(0,0,0,divider and (divider.Size.Y.Offset+8) or 0)
+                row.Position = UDim2.new(0,0,0,divider and (divider.Size.Y.Offset+9) or 0)
                 row.BackgroundTransparency = 1
                 row.Parent = frame
                 local g = {frame=frame,divider=divider,row=row,cols={}}
@@ -6644,12 +6704,12 @@ function JL:Window(opts)
                     layout.Padding = UDim.new(0,8)
                     layout.SortOrder = Enum.SortOrder.LayoutOrder
                     layout.Parent = colFrame
-                    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(relayout)
+                    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(requestRelayout)
                     g.cols[ci] = {F=colFrame,L=layout,count=0}
                 end
                 groups[index] = g
                 currentGroup = g
-                relayout()
+                requestRelayout()
                 return g
             end
             local function ensureGroup()
@@ -6657,9 +6717,12 @@ function JL:Window(opts)
                 return currentGroup
             end
             local function resolveCol(c,g)
-                local NAMES = {left=1,mid=2,middle=2,center=2,right=3}
+                local NAMES = {left=1,mid=2,middle=2,center=2,right=VIS}
                 if type(c)=="number" then return math.clamp(math.floor(c),1,VIS) end
-                if type(c)=="string" then return math.clamp(NAMES[c:lower()] or tonumber(c) or 1,1,VIS) end
+                if type(c)=="string" then
+                    local key = c:lower()
+                    return math.clamp(math.floor(tonumber(c) or NAMES[key] or 1),1,VIS)
+                end
                 local best,bestCount=1,math.huge
                 for i=1,VIS do
                     local n=g.cols[i].count
@@ -6673,10 +6736,14 @@ function JL:Window(opts)
                 local ci=resolveCol(sopts.Column,g)
                 local col=g.cols[ci]
                 col.count=col.count+1
+                local result
                 if isMulti then
-                    return makeMultiSection(col.F,sopts,sg,col.count,colW,uiScale,attachTip,hubConfig)
+                    result = makeMultiSection(col.F,sopts,sg,col.count,colW,uiScale,attachTip,hubConfig)
+                else
+                    result = makeSection(col.F,sopts.Title or "Section",sg,col.count,colW,sopts,uiScale,attachTip,hubConfig)
                 end
-                return makeSection(col.F,sopts.Title or "Section",sg,col.count,colW,sopts,uiScale,attachTip,hubConfig)
+                requestRelayout()
+                return result
             end
             function Tab:Section(sopts) return addSection(sopts,false) end
             function Tab:MultiSection(sopts) return addSection(sopts,true) end
@@ -6685,8 +6752,16 @@ function JL:Window(opts)
                 options=options or {}
                 return newGroup(options)
             end
-            scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(paintChips)
-            tabScrollers[id] = {cur=curPage,go=goPage}
+            scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+                if not pageTweening then
+                    local expected = pageOffset(currentPage)
+                    if math.abs(scroll.CanvasPosition.X-expected) > 1 then
+                        scroll.CanvasPosition = Vector2.new(expected,scroll.CanvasPosition.Y)
+                    end
+                end
+                paintPager()
+            end)
+            tabScrollers[id] = {cur=function() return currentPage end,go=goPage}
                 elseif typ == "Custom" then
         else
             local scroll = mkScroll(Enum.ScrollingDirection.Y)
