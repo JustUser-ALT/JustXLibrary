@@ -1726,9 +1726,9 @@ do
     local CoreGui = game:GetService("CoreGui")
     shared._JLNotifs = shared._JLNotifs or {}
     local active = shared._JLNotifs
-    local W,H = 200,55
+    local W,H = 300,72
     local MARGIN = 14
-    local GAP = 72.5
+    local GAP = 17.5
     local function notifySide() return tostring(cfgGet("_notify_side","TopRight")) end
     local function edgeXY(side, width)
         local camObj = workspace.CurrentCamera
@@ -1740,8 +1740,8 @@ do
         return x, yBase, top, left
     end
     local function updPos()
-        local x = edgeXY(notifySide())
-        local top = (notifySide() == "TopLeft" or notifySide() == "TopRight")
+        local side = notifySide()
+        local top = (side == "TopLeft" or side == "TopRight")
         local camObj = workspace.CurrentCamera
         local vpY = camObj and camObj.ViewportSize.Y or 720
         local off = 0
@@ -1749,9 +1749,9 @@ do
             local nd = active[k]
             if nd and nd.f then
                 local y = top and (MARGIN + off) or (vpY - MARGIN - nd.h - off)
-                local nx = edgeXY(notifySide(), nd.w or W)
+                local nx = edgeXY(side, nd.w or W)
                 tw(nd.f,{Position = UDim2.new(0,nx,0,y)},.35,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut)
-                off = off + nd.h + 17.5
+                off = off + nd.h + GAP
             end
         end
     end
@@ -1766,19 +1766,24 @@ do
         cfg2 = cfg2 or {}
         local typ = cfg2.Type or "Info"
         if not typeAllowed(typ) then return end
-        local title = cfg2.Title or "JustLib"; local desc = cfg2.Desc or ""
+        local title = cfg2.Title or "JustLib"
+        local desc = cfg2.Desc or ""
         local dur = cfg2.Duration or tonumber(cfgGet("_notify_duration",5)) or 5
         local screen = cfg2.Screen
         local hasScreen = screen ~= nil and screen ~= false
-        local noteW = hasScreen and 260 or W
-        local textX = hasScreen and 56 or 22
-        local textW = hasScreen and 194 or 116
-        local descW = hasScreen and 194 or 180
-        local barW = noteW - 20
-        local col=Color3.fromRGB(158,198,255); local ico="rbxassetid://70718918423383"
-        if typ=="Error" then col=Color3.fromRGB(255,82,82); ico="rbxassetid://113114601887005"
-        elseif typ=="Success" then col=Color3.fromRGB(145,255,128); ico="rbxassetid://18567015051"
-        elseif typ=="Warn" then col=Color3.fromRGB(255,225,117); ico="rbxassetid://14863060512" end
+        local noteW = hasScreen and 340 or W
+        local textX = hasScreen and 66 or 58
+        local textRight = 42
+        local contentW = noteW - textX - textRight
+        local col = Color3.fromRGB(158,198,255)
+        local ico = "rbxassetid://70718918423383"
+        if typ == "Error" then
+            col = Color3.fromRGB(255,82,82); ico = "rbxassetid://113114601887005"
+        elseif typ == "Success" then
+            col = Color3.fromRGB(145,255,128); ico = "rbxassetid://18567015051"
+        elseif typ == "Warn" then
+            col = Color3.fromRGB(255,225,117); ico = "rbxassetid://14863060512"
+        end
         if cfgGet("_notify_stack", false) then
             for _,nd in ipairs(active) do
                 if nd and not nd.closing and nd.title == title and nd.desc == desc and nd.typ == typ then
@@ -1790,61 +1795,173 @@ do
             end
         end
         local side = notifySide()
-        local x, yBase, top, left = edgeXY(side, noteW)
+        local x, _, top, left = edgeXY(side, noteW)
         local startX = left and (x - noteW - 60) or (x + noteW + 60)
-        local titleMeasureW = hasScreen and 150 or 116
-        local titleH = math.max(20, math.min(TextService:GetTextSize(title, 14, GB, Vector2.new(titleMeasureW,200)).Y, 56))
-        local descH = (desc == "") and 2 or math.max(14, math.min(TextService:GetTextSize(desc, 10, G, Vector2.new(descW,2000)).Y + 2, 240))
-        local barY = 2 + titleH + descH
-        local h = barY + 5
+        local titleH = math.max(18, math.min(TextService:GetTextSize(title, 14, GB, Vector2.new(contentW,160)).Y, 42))
+        local descH = desc == "" and 0 or math.max(14, math.min(TextService:GetTextSize(desc, 10, G, Vector2.new(contentW,1200)).Y + 2, 120))
+        local contentBottom = 12 + titleH + (desc ~= "" and (4 + descH) or 0)
+        local h = math.max(72, contentBottom + 14)
         local camObj = workspace.CurrentCamera
         local vpY = camObj and camObj.ViewportSize.Y or 720
         local startY = top and MARGIN or (vpY - MARGIN - h)
-        local sg2=registerHubGui(Instance.new("ScreenGui"), "Notif"); sg2.ResetOnSpawn=false; sg2.IgnoreGuiInset=true; sg2.ClipToDeviceSafeArea=false; sg2.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; sg2.DisplayOrder=10001
-        local parentOk=pcall(function() sg2.Parent=CoreGui end); if not parentOk or not sg2.Parent then sg2.Parent=PG end
-        local f=Instance.new("Frame"); f.BorderSizePixel=0; f.BackgroundColor3=Color3.fromRGB(0,0,0); f.Size=UDim2.new(0,noteW,0,h); f.Position=UDim2.new(0,startX,0,startY); f.Parent=sg2; corner(8,f)
+
+        local sg2 = registerHubGui(Instance.new("ScreenGui"), "Notif")
+        sg2.ResetOnSpawn = false
+        sg2.IgnoreGuiInset = true
+        sg2.ClipToDeviceSafeArea = false
+        sg2.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        sg2.DisplayOrder = 10001
+        local parentOk = pcall(function() sg2.Parent = CoreGui end)
+        if not parentOk or not sg2.Parent then sg2.Parent = PG end
+
+        local f = Instance.new("Frame")
+        f.Name = "Notification"
+        f.BorderSizePixel = 0
+        f.BackgroundColor3 = Color3.fromRGB(17,19,25)
+        f.Size = UDim2.new(0,noteW,0,h)
+        f.Position = UDim2.new(0,startX,0,startY)
+        f.ClipsDescendants = true
+        f.Parent = sg2
+        corner(10,f)
+        stroke(C.border,1,f)
         f:SetAttribute("JLNoRepaint", true)
-        local te=Instance.new("Frame"); te.ZIndex=0; te.BorderSizePixel=0; te.BackgroundColor3=col; te.Size=UDim2.new(0,20,0,h); te.Position=UDim2.new(0,-3,0,0); te.Parent=f; corner(8,te)
+
+        local rail = Instance.new("Frame")
+        rail.Name = "Accent"
+        rail.BorderSizePixel = 0
+        rail.BackgroundColor3 = col
+        rail.Size = UDim2.new(0,3,1,-20)
+        rail.Position = UDim2.new(0,0,0,10)
+        rail.ZIndex = 2
+        rail.Parent = f
+        corner(2,rail)
+
         if hasScreen then
-            local image = Instance.new("ImageLabel"); image.Name="NotificationScreen"; image.BorderSizePixel=0; image.BackgroundTransparency=1; image.Size=UDim2.new(0,40,0,40); image.Position=UDim2.new(0,8,0,8); image.ScaleType=(type(screen)=="table" and screen.ScaleType) or Enum.ScaleType.Fit; image.Parent=f
-            local screenPlayer = type(screen)=="table" and screen.Player or nil
-            local screenAsset = type(screen)=="table" and (screen.Image or screen.Asset or screen.Id) or screen
+            local image = Instance.new("ImageLabel")
+            image.Name = "NotificationScreen"
+            image.BorderSizePixel = 0
+            image.BackgroundColor3 = Color3.fromRGB(31,34,43)
+            image.BackgroundTransparency = 0
+            image.Size = UDim2.new(0,40,0,40)
+            image.Position = UDim2.new(0,14,0, math.floor((h-40)/2))
+            image.ScaleType = (type(screen) == "table" and screen.ScaleType) or Enum.ScaleType.Fit
+            image.ZIndex = 3
+            image.Parent = f
+            corner(8,image)
+            local screenPlayer = type(screen) == "table" and screen.Player or nil
+            local screenAsset = type(screen) == "table" and (screen.Image or screen.Asset or screen.Id) or screen
             if screenPlayer ~= nil then
                 trackedSpawn(function()
-                    local userId = (typeof(screenPlayer)=="Instance" and screenPlayer:IsA("Player")) and screenPlayer.UserId or tonumber(screenPlayer)
+                    local userId = (typeof(screenPlayer) == "Instance" and screenPlayer:IsA("Player")) and screenPlayer.UserId or tonumber(screenPlayer)
                     if userId then
-                        local okThumb,content = pcall(function() return game:GetService("Players"):GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, (type(screen)=="table" and screen.ThumbSize) or Enum.ThumbnailSize.Size180x180) end)
-                        if okThumb and image.Parent then image.Image=content end
+                        local okThumb,content = pcall(function()
+                            return game:GetService("Players"):GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, (type(screen) == "table" and screen.ThumbSize) or Enum.ThumbnailSize.Size180x180)
+                        end)
+                        if okThumb and image.Parent then image.Image = content end
                     end
                 end)
             elseif screenAsset ~= nil then
-                local value=tostring(screenAsset)
-                image.Image=value:match("^%d+$") and ("rbxassetid://"..value) or value
+                local value = tostring(screenAsset)
+                image.Image = value:match("^%d+$") and ("rbxassetid://" .. value) or value
             end
-            if type(screen)=="table" and screen.ImageColor3 then image.ImageColor3=screen.ImageColor3 end
+            if type(screen) == "table" and screen.ImageColor3 then image.ImageColor3 = screen.ImageColor3 end
         else
-            local ti=Instance.new("ImageLabel"); ti.BorderSizePixel=0; ti.BackgroundTransparency=1; ti.ImageColor3=col; ti.Image=ico; ti.Size=UDim2.new(0,15,0,15); ti.Position=UDim2.new(0,3,0,3); ti.Parent=f
+            local iconBack = Instance.new("Frame")
+            iconBack.Name = "IconHolder"
+            iconBack.Size = UDim2.new(0,36,0,36)
+            iconBack.Position = UDim2.new(0,12,0,math.floor((h-36)/2))
+            iconBack.BackgroundColor3 = Color3.fromRGB(31,34,43)
+            iconBack.BorderSizePixel = 0
+            iconBack.ZIndex = 3
+            iconBack.Parent = f
+            corner(9,iconBack)
+            local ti = Instance.new("ImageLabel")
+            ti.Name = "TypeIcon"
+            ti.BorderSizePixel = 0
+            ti.BackgroundTransparency = 1
+            ti.ImageColor3 = col
+            ti.Image = ico
+            ti.Size = UDim2.new(0,19,0,19)
+            ti.AnchorPoint = Vector2.new(0.5,0.5)
+            ti.Position = UDim2.new(0.5,0,0.5,0)
+            ti.ZIndex = 4
+            ti.Parent = iconBack
         end
-        local titleLbl = newTxt({Parent=f,Text=title,Font=GB,Size=14,Color=Color3.new(1,1,1),Wrap=true,Sz=UDim2.new(0,textW,0,titleH),Pos=UDim2.new(0,textX,0,2),Z=5})
+
+        local titleLbl = newTxt({
+            Parent=f, Text=title, Font=GB, Size=14, Color=Color3.new(1,1,1),
+            Wrap=true, Sz=UDim2.new(0,contentW,0,titleH),
+            Pos=UDim2.new(0,textX,0,11), Z=5
+        })
         titleLbl:SetAttribute("JLNoRepaint", true)
-        local countLbl = newTxt({Parent=f,Text="",Font=GB,Size=12,Color=col,XAlign=Enum.TextXAlignment.Right,Sz=UDim2.new(0,24,0,20),Pos=UDim2.new(1,-52,0,2),Z=5})
+
+        local countLbl = newTxt({
+            Parent=f, Text="", Font=GB, Size=11, Color=col,
+            XAlign=Enum.TextXAlignment.Right, Sz=UDim2.new(0,26,0,18),
+            Pos=UDim2.new(1,-52,0,10), Z=5
+        })
         countLbl.Visible = false
-        local td=newTxt({Parent=f,Text=desc,Size=10,Color=Color3.new(1,1,1),Sz=UDim2.new(0,descW,0,descH),Pos=UDim2.new(0,hasScreen and textX or 10,0,2 + titleH),Z=5,Wrap=true}); td.TextTransparency=0.25
+
+        local td = newTxt({
+            Parent=f, Text=desc, Size=10, Color=Color3.fromRGB(190,194,204),
+            Sz=UDim2.new(0,contentW,0,descH),
+            Pos=UDim2.new(0,textX,0,11+titleH+4), Z=5, Wrap=true
+        })
+        td.TextTransparency = 0.08
         td.TextYAlignment = Enum.TextYAlignment.Top
         td:SetAttribute("JLNoRepaint", true)
-        local db=Instance.new("Frame"); db.BorderSizePixel=0; db.BackgroundColor3=col; db.Size=UDim2.new(0,barW,0,3); db.Position=UDim2.new(0,10,0,barY); db.BackgroundTransparency=0.2; db.Parent=f; corner(2,db)
-        local cb=Instance.new("TextButton"); cb.BorderSizePixel=0; cb.BackgroundTransparency=1; cb.TextSize=14; cb.Font=GB; cb.TextColor3=Color3.new(1,1,1); cb.ZIndex=6; cb.Size=UDim2.new(0,20,0,20); cb.Position=UDim2.new(1,-22,0,2); cb.Text="x"; cb.Parent=f
+
+        local barY = h - 5
+        local db = Instance.new("Frame")
+        db.Name = "Progress"
+        db.BorderSizePixel = 0
+        db.BackgroundColor3 = col
+        db.Size = UDim2.new(0,noteW-24,0,2)
+        db.Position = UDim2.new(0,12,0,barY)
+        db.BackgroundTransparency = 0.12
+        db.ZIndex = 3
+        db.Parent = f
+        corner(2,db)
+
+        local cb = Instance.new("TextButton")
+        cb.Name = "Close"
+        cb.BorderSizePixel = 0
+        cb.BackgroundTransparency = 1
+        cb.TextSize = 17
+        cb.Font = GB
+        cb.TextColor3 = Color3.fromRGB(185,190,201)
+        cb.ZIndex = 7
+        cb.Size = UDim2.new(0,26,0,26)
+        cb.Position = UDim2.new(1,-32,0,6)
+        cb.Text = "×"
+        cb.Parent = f
         cb:SetAttribute("JLNoRepaint", true)
-        local nd = {f=f, g=sg2, w=noteW, HubId=Workspace.GetCurrentHubId(), title=title, desc=desc, typ=typ, count=1, countLbl=countLbl, db=db, closing=false, h=h, gen=0}
+
+        local nd = {
+            f=f, g=sg2, w=noteW, HubId=Workspace.GetCurrentHubId(),
+            title=title, desc=desc, typ=typ, count=1, countLbl=countLbl,
+            db=db, closing=false, h=h, gen=0
+        }
         table.insert(active,nd)
+
         local function close()
-            if nd.closing then return end; nd.closing=true
+            if nd.closing then return end
+            nd.closing = true
             if nd.barTw then nd.barTw:Cancel() end
-            for i,v in ipairs(active) do if v==nd then table.remove(active,i); break end end
+            for i,v in ipairs(active) do
+                if v == nd then table.remove(active,i); break end
+            end
             updPos()
             if f and f.Parent then
                 local exitX = left and (x - noteW - 60) or (x + noteW + 60)
-                local t2=createTween(f,TweenInfo.new(0.4,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),{Position=UDim2.new(0,exitX,0,f.Position.Y.Offset)}); t2:Play(); t2.Completed:Connect(function() sg2:Destroy() end)
+                local t2 = createTween(f,TweenInfo.new(0.32,Enum.EasingStyle.Quad,Enum.EasingDirection.InOut),{
+                    Position=UDim2.new(0,exitX,0,f.Position.Y.Offset),
+                    BackgroundTransparency=0.15
+                })
+                t2:Play()
+                t2.Completed:Connect(function() sg2:Destroy() end)
+            else
+                sg2:Destroy()
             end
         end
         nd.close = close
@@ -1852,8 +1969,8 @@ do
             nd.gen = nd.gen + 1
             local gen = nd.gen
             if nd.barTw then nd.barTw:Cancel() end
-            db.Size = UDim2.new(0,barW,0,3)
-            local tween = createTween(db, TweenInfo.new(d,Enum.EasingStyle.Linear), {Size = UDim2.new(0,0,0,3)})
+            db.Size = UDim2.new(0,noteW-24,0,2)
+            local tween = createTween(db,TweenInfo.new(d,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,0,2)})
             nd.barTw = tween
             tween.Completed:Connect(function(state)
                 if state == Enum.PlaybackState.Completed and nd.gen == gen and not nd.closing then close() end
@@ -1862,21 +1979,33 @@ do
         end
         cb.MouseButton1Click:Connect(close)
         if cfgGet("_notify_hide_on_click", false) then
-            local clickSurface=Instance.new("TextButton"); clickSurface.Name="HideOnClick"; clickSurface.BackgroundTransparency=1; clickSurface.BorderSizePixel=0; clickSurface.Text=""; clickSurface.AutoButtonColor=false; clickSurface.Active=true; clickSurface.Size=UDim2.new(1,0,1,0); clickSurface.ZIndex=4; clickSurface.Parent=f
+            local clickSurface = Instance.new("TextButton")
+            clickSurface.Name = "HideOnClick"
+            clickSurface.BackgroundTransparency = 1
+            clickSurface.BorderSizePixel = 0
+            clickSurface.Text = ""
+            clickSurface.AutoButtonColor = false
+            clickSurface.Active = true
+            clickSurface.Size = UDim2.new(1,0,1,0)
+            clickSurface.ZIndex = 6
+            clickSurface.Parent = f
             clickSurface.MouseButton1Click:Connect(close)
+            cb.ZIndex = 7
         end
         updPos()
-        trackedDelay(.35, function() if not nd.closing and nd.gen == 0 then nd.restart(dur) end end)
+        trackedDelay(.35,function()
+            if not nd.closing and nd.gen == 0 then nd.restart(dur) end
+        end)
     end
-    table.insert(JL._unloadHooks, function()
-        for i = #active, 1, -1 do
+    table.insert(JL._unloadHooks,function()
+        for i = #active,1,-1 do
             local nd = active[i]
             if nd and nd.HubId == Workspace.GetCurrentHubId() then
                 if nd.close then
                     pcall(nd.close)
                 else
                     if nd.g then pcall(function() nd.g:Destroy() end) end
-                    table.remove(active, i)
+                    table.remove(active,i)
                 end
             end
         end
