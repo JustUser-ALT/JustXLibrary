@@ -82,7 +82,7 @@ Tab methods:
 - `SetLocked(boolean)`, `IsLocked()`, `ToggleLocked()`
 - `SetHidden(boolean)`, `IsHidden()`, `ToggleHidden()`
 
-For Grid tabs, sections can be assigned to a column using `Column`. Horizontal movement between Grid columns is page-controlled: swipe/drag scrolling to the right is disabled, while vertical scrolling remains available. Use the page arrows at the bottom to move between column pages. List tabs arrange sections vertically. Custom tabs expose their frame through `Tab.Frame` for custom UI construction.
+For Grid tabs, sections can be assigned to a column using `Column`. A `SectionDivider` starts a new full-width group; all sections added after it belong to that group and are arranged in columns beneath the divider, until the next divider starts another group. Grid groups are page-controlled horizontally: swipe/drag scrolling is disabled, while vertical scrolling remains available. Use the page arrows at the bottom to move between groups. List tabs arrange sections vertically. Custom tabs expose their frame through `Tab.Frame` for custom UI construction.
 
 ### MultiSection
 
@@ -115,13 +115,20 @@ local Main = Tab:Section({
 ```
 
 Sections support `SetCollapsed(boolean)`, `ToggleCollapsed()`, `IsCollapsed()`, and the lock/visibility methods `SetLocked`, `SetHidden`, `IsLocked`, `IsHidden`, `ToggleLocked`, `ToggleHidden`.
-Add a lightweight titled separator inside a tab with `SectionDivider`:
+Add a full-width group heading to a Grid tab with `SectionDivider`. It starts a new group and spans all visible columns. Add as many sections as needed after it; they will be laid out beneath the same divider. The next divider starts another group.
 
 ```lua
 Tab:SectionDivider({
     Title = "Weapon",
-    Alignment = "Left" -- "Left", "Center", or "Right"
+    Alignment = "Center" -- "Left", "Center", or "Right"
 })
+
+Tab:Section({Title = "Weapon Settings", Column = 1})
+Tab:Section({Title = "Weapon Mods", Column = 2})
+
+Tab:SectionDivider("Visual")
+Tab:Section({Title = "ESP", Column = 1})
+Tab:Section({Title = "Effects", Column = 2})
 ```
 
 `SectionDivider` accepts a title string or an options table:
@@ -130,16 +137,11 @@ Tab:SectionDivider({
 | --- | --- |
 | `Title` or `Name` | Text displayed over the divider line. |
 | `Alignment` or `Align` | `"Left"`, `"Center"`, or `"Right"`. Defaults to `"Left"`. |
-| `Column` | Grid column; supports the same column selection as `Section`. |
 | `Height` | Divider row height in pixels. |
 | `TextSize` | Title text size. |
 | `Color` | Optional title color. |
 
-The divider participates in the tab's normal layout order and does not create a collapsible section.
-
-
-All controls accept a configuration table. Common options include `Name`, `Flag`, `Icon`, `Tooltip`, `Default`, `NoSave`, and `Callback` where applicable. A `Flag` identifies persisted state; use a unique flag for each control.
-
+The divider spans the complete Grid group width. It is not assigned to an individual column and does not create a collapsible section.
 ### Control reference
 
 | Constructor | Main options | Callback / behavior |
