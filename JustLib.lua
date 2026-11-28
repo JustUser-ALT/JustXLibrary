@@ -4854,10 +4854,11 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     local alignment = tostring(options.Alignment or options.Align or "Left"):lower()
     if alignment ~= "center" and alignment ~= "right" then alignment = "left" end
 
+    local accent = options.LineColor or nxAc()
     local textSize = tonumber(options.TextSize) or 12
-    local titleHeight = title ~= "" and math.max(16, textSize + 4) or 0
+    local titleHeight = title ~= "" and math.max(18, textSize + 5) or 0
     local lineY = title ~= "" and (titleHeight + 5) or 4
-    local height = math.max(lineY + 3, tonumber(options.Height) or 30)
+    local height = math.max(lineY + 5, tonumber(options.Height) or 34)
 
     local wrap = Instance.new("Frame")
     wrap.Name = "JLSectionDivider"
@@ -4868,38 +4869,51 @@ local function makeSectionDivider(parentFrame, options, layoutOrder, width)
     wrap.Parent = parentFrame
 
     local line = Instance.new("Frame")
-    line.Name = "Line"
-    line.Size = UDim2.new(1, 0, 0, 2)
-    line.Position = UDim2.new(0, 0, 0, lineY)
-    line.BackgroundColor3 = options.LineColor or C.border
-    line.BackgroundTransparency = 0
+    line.Name = "Track"
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 0, lineY + 1)
+    line.BackgroundColor3 = C.border
+    line.BackgroundTransparency = 0.12
     line.BorderSizePixel = 0
     line.Parent = wrap
 
     if title ~= "" then
         local maxWidth = math.max(40, (width or 300) - 4)
-        local bounds = TextService:GetTextSize(title, textSize, GB, Vector2.new(maxWidth, titleHeight))
-        local labelW = math.min(maxWidth, math.max(24, bounds.X + 2))
+        local bounds = TextService:GetTextSize(title, textSize, Enum.Font.GothamBold, Vector2.new(maxWidth, titleHeight))
+        local labelW = math.min(maxWidth, math.max(24, bounds.X + 3))
         local label = Instance.new("TextLabel")
         label.Name = "Title"
         label.Size = UDim2.new(0, labelW, 0, titleHeight)
         label.BackgroundTransparency = 1
         label.BorderSizePixel = 0
         label.Text = title
-        label.Font = GB
+        label.Font = Enum.Font.GothamBold
         label.TextSize = textSize
-        label.TextColor3 = options.Color or C.txt
+        label.TextColor3 = options.Color or accent
         label.TextXAlignment = alignment == "center" and Enum.TextXAlignment.Center or (alignment == "right" and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left)
         label.TextYAlignment = Enum.TextYAlignment.Center
         label.TextTruncate = Enum.TextTruncate.AtEnd
         label.Parent = wrap
 
+        local accentLine = Instance.new("Frame")
+        accentLine.Name = "Accent"
+        accentLine.Size = UDim2.new(0, math.min(38, labelW), 0, 3)
+        accentLine.Position = UDim2.new(0, 0, 0, lineY)
+        accentLine.BackgroundColor3 = accent
+        accentLine.BorderSizePixel = 0
+        accentLine.Parent = wrap
+        corner(2, accentLine)
+
         if alignment == "center" then
             label.AnchorPoint = Vector2.new(0.5, 0)
             label.Position = UDim2.new(0.5, 0, 0, 0)
+            accentLine.AnchorPoint = Vector2.new(0.5, 0)
+            accentLine.Position = UDim2.new(0.5, 0, 0, lineY)
         elseif alignment == "right" then
             label.AnchorPoint = Vector2.new(1, 0)
             label.Position = UDim2.new(1, 0, 0, 0)
+            accentLine.AnchorPoint = Vector2.new(1, 0)
+            accentLine.Position = UDim2.new(1, 0, 0, lineY)
         else
             label.Position = UDim2.new(0, 0, 0, 0)
         end
