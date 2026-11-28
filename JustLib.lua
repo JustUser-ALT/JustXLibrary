@@ -6530,12 +6530,16 @@ function JL:Window(opts)
             return sc
         end
         if typ == "Grid" then
-            -- Each SectionDivider starts a full-width page. Sections are laid out in fixed columns.
-            local scroll = mkScroll(Enum.ScrollingDirection.XY)
-            scroll.ElasticBehavior = Enum.ElasticBehavior.Never
+            -- Grid pages are independent, overlapping viewports. Pagination switches
+            -- visibility instead of horizontally scrolling a shared canvas.
+            local scroll = mkScroll(Enum.ScrollingDirection.Y)
+            scroll.ScrollingDirection = Enum.ScrollingDirection.Y
             scroll.ScrollingEnabled = true
+            scroll.ElasticBehavior = Enum.ElasticBehavior.Never
+
             local colCon = Instance.new("Frame")
-            colCon.Size = UDim2.new(0,0,0,0)
+            colCon.Name = "JLGridPages"
+            colCon.Size = UDim2.new(1,-6,0,0)
             colCon.Position = UDim2.new(0,3,0,3)
             colCon.BackgroundTransparency = 1
             colCon.Parent = scroll
@@ -6556,49 +6560,29 @@ function JL:Window(opts)
             pl.Parent = pager
 
             local groups, currentGroup = {}, nil
-            local groupGap = 12
-            -- Page geometry follows the real scroll viewport, not the nominal window width.
-            local pageW = math.max(1, unscaleWin(scroll.AbsoluteSize.X) - 6)
-            local colW = math.max(1, math.floor((pageW - 8 - math.max(VIS - 1, 0) * COLGAP) / VIS))
-            local currentPage, pageTweening, relayoutQueued = 1, false, false
-            local activePageTween
+            local currentPage, relayoutQueued = 1, false
+            local pageW = math.max(1,unscaleWin(scroll.AbsoluteSize.X)-6)
+            local colW = math.max(1,math.floor((pageW-8-math.max(VIS-1,0)*COLGAP)/VIS))
             local chips, pageStatus = {}, nil
 
-            local function numPages() return math.max(1, #groups) end
-            local function pageOffset(p) return (p - 1) * (pageW + groupGap) end
+            local function numPages() return math.max(1,#groups) end
             local function paintPager()
-                local p, total = math.clamp(currentPage, 1, numPages()), numPages()
                 if pageStatus then
-                    pageStatus.Text = string.format("PAGE %02d  /  %02d", p, total)
+                    pageStatus.Text = string.format("PAGE %02d  /  %02d",currentPage,numPages())
                 end
                 for i,ch in ipairs(chips) do
-                    local on = (i == p)
+                    local on = i == currentPage
                     ch.BackgroundColor3 = on and ACCENTS[1] or C.btnBg
                     ch.TextColor3 = on and Color3.new(1,1,1) or C.dim
                 end
             end
             local function goPage(p)
-                p = math.clamp(math.floor(tonumber(p) or 1), 1, numPages())
-                currentPage = p
+                currentPage = math.clamp(math.floor(tonumber(p) or 1),1,numPages())
+                for i,g in ipairs(groups) do g.frame.Visible = (i == currentPage) end
+                scroll.CanvasPosition = Vector2.new(0,0)
                 paintPager()
-                if activePageTween then pcall(function() activePageTween:Cancel() end) end
-                pageTweening = true
-                local tween = createTween(scroll, TweenInfo.new(.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                    CanvasPosition = Vector2.new(pageOffset(p), scroll.CanvasPosition.Y)
-                })
-                activePageTween = tween
-                tween.Completed:Connect(function()
-                    if activePageTween ~= tween then return end
-                    if scroll and scroll.Parent then
-                        scroll.CanvasPosition = Vector2.new(pageOffset(currentPage), scroll.CanvasPosition.Y)
-                    end
-                    activePageTween = nil
-                    pageTweening = false
-                    paintPager()
-                end)
-                tween:Play()
             end
-            local function mkPagerButton(txt, order, fn, wide)
+            local function mkPagerButton(txt,order,fn,wide)
                 local b = Instance.new("TextButton")
                 b.Size = UDim2.new(0,wide or 24,0,20)
                 b.BackgroundColor3 = C.btnBg
@@ -6620,7 +6604,7 @@ function JL:Window(opts)
                 end
                 chips = {}
                 local np = numPages()
-                pager.Visible = #groups > 0
+                pager.Visible = #groups > 1
                 scroll.Size = pager.Visible and UDim2.new(1,0,1,-30) or UDim2.new(1,0,1,0)
                 if not pager.Visible then
                     pageStatus = nil
@@ -6634,51 +6618,12 @@ function JL:Window(opts)
                 pageStatus.Font = GB
                 pageStatus.TextSize = 10
                 pageStatus.TextColor3 = C.dim
-                pageStatus.Text = ""
                 pageStatus.LayoutOrder = 1
                 pageStatus.Parent = pager
                 for i=1,np do
-                    local b = mkPagerButton(tostring(i),i+1,function() goPage(i) end,22)
-                    chips[i] = b
+                    chips[i] = mkPagerButton(tostring(i),i+1,function() goPage(i) end,22)
                 end
                 mkPagerButton("›",np+2,function() goPage(currentPage+1) end,25)
-                paintPager()
-            end
-            local function relayout()
-                local viewportW = unscaleWin(scroll.AbsoluteSize.X)
-                local nextPageW = math.max(1, viewportW - 6)
-                local nextColW = math.max(1, math.floor((nextPageW - 8 - math.max(VIS - 1, 0) * COLGAP) / VIS))
-                local widthChanged = math.abs(nextPageW - pageW) > 1 or math.abs(nextColW - colW) > 1
-                pageW, colW = nextPageW, nextColW
-                local totalH = 0
-                for index,g in ipairs(groups) do
-                    local maxH = 0
-                    for ci=1,VIS do
-                        local col = g.cols[ci]
-                        col.F.Size = UDim2.new(0,colW,0,col.F.Size.Y.Offset)
-                        col.F.Position = UDim2.new(0,(ci-1)*(colW+COLGAP),0,0)
-                        local h = unscaleWin(col.L.AbsoluteContentSize.Y)
-                        col.F.Size = UDim2.new(0,colW,0,h)
-                        if h > maxH then maxH = h end
-                    end
-                    if g.divider then
-                        g.divider.Size = UDim2.new(1,0,0,g.divider.Size.Y.Offset)
-                    end
-                    g.row.Size = UDim2.new(1,0,0,maxH)
-                    local headerH = g.divider and g.divider.Size.Y.Offset or 0
-                    local groupH = headerH + (g.divider and 9 or 0) + maxH
-                    g.frame.Size = UDim2.new(0,pageW,0,groupH)
-                    g.frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
-                    totalH = math.max(totalH,groupH)
-                end
-                colCon.Size = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap) or 0,0,totalH)
-                local contentWidth = #groups > 0 and (#groups * pageW + (#groups - 1) * groupGap + 6) or 0
-                scroll.CanvasSize = UDim2.new(0,contentWidth,0,totalH+14)
-                rebuildPager()
-                currentPage = math.clamp(currentPage,1,numPages())
-                if not pageTweening then
-                    scroll.CanvasPosition = Vector2.new(pageOffset(currentPage),scroll.CanvasPosition.Y)
-                end
                 paintPager()
             end
             local function requestRelayout()
@@ -6686,18 +6631,46 @@ function JL:Window(opts)
                 relayoutQueued = true
                 task.defer(function()
                     relayoutQueued = false
-                    if tabFrame and tabFrame.Parent then relayout() end
+                    if tabFrame and tabFrame.Parent then
+                        local viewportW = unscaleWin(scroll.AbsoluteSize.X)
+                        local nextPageW = math.max(1,viewportW-6)
+                        local nextColW = math.max(1,math.floor((nextPageW-8-math.max(VIS-1,0)*COLGAP)/VIS))
+                        pageW,colW = nextPageW,nextColW
+                        local maxH = 0
+                        for index,g in ipairs(groups) do
+                            local groupH = 0
+                            for ci=1,VIS do
+                                local col = g.cols[ci]
+                                col.F.Size = UDim2.new(0,colW,0,col.F.Size.Y.Offset)
+                                col.F.Position = UDim2.new(0,(ci-1)*(colW+COLGAP),0,0)
+                                local h = unscaleWin(col.L.AbsoluteContentSize.Y)
+                                col.F.Size = UDim2.new(0,colW,0,h)
+                                groupH = math.max(groupH,h)
+                            end
+                            local headerH = g.divider and g.divider.Size.Y.Offset or 0
+                            if g.divider then g.divider.Size = UDim2.new(1,0,0,headerH) end
+                            g.row.Position = UDim2.new(0,0,0,headerH+(g.divider and 9 or 0))
+                            g.row.Size = UDim2.new(1,0,0,groupH)
+                            local totalGroupH = headerH+(g.divider and 9 or 0)+groupH
+                            g.frame.Size = UDim2.new(1,0,0,totalGroupH)
+                            g.frame.Position = UDim2.new(0,0,0,0)
+                            maxH = math.max(maxH,totalGroupH)
+                        end
+                        colCon.Size = UDim2.new(1,-6,0,maxH)
+                        scroll.CanvasSize = UDim2.new(0,0,0,maxH+14)
+                        rebuildPager()
+                        goPage(currentPage)
+                    end
                 end)
             end
             local function newGroup(options)
-                local index = #groups + 1
                 local frame = Instance.new("Frame")
                 frame.Name = "JLGridPage"
-                frame.Size = UDim2.new(0,pageW,0,0)
-                frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
+                frame.Size = UDim2.new(1,0,0,0)
+                frame.Position = UDim2.new(0,0,0,0)
                 frame.BackgroundTransparency = 1
+                frame.Visible = (#groups+1 == currentPage)
                 frame.Parent = colCon
-
                 local divider
                 if options then
                     divider = makeSectionDivider(frame,options,1,pageW)
@@ -6725,7 +6698,7 @@ function JL:Window(opts)
                     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(requestRelayout)
                     g.cols[ci] = {F=colFrame,L=layout,count=0}
                 end
-                groups[index] = g
+                groups[#groups+1] = g
                 currentGroup = g
                 requestRelayout()
                 return g
@@ -6739,7 +6712,7 @@ function JL:Window(opts)
                 local NAMES = {left=1,mid=2,middle=2,center=2,right=VIS}
                 if type(c)=="number" then return math.clamp(math.floor(c),1,VIS) end
                 if type(c)=="string" then
-                    local key = c:lower()
+                    local key=c:lower()
                     return math.clamp(math.floor(tonumber(c) or NAMES[key] or 1),1,VIS)
                 end
                 local best,bestCount=1,math.huge
@@ -6757,9 +6730,9 @@ function JL:Window(opts)
                 col.count=col.count+1
                 local result
                 if isMulti then
-                    result = makeMultiSection(col.F,sopts,sg,col.count,colW,uiScale,attachTip,hubConfig)
+                    result=makeMultiSection(col.F,sopts,sg,col.count,colW,uiScale,attachTip,hubConfig)
                 else
-                    result = makeSection(col.F,sopts.Title or "Section",sg,col.count,colW,sopts,uiScale,attachTip,hubConfig)
+                    result=makeSection(col.F,sopts.Title or "Section",sg,col.count,colW,sopts,uiScale,attachTip,hubConfig)
                 end
                 requestRelayout()
                 return result
@@ -6768,18 +6741,8 @@ function JL:Window(opts)
             function Tab:MultiSection(sopts) return addSection(sopts,true) end
             function Tab:SectionDivider(options)
                 if type(options)=="string" then options={Title=options} end
-                options=options or {}
-                return newGroup(options)
+                return newGroup(options or {})
             end
-            scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-                if not pageTweening then
-                    local expected = pageOffset(currentPage)
-                    if math.abs(scroll.CanvasPosition.X-expected) > 1 then
-                        scroll.CanvasPosition = Vector2.new(expected,scroll.CanvasPosition.Y)
-                    end
-                end
-                paintPager()
-            end)
             tabScrollers[id] = {cur=function() return currentPage end,go=goPage}
                 elseif typ == "Custom" then
         else
