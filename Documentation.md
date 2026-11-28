@@ -82,7 +82,7 @@ Tab methods:
 - `SetLocked(boolean)`, `IsLocked()`, `ToggleLocked()`
 - `SetHidden(boolean)`, `IsHidden()`, `ToggleHidden()`
 
-For Grid tabs, sections can be assigned to a column using `Column`. List tabs arrange sections vertically. Custom tabs expose their frame through `Tab.Frame` for custom UI construction.
+For Grid tabs, sections can be assigned to a column using `Column`. Horizontal movement between Grid columns is page-controlled: swipe/drag scrolling to the right is disabled, while vertical scrolling remains available. Use the page arrows at the bottom to move between column pages. List tabs arrange sections vertically. Custom tabs expose their frame through `Tab.Frame` for custom UI construction.
 
 ### MultiSection
 
@@ -115,6 +115,28 @@ local Main = Tab:Section({
 ```
 
 Sections support `SetCollapsed(boolean)`, `ToggleCollapsed()`, `IsCollapsed()`, and the lock/visibility methods `SetLocked`, `SetHidden`, `IsLocked`, `IsHidden`, `ToggleLocked`, `ToggleHidden`.
+Add a lightweight titled separator inside a tab with `SectionDivider`:
+
+```lua
+Tab:SectionDivider({
+    Title = "Weapon",
+    Alignment = "Left" -- "Left", "Center", or "Right"
+})
+```
+
+`SectionDivider` accepts a title string or an options table:
+
+| Option | Purpose |
+| --- | --- |
+| `Title` or `Name` | Text displayed over the divider line. |
+| `Alignment` or `Align` | `"Left"`, `"Center"`, or `"Right"`. Defaults to `"Left"`. |
+| `Column` | Grid column; supports the same column selection as `Section`. |
+| `Height` | Divider row height in pixels. |
+| `TextSize` | Title text size. |
+| `Color` | Optional title color. |
+
+The divider participates in the tab's normal layout order and does not create a collapsible section.
+
 
 All controls accept a configuration table. Common options include `Name`, `Flag`, `Icon`, `Tooltip`, `Default`, `NoSave`, and `Callback` where applicable. A `Flag` identifies persisted state; use a unique flag for each control.
 
