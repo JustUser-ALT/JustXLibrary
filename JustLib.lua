@@ -6489,103 +6489,183 @@ function JL:Window(opts)
             return sc
         end
         if typ == "Grid" then
-            -- Horizontal movement is page-controlled; users can still scroll vertically.
+            -- Grid content is organized into full-width groups. Each divider starts a new group;
+            -- sections inside that group share one horizontal row of columns.
             local scroll = mkScroll(Enum.ScrollingDirection.Y)
             scroll.ElasticBehavior = Enum.ElasticBehavior.Never
-            local colCon = Instance.new("Frame"); colCon.Size = UDim2.new(0,0,0,0); colCon.Position = UDim2.new(0,3,0,3); colCon.BackgroundTransparency = 1; colCon.Parent = scroll
-            local cols = {}; local ncols = 0; local secCount = {}
-            local pager = Instance.new("Frame"); pager.Size = UDim2.new(1,0,0,24); pager.Position = UDim2.new(0,0,1,-24); pager.BackgroundTransparency = 1; pager.Visible = false; pager.Parent = tabFrame
-            local pl = Instance.new("UIListLayout"); pl.FillDirection = Enum.FillDirection.Horizontal; pl.HorizontalAlignment = Enum.HorizontalAlignment.Center
-            pl.VerticalAlignment = Enum.VerticalAlignment.Center; pl.Padding = UDim.new(0,4); pl.SortOrder = Enum.SortOrder.LayoutOrder; pl.Parent = pager
-            local chips = {}
-            local function curCol() return math.floor(scroll.CanvasPosition.X / (colW + COLGAP) + 0.5) + 1 end
-            local function curPage() return math.floor((curCol() - 1) / VIS) + 1 end
-            local function numPages() return math.max(1, math.ceil(ncols / VIS)) end
-            local function goCol(i)
-                i = math.clamp(i, 1, math.max(1, ncols - VIS + 1))
-                createTween(scroll, TweenInfo.new(.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {CanvasPosition = Vector2.new((i - 1) * (colW + COLGAP), scroll.CanvasPosition.Y)}):Play()
+            local colCon = Instance.new("Frame")
+            colCon.Size = UDim2.new(0,0,0,0)
+            colCon.Position = UDim2.new(0,3,0,3)
+            colCon.BackgroundTransparency = 1
+            colCon.Parent = scroll
+
+            local pager = Instance.new("Frame")
+            pager.Size = UDim2.new(1,0,0,24)
+            pager.Position = UDim2.new(0,0,1,-24)
+            pager.BackgroundTransparency = 1
+            pager.Visible = false
+            pager.Parent = tabFrame
+            local pl = Instance.new("UIListLayout")
+            pl.FillDirection = Enum.FillDirection.Horizontal
+            pl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            pl.VerticalAlignment = Enum.VerticalAlignment.Center
+            pl.Padding = UDim.new(0,4)
+            pl.SortOrder = Enum.SortOrder.LayoutOrder
+            pl.Parent = pager
+
+            local groups, currentGroup = {}, nil
+            local groupGap = 12
+            local pageW = VIS * colW + math.max(VIS - 1, 0) * COLGAP
+            local function curPage()
+                return math.floor(scroll.CanvasPosition.X / (pageW + groupGap) + 0.5) + 1
             end
-            local function goPage(p)
-                p = math.clamp(p, 1, numPages())
-                goCol((p - 1) * VIS + 1)
-            end
+            local function numPages() return math.max(1, #groups) end
             local function paintChips()
                 local p = curPage()
-                for i,ch in ipairs(chips) do
+                for i,ch in ipairs(chips or {}) do
                     local on = (i == p)
-                    ch.BackgroundColor3 = on and ACCENTS[1] or C.btnBg; ch.TextColor3 = on and Color3.new(1,1,1) or C.dim
+                    ch.BackgroundColor3 = on and ACCENTS[1] or C.btnBg
+                    ch.TextColor3 = on and Color3.new(1,1,1) or C.dim
                 end
+            end
+            local chips = {}
+            local function goPage(p)
+                p = math.clamp(p, 1, numPages())
+                createTween(scroll, TweenInfo.new(.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                    CanvasPosition = Vector2.new((p - 1) * (pageW + groupGap), scroll.CanvasPosition.Y)
+                }):Play()
             end
             local function mkChip(txt,order,fn)
-                local b = Instance.new("TextButton"); b.Size = UDim2.new(0,24,0,18); b.BackgroundColor3 = C.btnBg; b.BorderSizePixel = 0; b.AutoButtonColor = false
-                b.Text = txt; b.Font = GB; b.TextSize = 11; b.TextColor3 = C.dim; b.LayoutOrder = order; b.Parent = pager; corner(5,b)
-                b.MouseButton1Click:Connect(fn); return b
+                local b = Instance.new("TextButton")
+                b.Size = UDim2.new(0,24,0,18)
+                b.BackgroundColor3 = C.btnBg
+                b.BorderSizePixel = 0
+                b.AutoButtonColor = false
+                b.Text = txt
+                b.Font = GB
+                b.TextSize = 11
+                b.TextColor3 = C.dim
+                b.LayoutOrder = order
+                b.Parent = pager
+                corner(5,b)
+                b.MouseButton1Click:Connect(fn)
+                return b
             end
             local function rebuildPager()
-                for _,c in ipairs(pager:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+                for _,c in ipairs(pager:GetChildren()) do
+                    if c:IsA("TextButton") then c:Destroy() end
+                end
                 chips = {}
                 local np = numPages()
-                local need = ncols > VIS
-                pager.Visible = need
-                scroll.Size = need and UDim2.new(1,0,1,-28) or UDim2.new(1,0,1,0)
-                if not need then return end
-                mkChip("‹", 0, function() goPage(curPage() - 1) end)
-                for i = 1,np do chips[i] = mkChip(tostring(i), i, function() goPage(i) end) end
-                mkChip("›", np + 1, function() goPage(curPage() + 1) end)
+                pager.Visible = #groups > 1
+                scroll.Size = pager.Visible and UDim2.new(1,0,1,-28) or UDim2.new(1,0,1,0)
+                if not pager.Visible then return end
+                mkChip("‹",0,function() goPage(curPage()-1) end)
+                for i=1,np do
+                    chips[i] = mkChip(tostring(i),i,function() goPage(i) end)
+                end
+                mkChip("›",np+1,function() goPage(curPage()+1) end)
                 paintChips()
             end
-            scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(paintChips)
-            tabScrollers[id] = {cur = curCol, go = goCol}
             local function relayout()
-                local mH = 0
-                for i = 1,ncols do
-                    local hh = unscaleWin(cols[i].L.AbsoluteContentSize.Y)
-                    cols[i].F.Size = UDim2.new(0,colW,0,hh); if hh > mH then mH = hh end
+                local totalH = 0
+                for index,g in ipairs(groups) do
+                    local maxH = 0
+                    for ci=1,VIS do
+                        local col = g.cols[ci]
+                        local h = unscaleWin(col.L.AbsoluteContentSize.Y)
+                        col.F.Size = UDim2.new(0,colW,0,h)
+                        if h > maxH then maxH = h end
+                    end
+                    g.row.Size = UDim2.new(1,0,0,maxH)
+                    local headerH = g.divider and g.divider.Size.Y.Offset or 0
+                    local groupH = headerH + (g.divider and 8 or 0) + maxH
+                    g.frame.Size = UDim2.new(0,pageW,0,groupH)
+                    g.frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
+                    totalH = math.max(totalH,groupH)
                 end
-                local total = ncols * colW + math.max(ncols - 1, 0) * COLGAP
-                colCon.Size = UDim2.new(0,total,0,mH)
-                scroll.CanvasSize = UDim2.new(0, (ncols > VIS) and (total + 8) or 0, 0, mH + 14)
+                colCon.Size = UDim2.new(0,#groups > 0 and (#groups*pageW + (#groups-1)*groupGap) or 0,0,totalH)
+                scroll.CanvasSize = UDim2.new(0,#groups > 1 and ( #groups*pageW + (#groups-1)*groupGap + 8) or 0,0,totalH+14)
+                rebuildPager()
             end
-            local function getCol(i)
-                while ncols < i do
-                    ncols = ncols + 1; local k = ncols
-                    local f = Instance.new("Frame"); f.Size = UDim2.new(0,colW,0,0); f.Position = UDim2.new(0,(k - 1) * (colW + COLGAP),0,0); f.BackgroundTransparency = 1; f.Parent = colCon
-                    local L = Instance.new("UIListLayout"); L.FillDirection = Enum.FillDirection.Vertical; L.Padding = UDim.new(0,8); L.SortOrder = Enum.SortOrder.LayoutOrder; L.Parent = f
-                    L:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(relayout)
-                    cols[k] = {F = f, L = L}
-                    rebuildPager()
+            local function newGroup(options)
+                local index = #groups + 1
+                local frame = Instance.new("Frame")
+                frame.Name = "JLGridGroup"
+                frame.Size = UDim2.new(0,pageW,0,0)
+                frame.Position = UDim2.new(0,(index-1)*(pageW+groupGap),0,0)
+                frame.BackgroundTransparency = 1
+                frame.Parent = colCon
+
+                local divider
+                if options then
+                    divider = makeSectionDivider(frame,options,1,pageW)
+                    divider.Position = UDim2.new(0,0,0,0)
                 end
+                local row = Instance.new("Frame")
+                row.Name = "Sections"
+                row.Size = UDim2.new(1,0,0,0)
+                row.Position = UDim2.new(0,0,0,divider and (divider.Size.Y.Offset+8) or 0)
+                row.BackgroundTransparency = 1
+                row.Parent = frame
+                local g = {frame=frame,divider=divider,row=row,cols={}}
+                for ci=1,VIS do
+                    local colFrame = Instance.new("Frame")
+                    colFrame.Name = "Column"..ci
+                    colFrame.Size = UDim2.new(0,colW,0,0)
+                    colFrame.Position = UDim2.new(0,(ci-1)*(colW+COLGAP),0,0)
+                    colFrame.BackgroundTransparency = 1
+                    colFrame.Parent = row
+                    local layout = Instance.new("UIListLayout")
+                    layout.FillDirection = Enum.FillDirection.Vertical
+                    layout.Padding = UDim.new(0,8)
+                    layout.SortOrder = Enum.SortOrder.LayoutOrder
+                    layout.Parent = colFrame
+                    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(relayout)
+                    g.cols[ci] = {F=colFrame,L=layout,count=0}
+                end
+                groups[index] = g
+                currentGroup = g
                 relayout()
-                return cols[i]
+                return g
             end
-            local NAMES = {left = 1, mid = 2, middle = 2, center = 2, right = 3}
-            local function resolveCol(c)
-                if type(c) == "number" then return math.max(1, math.floor(c)) end
-                if type(c) == "string" then return NAMES[c:lower()] or tonumber(c) or 1 end
-                local best,bc = 1,math.huge
-                for i = 1,VIS do local n = secCount[i] or 0; if n < bc then best = i; bc = n end end
+            local function ensureGroup()
+                if not currentGroup then return newGroup(nil) end
+                return currentGroup
+            end
+            local function resolveCol(c,g)
+                local NAMES = {left=1,mid=2,middle=2,center=2,right=3}
+                if type(c)=="number" then return math.clamp(math.floor(c),1,VIS) end
+                if type(c)=="string" then return math.clamp(NAMES[c:lower()] or tonumber(c) or 1,1,VIS) end
+                local best,bestCount=1,math.huge
+                for i=1,VIS do
+                    local n=g.cols[i].count
+                    if n<bestCount then best,bestCount=i,n end
+                end
                 return best
             end
-            function Tab:Section(sopts)
-                sopts = sopts or {}
-                local ci = resolveCol(sopts.Column)
-                secCount[ci] = (secCount[ci] or 0) + 1
-                return makeSection(getCol(ci).F, sopts.Title or "Section", sg, secCount[ci], colW, sopts, uiScale, attachTip, hubConfig)
+            local function addSection(sopts,isMulti)
+                sopts=sopts or {}
+                local g=ensureGroup()
+                local ci=resolveCol(sopts.Column,g)
+                local col=g.cols[ci]
+                col.count=col.count+1
+                if isMulti then
+                    return makeMultiSection(col.F,sopts,sg,col.count,colW,uiScale,attachTip,hubConfig)
+                end
+                return makeSection(col.F,sopts.Title or "Section",sg,col.count,colW,sopts,uiScale,attachTip,hubConfig)
             end
-            function Tab:MultiSection(sopts)
-                sopts = sopts or {}
-                local ci = resolveCol(sopts.Column)
-                secCount[ci] = (secCount[ci] or 0) + 1
-                return makeMultiSection(getCol(ci).F, sopts, sg, secCount[ci], colW, uiScale, attachTip, hubConfig)
-            end
+            function Tab:Section(sopts) return addSection(sopts,false) end
+            function Tab:MultiSection(sopts) return addSection(sopts,true) end
             function Tab:SectionDivider(options)
-                options = options or {}
-                local ci = resolveCol(type(options) == "table" and options.Column or nil)
-                secCount[ci] = (secCount[ci] or 0) + 1
-                return makeSectionDivider(getCol(ci).F, options, secCount[ci], colW)
+                if type(options)=="string" then options={Title=options} end
+                options=options or {}
+                return newGroup(options)
             end
-            for i = 1,VIS do getCol(i) end
-        elseif typ == "Custom" then
+            scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(paintChips)
+            tabScrollers[id] = {cur=curPage,go=goPage}
+            newGroup(nil)
+                elseif typ == "Custom" then
         else
             local scroll = mkScroll(Enum.ScrollingDirection.Y)
             local listCon = Instance.new("Frame"); listCon.Size = UDim2.new(0,listW,0,0); listCon.Position = UDim2.new(0,3,0,3); listCon.BackgroundTransparency = 1; listCon.Parent = scroll
